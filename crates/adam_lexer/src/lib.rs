@@ -6,3 +6,12 @@
 //! - String interpolation
 //! - Significant newlines (Go-style)
 //! - Comments (line and nested block)
+
+pub mod token;
+pub mod lexer;
+
+#[cfg(test)]
+mod tests;
+
+pub use token::*;
+pub use lexer::Lexer;

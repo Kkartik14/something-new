@@ -2,3 +2,14 @@
 //!
 //! Walks the AST, builds a scope tree, and resolves every
 //! name to its declaration. Detects undefined and duplicate names.
+
+pub mod scope;
+pub mod errors;
+pub mod resolver;
+
+#[cfg(test)]
+mod tests;
+
+pub use resolver::{resolve, ResolveResult};
+pub use scope::{ScopeTree, ScopeId, DeclId, Declaration, DeclKind, ScopeKind};
+pub use errors::{ResolveError, ResolveErrorKind};

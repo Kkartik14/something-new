@@ -11,6 +11,9 @@ name = "adam_borrow"
 version = "0.1.0"
 dependencies = [
  "adam_ast",
+ "adam_lexer",
+ "adam_parser",
+ "adam_resolve",
  "adam_types",
 ]
 
@@ -41,6 +44,9 @@ name = "adam_ir"
 version = "0.1.0"
 dependencies = [
  "adam_ast",
+ "adam_lexer",
+ "adam_parser",
+ "adam_resolve",
  "adam_types",
 ]
 
@@ -72,6 +78,8 @@ name = "adam_resolve"
 version = "0.1.0"
 dependencies = [
  "adam_ast",
+ "adam_lexer",
+ "adam_parser",
 ]
 
 [[package]]
@@ -90,6 +98,8 @@ name = "adam_types"
 version = "0.1.0"
 dependencies = [
  "adam_ast",
+ "adam_lexer",
+ "adam_parser",
  "adam_resolve",
 ]
 
