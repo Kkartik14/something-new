@@ -1,0 +1,61 @@
+// Enums — algebraic data types and pattern matching.
+// Demonstrates: enum, match, pattern matching, nested patterns, guards.
+
+enum Shape {
+    Circle(f64)
+    Rect(f64, f64)
+    Triangle(f64, f64, f64)
+}
+
+fn area(shape Shape) -> f64 {
+    match shape {
+        Circle(r) => 3.14159 * r * r
+        Rect(w, h) => w * h
+        Triangle(a, b, c) => {
+            s := (a + b + c) / 2.0
+            (s * (s - a) * (s - b) * (s - c)).sqrt()
+        }
+    }
+}
+
+fn describe(shape Shape) -> String {
+    match shape {
+        Circle(r) if r > 10.0 => "large circle"
+        Circle(_) => "small circle"
+        Rect(w, h) if w == h => "square"
+        Rect(_, _) => "rectangle"
+        Triangle(_, _, _) => "triangle"
+    }
+}
+
+enum Option[T] {
+    Some(T)
+    None
+}
+
+fn find_first_large(shapes [Shape]) -> Option[Shape] {
+    for shape in shapes {
+        if area(shape) > 100.0 {
+            return Option.Some(shape)
+        }
+    }
+    Option.None
+}
+
+fn main() {
+    shapes := [
+        Shape.Circle(5.0),
+        Shape.Rect(10.0, 20.0),
+        Shape.Triangle(3.0, 4.0, 5.0),
+        Shape.Rect(7.0, 7.0),
+    ]
+
+    for shape in shapes {
+        print("{describe(shape)}: area = {area(shape)}")
+    }
+
+    match find_first_large(shapes) {
+        Option.Some(s) => print("Found large shape: {describe(s)}")
+        Option.None => print("No large shapes found")
+    }
+}

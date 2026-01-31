@@ -1,0 +1,7 @@
+[package]
+name = "adam_resolve"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_ast = { path = "../adam_ast" }

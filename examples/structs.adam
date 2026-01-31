@@ -1,0 +1,67 @@
+// Structs — definition, methods, and trait implementation.
+// Demonstrates: struct, impl, trait, methods, self parameter.
+
+struct Point {
+    x f64
+    y f64
+}
+
+impl Point {
+    fn new(x f64, y f64) -> Point {
+        Point { x, y }
+    }
+
+    fn distance(self, other Point) -> f64 {
+        dx := self.x - other.x
+        dy := self.y - other.y
+        (dx * dx + dy * dy).sqrt()
+    }
+
+    fn translate(self, dx f64, dy f64) -> Point {
+        Point { x: self.x + dx, y: self.y + dy }
+    }
+}
+
+trait Display {
+    fn to_string(self) -> String
+}
+
+impl Display for Point {
+    fn to_string(self) -> String {
+        "({self.x}, {self.y})"
+    }
+}
+
+struct Circle {
+    center Point
+    radius f64
+}
+
+impl Circle {
+    fn new(center Point, radius f64) -> Circle {
+        Circle { center, radius }
+    }
+
+    fn area(self) -> f64 {
+        3.14159 * self.radius * self.radius
+    }
+
+    fn contains(self, point Point) -> bool {
+        self.center.distance(point) <= self.radius
+    }
+}
+
+fn main() {
+    p1 := Point.new(0.0, 0.0)
+    p2 := Point.new(3.0, 4.0)
+
+    print("Distance: {p1.distance(p2)}")
+    print("P1: {p1.to_string()}")
+
+    p3 := p1.translate(1.0, 2.0)
+    print("Translated: {p3.to_string()}")
+
+    circle := Circle.new(p1, 5.0)
+    print("Area: {circle.area()}")
+    print("Contains p2: {circle.contains(p2)}")
+}

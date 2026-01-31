@@ -1,0 +1,7 @@
+[package]
+name = "adam_ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_runtime = { path = "../adam_runtime" }

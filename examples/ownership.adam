@@ -1,0 +1,66 @@
+// Ownership — move semantics, borrowing, and mutable borrows.
+// Demonstrates: own, mut, borrow-by-default, move semantics.
+
+// Default: parameters borrow (shared, immutable)
+fn print_length(name String) {
+    print("Length of '{name}': {name.len()}")
+    // name is borrowed — caller still owns it
+}
+
+// own: takes ownership — value is moved into the function
+fn consume(own name String) {
+    print("Consuming: {name}")
+    // name is dropped at end of this scope
+}
+
+// mut: mutable borrow — can modify the value
+fn append_exclaim(mut name String) {
+    name.push("!")
+    print("Modified: {name}")
+    // mutable borrow ends, caller sees the change
+}
+
+fn demonstrate_copy_types() {
+    // Copy types (i32, f64, bool, char) are never moved
+    x := 42
+    y := x          // x is copied, not moved
+    print("x = {x}, y = {y}")  // both valid
+}
+
+fn demonstrate_move() {
+    name := "Adam"
+
+    // Borrow — name is still valid after this call
+    print_length(name)
+    print("Still valid: {name}")
+
+    // Move — name is consumed, no longer valid
+    consume(own name)
+    // print(name)  // COMPILE ERROR: value used after move
+}
+
+fn demonstrate_mut_borrow() {
+    mut greeting := "Hello"
+
+    // Mutable borrow — greeting is modified in place
+    append_exclaim(mut greeting)
+    print("After mutation: {greeting}")  // "Hello!"
+}
+
+fn demonstrate_scope_drops() {
+    outer := "outer string"
+    {
+        inner := "inner string"
+        print("{outer} and {inner}")
+        // inner is dropped here (end of scope)
+    }
+    print("{outer}")
+    // outer is dropped here (end of function)
+}
+
+fn main() {
+    demonstrate_copy_types()
+    demonstrate_move()
+    demonstrate_mut_borrow()
+    demonstrate_scope_drops()
+}

@@ -1,0 +1,8 @@
+[package]
+name = "adam_codegen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_ir = { path = "../adam_ir" }
+adam_types = { path = "../adam_types" }

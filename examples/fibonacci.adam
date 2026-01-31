@@ -1,0 +1,43 @@
+// Fibonacci — recursive and iterative implementations.
+// Demonstrates: functions, recursion, loops, variables, mutability.
+
+// Recursive fibonacci
+fn fib_recursive(n i32) -> i32 {
+    if n <= 1 {
+        n
+    } else {
+        fib_recursive(n - 1) + fib_recursive(n - 2)
+    }
+}
+
+// Iterative fibonacci
+fn fib_iterative(n i32) -> i32 {
+    if n <= 1 {
+        return n
+    }
+    mut a := 0
+    mut b := 1
+    for _ in 2..n+1 {
+        temp := a + b
+        a = b
+        b = temp
+    }
+    b
+}
+
+fn main() {
+    // Print first 10 fibonacci numbers
+    for i in 0..10 {
+        print("fib({i}) = {fib_recursive(i)}")
+    }
+
+    // Verify iterative matches recursive
+    for i in 0..20 {
+        r := fib_recursive(i)
+        it := fib_iterative(i)
+        if r != it {
+            print("MISMATCH at {i}: recursive={r}, iterative={it}")
+        }
+    }
+    print("All fibonacci checks passed!")
+}

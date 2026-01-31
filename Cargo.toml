@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/adam_lexer",
+    "crates/adam_ast",
+    "crates/adam_parser",
+    "crates/adam_resolve",
+    "crates/adam_types",
+    "crates/adam_borrow",
+    "crates/adam_ir",
+    "crates/adam_codegen",
+    "crates/adam_runtime",
+    "crates/adam_std",
+    "crates/adam_ui",
+    "crates/adam_cli",
+    "crates/adam_lsp",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"

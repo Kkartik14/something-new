@@ -1,0 +1,11 @@
+[package]
+name = "adam_lsp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_lexer = { path = "../adam_lexer" }
+adam_ast = { path = "../adam_ast" }
+adam_parser = { path = "../adam_parser" }
+adam_resolve = { path = "../adam_resolve" }
+adam_types = { path = "../adam_types" }

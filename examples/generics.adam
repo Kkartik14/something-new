@@ -1,0 +1,96 @@
+// Generics — generic functions, structs, and trait bounds.
+// Demonstrates: type parameters, trait bounds, generic structs, generic impls.
+
+// Generic function with trait bound
+fn max[T: Comparable](a T, b T) -> T {
+    if a > b { a } else { b }
+}
+
+fn min[T: Comparable](a T, b T) -> T {
+    if a < b { a } else { b }
+}
+
+fn clamp[T: Comparable](val T, lo T, hi T) -> T {
+    max(lo, min(val, hi))
+}
+
+// Generic struct
+struct Pair[A, B] {
+    first A
+    second B
+}
+
+impl Pair[A, B] {
+    fn new(first A, second B) -> Pair[A, B] {
+        Pair { first, second }
+    }
+
+    fn swap(self) -> Pair[B, A] {
+        Pair { first: self.second, second: self.first }
+    }
+}
+
+// Generic struct with trait bound
+struct Stack[T] {
+    items [T]
+}
+
+impl Stack[T] {
+    fn new() -> Stack[T] {
+        Stack { items: [] }
+    }
+
+    fn push(mut self, item own T) {
+        self.items.push(item)
+    }
+
+    fn pop(mut self) -> ?T {
+        self.items.pop()
+    }
+
+    fn peek(self) -> ?T {
+        self.items.last()
+    }
+
+    fn is_empty(self) -> bool {
+        self.items.is_empty()
+    }
+
+    fn len(self) -> u64 {
+        self.items.len()
+    }
+}
+
+// Generic function with multiple bounds
+fn print_sorted[T: Comparable + Display](items [T]) {
+    mut sorted := items.clone()
+    sorted.sort()
+    for item in sorted {
+        print(item.to_string())
+    }
+}
+
+fn main() {
+    // Generic functions
+    print("max(3, 7) = {max(3, 7)}")
+    print("max(3.14, 2.71) = {max(3.14, 2.71)}")
+    print("clamp(15, 0, 10) = {clamp(15, 0, 10)}")
+
+    // Generic struct
+    pair := Pair.new("hello", 42)
+    print("Pair: ({pair.first}, {pair.second})")
+    swapped := pair.swap()
+    print("Swapped: ({swapped.first}, {swapped.second})")
+
+    // Generic stack
+    mut stack := Stack[i32].new()
+    stack.push(1)
+    stack.push(2)
+    stack.push(3)
+    print("Stack size: {stack.len()}")
+    print("Top: {stack.peek()}")
+
+    while val := stack.pop() {
+        print("Popped: {val}")
+    }
+}

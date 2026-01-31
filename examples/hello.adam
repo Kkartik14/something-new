@@ -1,0 +1,6 @@
+// Hello World — the simplest Adam program.
+// Demonstrates: entry point, print function, string literals.
+
+fn main() {
+    print("Hello, Adam!")
+}

@@ -1,0 +1,21 @@
+# Rust build artifacts
+/target
+
+# Object files
+*.o
+*.so
+*.dylib
+*.dll
+*.a
+
+# Editor
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Adam build artifacts (future)
+/build
+*.adam.o

@@ -1,0 +1,78 @@
+// Error Handling — Result type, ? operator, and pattern matching on errors.
+// Demonstrates: T ! E result type, ? propagation, match on ok/err, optionals.
+
+struct Config {
+    host String
+    port i32
+    debug bool
+}
+
+fn read_file(path String) -> String ! IoError {
+    file := fs.open(path)?
+    content := file.read_all()?
+    content
+}
+
+fn parse_port(s String) -> i32 ! ParseError {
+    val := parse_int(s)?
+    if val < 0 || val > 65535 {
+        return err(ParseError("port out of range: {val}"))
+    }
+    val
+}
+
+fn load_config(path String) -> Config ! Error {
+    raw := read_file(path)?
+
+    // Parse fields (simplified)
+    host := "localhost"
+    port := parse_port("8080")?
+    debug := false
+
+    Config { host, port, debug }
+}
+
+// Using optionals
+fn find_user(users [String], name String) -> ?String {
+    for user in users {
+        if user == name {
+            return user
+        }
+    }
+    nil
+}
+
+fn main() {
+    // Using ? to propagate errors
+    match load_config("config.toml") {
+        ok(config) => {
+            print("Host: {config.host}")
+            print("Port: {config.port}")
+            print("Debug: {config.debug}")
+        }
+        err(e) => {
+            print("Failed to load config: {e}")
+        }
+    }
+
+    // Using optionals with if-let
+    users := ["alice", "bob", "charlie"]
+
+    if user := find_user(users, "bob") {
+        print("Found user: {user}")
+    }
+
+    if user := find_user(users, "dave") {
+        print("Found: {user}")
+    } else {
+        print("User 'dave' not found")
+    }
+
+    // Chaining results
+    result := read_file("data.txt")
+    message := match result {
+        ok(data) => "Got {data.len()} bytes"
+        err(_) => "File not found, using defaults"
+    }
+    print(message)
+}

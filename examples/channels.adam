@@ -1,0 +1,93 @@
+// Channels — green threads, channels, and select.
+// Demonstrates: spawn, chan, send, recv, select, spawn_group, after.
+
+fn basic_channel() {
+    ch := chan[i32]()
+
+    spawn {
+        ch.send(42)
+    }
+
+    val := ch.recv()
+    print("Received: {val}")
+}
+
+fn buffered_channel() {
+    ch := chan[String](3)
+
+    // Can send up to 3 without blocking
+    ch.send("hello")
+    ch.send("world")
+    ch.send("adam")
+
+    print(ch.recv())  // "hello"
+    print(ch.recv())  // "world"
+    print(ch.recv())  // "adam"
+}
+
+fn producer_consumer() {
+    ch := chan[i32](10)
+
+    // Producer
+    spawn {
+        for i in 0..100 {
+            ch.send(i * i)
+        }
+    }
+
+    // Consumer
+    for _ in 0..100 {
+        val := ch.recv()
+        if val > 50 {
+            print("Large square: {val}")
+        }
+    }
+}
+
+fn select_example() {
+    ch1 := chan[String]()
+    ch2 := chan[String]()
+
+    spawn {
+        ch1.send("from channel 1")
+    }
+
+    spawn {
+        ch2.send("from channel 2")
+    }
+
+    // Wait for whichever arrives first
+    select {
+        msg := ch1.recv() => print("ch1: {msg}")
+        msg := ch2.recv() => print("ch2: {msg}")
+        after 5.seconds => print("timeout!")
+    }
+}
+
+fn parallel_fetch() {
+    urls := [
+        "https://example.com/a",
+        "https://example.com/b",
+        "https://example.com/c",
+    ]
+
+    group := spawn_group()
+    for url in urls {
+        group.spawn {
+            // Simulated fetch
+            print("Fetching {url}...")
+            url
+        }
+    }
+
+    results := group.wait()
+    print("Fetched {results.len()} URLs")
+}
+
+fn main() {
+    basic_channel()
+    buffered_channel()
+    producer_consumer()
+    select_example()
+    parallel_fetch()
+}

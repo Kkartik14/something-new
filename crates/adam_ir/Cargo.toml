@@ -1,0 +1,8 @@
+[package]
+name = "adam_ir"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_ast = { path = "../adam_ast" }
+adam_types = { path = "../adam_types" }

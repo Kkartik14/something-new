@@ -1,0 +1,68 @@
+// Counter App — declarative UI with reactive state.
+// Demonstrates: view, @state, @prop, body, modifiers, event handling.
+
+view Counter {
+    @state count: i32 = 0
+
+    body {
+        Column {
+            Text("Count: {count}")
+                .font(.title)
+                .color(.blue)
+
+            Row(spacing: 12) {
+                Button("−") {
+                    count -= 1
+                }
+                .padding(8)
+                .background(.gray)
+                .corner_radius(8)
+
+                Button("+") {
+                    count += 1
+                }
+                .padding(8)
+                .background(.blue)
+                .color(.white)
+                .corner_radius(8)
+            }
+
+            if count != 0 {
+                Button("Reset") {
+                    count = 0
+                }
+                .color(.red)
+            }
+        }
+        .padding(24)
+    }
+}
+
+// Reusable labeled counter with a prop
+view LabeledCounter {
+    @prop label: String
+    @state count: i32 = 0
+
+    body {
+        Column(spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .color(.gray)
+
+            Counter()
+        }
+    }
+}
+
+view App {
+    body {
+        Column(spacing: 32) {
+            Text("Adam Counter Demo")
+                .font(.title)
+
+            LabeledCounter(label: "Apples")
+            LabeledCounter(label: "Oranges")
+        }
+        .padding(32)
+    }
+}

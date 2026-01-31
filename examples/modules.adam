@@ -1,0 +1,66 @@
+// Modules — multi-file module system and imports.
+// Demonstrates: use, pub, mod, visibility, multi-file projects.
+//
+// In a real project this would be split across files:
+//   src/
+//     main.adam
+//     math/
+//       vector.adam
+//       utils.adam
+//
+// For this example, we demonstrate the syntax inline.
+
+use math.vector.Vec2
+use std.io.{print, println}
+
+// Public struct — accessible from other modules
+pub struct Vec2 {
+    pub x f64
+    pub y f64
+}
+
+// Private helper — only accessible within this module
+fn clamp_component(val f64) -> f64 {
+    if val > 1000.0 {
+        1000.0
+    } else if val < -1000.0 {
+        -1000.0
+    } else {
+        val
+    }
+}
+
+impl Vec2 {
+    pub fn new(x f64, y f64) -> Vec2 {
+        Vec2 {
+            x: clamp_component(x),
+            y: clamp_component(y),
+        }
+    }
+
+    pub fn magnitude(self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+
+    pub fn normalize(self) -> Vec2 {
+        mag := self.magnitude()
+        if mag == 0.0 {
+            Vec2 { x: 0.0, y: 0.0 }
+        } else {
+            Vec2 { x: self.x / mag, y: self.y / mag }
+        }
+    }
+
+    pub fn dot(self, other Vec2) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+}
+
+fn main() {
+    v1 := Vec2.new(3.0, 4.0)
+    v2 := Vec2.new(1.0, 0.0)
+
+    print("v1 magnitude: {v1.magnitude()}")
+    print("v1 normalized: ({v1.normalize().x}, {v1.normalize().y})")
+    print("v1 dot v2: {v1.dot(v2)}")
+}

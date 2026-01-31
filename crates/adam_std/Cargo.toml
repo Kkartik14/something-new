@@ -1,0 +1,7 @@
+[package]
+name = "adam_std"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+adam_runtime = { path = "../adam_runtime" }
