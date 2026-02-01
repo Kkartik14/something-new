@@ -1,0 +1,5 @@
+// test_proj — an Adam application.
+
+fn main() {
+    print("Hello from test_proj!")
+}

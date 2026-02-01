@@ -1,0 +1,167 @@
+// Todo App — a complete todo list with filtering and reactive UI.
+// Demonstrates: struct, enum, impl, view, @state, match, closures,
+// list operations, string interpolation, conditional rendering.
+
+enum Filter { All; Active; Completed }
+
+struct Todo {
+    id i32
+    title String
+    completed bool
+}
+
+impl Todo {
+    fn new(id i32, title String) -> Todo {
+        Todo { id, title, completed: false }
+    }
+
+    fn toggle(self) -> Todo {
+        Todo { id: self.id, title: self.title, completed: !self.completed }
+    }
+}
+
+// Manages a collection of todos with immutable updates
+struct TodoList {
+    items [Todo]
+    next_id i32
+}
+
+impl TodoList {
+    fn new() -> TodoList { TodoList { items: [], next_id: 1 } }
+
+    fn add(self, title String) -> TodoList {
+        todo := Todo.new(self.next_id, title)
+        mut new_items := self.items.clone()
+        new_items.push(todo)
+        TodoList { items: new_items, next_id: self.next_id + 1 }
+    }
+
+    fn remove(self, id i32) -> TodoList {
+        new_items := self.items.filter(fn(t Todo) -> bool { t.id != id })
+        TodoList { items: new_items, next_id: self.next_id }
+    }
+
+    fn toggle(self, id i32) -> TodoList {
+        new_items := self.items.map(fn(t Todo) -> Todo {
+            if t.id == id { t.toggle() } else { t }
+        })
+        TodoList { items: new_items, next_id: self.next_id }
+    }
+
+    fn filtered(self, filter Filter) -> [Todo] {
+        match filter {
+            All => self.items
+            Active => self.items.filter(fn(t Todo) -> bool { !t.completed })
+            Completed => self.items.filter(fn(t Todo) -> bool { t.completed })
+        }
+    }
+
+    fn active_count(self) -> i32 {
+        self.items.filter(fn(t Todo) -> bool { !t.completed }).len()
+    }
+
+    fn clear_completed(self) -> TodoList {
+        new_items := self.items.filter(fn(t Todo) -> bool { !t.completed })
+        TodoList { items: new_items, next_id: self.next_id }
+    }
+}
+
+// A single todo row with checkbox, label, and delete button
+view TodoRow {
+    @prop todo: Todo
+    @prop on_toggle: fn(i32)
+    @prop on_remove: fn(i32)
+
+    body {
+        Row(spacing: 8) {
+            Checkbox(checked: todo.completed) { on_toggle(todo.id) }
+            Text(todo.title)
+                .strikethrough(todo.completed)
+                .color(if todo.completed { .gray } else { .primary })
+                .flex(1)
+            Button("x") { on_remove(todo.id) }
+                .color(.red)
+        }
+        .padding(vertical: 4)
+    }
+}
+
+// Filter bar showing count and filter/clear buttons
+view FilterBar {
+    @prop current: Filter
+    @prop active_count: i32
+    @prop on_filter: fn(Filter)
+    @prop on_clear: fn()
+
+    body {
+        Row(spacing: 12) {
+            Text("{active_count} items left").color(.gray).flex(1)
+            Button("All") { on_filter(Filter.All) }
+                .color(if current == Filter.All { .blue } else { .gray })
+            Button("Active") { on_filter(Filter.Active) }
+                .color(if current == Filter.Active { .blue } else { .gray })
+            Button("Done") { on_filter(Filter.Completed) }
+                .color(if current == Filter.Completed { .blue } else { .gray })
+            Button("Clear done") { on_clear() }.color(.red)
+        }
+        .padding(vertical: 8)
+    }
+}
+
+// Main app view
+view TodoApp {
+    @state todos: TodoList = TodoList.new()
+    @state input: String = ""
+    @state filter: Filter = Filter.All
+
+    body {
+        Column(spacing: 16) {
+            Text("Adam Todos").font(.title).color(.blue)
+
+            // Input row for adding new todos
+            Row(spacing: 8) {
+                TextField(text: input, placeholder: "What needs to be done?")
+                    .flex(1)
+                    .on_submit { add_todo() }
+                Button("Add") { add_todo() }
+                    .background(.blue).color(.white).corner_radius(8)
+                    .disabled(input.is_empty())
+            }
+
+            // Filtered todo list
+            ScrollView {
+                Column(spacing: 0) {
+                    for todo in todos.filtered(filter) {
+                        TodoRow(
+                            todo: todo,
+                            on_toggle: fn(id i32) { todos = todos.toggle(id) },
+                            on_remove: fn(id i32) { todos = todos.remove(id) },
+                        )
+                        Divider()
+                    }
+                }
+            }
+            .flex(1)
+
+            FilterBar(
+                current: filter,
+                active_count: todos.active_count(),
+                on_filter: fn(f Filter) { filter = f },
+                on_clear: fn() { todos = todos.clear_completed() },
+            )
+        }
+        .padding(24)
+    }
+
+    fn add_todo(mut self) {
+        if !input.is_empty() {
+            todos = todos.add(input)
+            input = ""
+        }
+    }
+}
+
+fn main() {
+    app := TodoApp()
+    app.run()
+}

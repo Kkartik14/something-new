@@ -1397,3 +1397,6 @@ mod stdlib_integration_tests {
         drop_string(s2);
     }
 }
+
+#[cfg(test)]
+mod adversarial_tests;

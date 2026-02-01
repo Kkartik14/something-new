@@ -1,0 +1,196 @@
+// Notes App — note-taking with CRUD, search, and split-pane editor.
+// Demonstrates: struct, impl, view, @state, optionals, closures,
+// text editing, search/filtering, timestamps, list-detail layout.
+
+struct Note {
+    id i32
+    title String
+    content String
+    created_at String
+    updated_at String
+}
+
+impl Note {
+    fn new(id i32, title String, content String) -> Note {
+        ts := now().format("YYYY-MM-DD HH:mm")
+        Note { id, title, content, created_at: ts, updated_at: ts }
+    }
+    fn update(self, title String, content String) -> Note {
+        Note { id: self.id, title, content, created_at: self.created_at,
+               updated_at: now().format("YYYY-MM-DD HH:mm") }
+    }
+    fn matches(self, query String) -> bool {
+        if query.is_empty() { return true }
+        q := query.to_lowercase()
+        self.title.to_lowercase().contains(q) || self.content.to_lowercase().contains(q)
+    }
+    fn preview(self) -> String {
+        if self.content.len() > 80 { self.content.substring(0, 80) + "..." }
+        else if self.content.is_empty() { "No content" }
+        else { self.content }
+    }
+    fn word_count(self) -> i32 {
+        if self.content.is_empty() { 0 } else { self.content.split(" ").len() }
+    }
+}
+
+// Manages the collection of notes with immutable updates
+struct NoteStore {
+    notes [Note]
+    next_id i32
+}
+
+impl NoteStore {
+    fn new() -> NoteStore { NoteStore { notes: [], next_id: 1 } }
+
+    fn create(self, title String, content String) -> (NoteStore, i32) {
+        note := Note.new(self.next_id, title, content)
+        mut items := self.notes.clone()
+        items.push(note)
+        (NoteStore { notes: items, next_id: self.next_id + 1 }, self.next_id)
+    }
+    fn get(self, id i32) -> ?Note {
+        for n in self.notes { if n.id == id { return n } }
+        nil
+    }
+    fn update(self, id i32, title String, content String) -> NoteStore {
+        items := self.notes.map(fn(n Note) -> Note {
+            if n.id == id { n.update(title, content) } else { n }
+        })
+        NoteStore { notes: items, next_id: self.next_id }
+    }
+    fn delete(self, id i32) -> NoteStore {
+        items := self.notes.filter(fn(n Note) -> bool { n.id != id })
+        NoteStore { notes: items, next_id: self.next_id }
+    }
+    fn search(self, query String) -> [Note] {
+        self.notes
+            .filter(fn(n Note) -> bool { n.matches(query) })
+            .sorted_by(fn(a Note, b Note) -> i32 { b.updated_at.compare(a.updated_at) })
+    }
+}
+
+// Sidebar row for a note
+view NoteListItem {
+    @prop note: Note
+    @prop selected: bool
+    @prop on_select: fn(i32)
+
+    body {
+        Button {
+            Column(spacing: 4) {
+                Text(note.title).font(.headline)
+                    .color(if selected { .white } else { .primary }).line_limit(1)
+                Text(note.preview()).font(.caption)
+                    .color(if selected { .white_dimmed } else { .gray }).line_limit(2)
+                Text(note.updated_at).font(.tiny)
+                    .color(if selected { .white_dimmed } else { .gray })
+            }
+            .padding(12).background(if selected { .blue } else { .clear }).corner_radius(8)
+        } action: { on_select(note.id) }
+    }
+}
+
+// Editor panel for the selected note
+view NoteEditor {
+    @prop note: Note
+    @prop on_save: fn(String, String)
+    @prop on_delete: fn()
+    @state edit_title: String = note.title
+    @state edit_content: String = note.content
+    @state dirty: bool = false
+
+    on_change(note) { edit_title = note.title; edit_content = note.content; dirty = false }
+
+    body {
+        Column(spacing: 0) {
+            Row(spacing: 8) {
+                Text("{note.word_count()} words").font(.caption).color(.gray)
+                Spacer()
+                if dirty { Text("Unsaved").font(.caption).color(.orange) }
+                Button("Save") { on_save(edit_title, edit_content); dirty = false }
+                    .background(.blue).color(.white).corner_radius(6).disabled(!dirty)
+                Button("Delete") { on_delete() }.color(.red)
+            }
+            .padding(12).background(.surface)
+
+            TextField(text: edit_title, placeholder: "Title")
+                .font(.title).padding(horizontal: 16, vertical: 12).on_change { dirty = true }
+            Divider()
+            TextEditor(text: edit_content, placeholder: "Start writing...")
+                .font(.body).padding(16).flex(1).on_change { dirty = true }
+            Row(spacing: 16) {
+                Text("Created: {note.created_at}").font(.tiny).color(.gray)
+                Text("Modified: {note.updated_at}").font(.tiny).color(.gray)
+            }
+            .padding(12)
+        }
+    }
+}
+
+// Main split-pane notes app
+view NotesApp {
+    @state store: NoteStore = NoteStore.new()
+    @state selected_id: ?i32 = nil
+    @state search: String = ""
+
+    body {
+        Row(spacing: 0) {
+            // Sidebar: search bar and note list
+            Column(spacing: 0) {
+                Row(spacing: 8) {
+                    TextField(text: search, placeholder: "Search...").flex(1)
+                    Button("+") { create_note() }.font(.title2).color(.blue)
+                }
+                .padding(12)
+                Divider()
+                ScrollView {
+                    Column(spacing: 2) {
+                        for note in store.search(search) {
+                            NoteListItem(
+                                note: note, selected: selected_id == note.id,
+                                on_select: fn(id i32) { selected_id = id },
+                            )
+                        }
+                        if store.search(search).is_empty() {
+                            Text("No notes found").color(.gray).padding(24).align(.center)
+                        }
+                    }
+                    .padding(8)
+                }
+                .flex(1)
+                Divider()
+                Text("{store.notes.len()} notes").font(.caption).color(.gray).padding(12)
+            }
+            .frame(width: 280).background(.surface)
+
+            Divider()
+
+            // Editor or empty state
+            if id := selected_id {
+                if note := store.get(id) {
+                    NoteEditor(
+                        note: note,
+                        on_save: fn(t String, c String) { store = store.update(id, t, c) },
+                        on_delete: fn() { store = store.delete(id); selected_id = nil },
+                    ).flex(1)
+                } else {
+                    Text("Select or create a note").color(.gray).center().flex(1)
+                }
+            } else {
+                Text("Select or create a note").color(.gray).center().flex(1)
+            }
+        }
+    }
+
+    fn create_note(mut self) {
+        (store, id) := store.create("Untitled", "")
+        selected_id = id
+        search = ""
+    }
+}
+
+fn main() {
+    app := NotesApp()
+    app.run()
+}

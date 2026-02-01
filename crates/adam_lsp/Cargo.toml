@@ -9,3 +9,6 @@ adam_ast = { path = "../adam_ast" }
 adam_parser = { path = "../adam_parser" }
 adam_resolve = { path = "../adam_resolve" }
 adam_types = { path = "../adam_types" }
+adam_borrow = { path = "../adam_borrow" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

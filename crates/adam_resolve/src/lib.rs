@@ -9,6 +9,8 @@ pub mod resolver;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod adversarial_tests;
 
 pub use resolver::{resolve, ResolveResult};
 pub use scope::{ScopeTree, ScopeId, DeclId, Declaration, DeclKind, ScopeKind};

@@ -1,0 +1,180 @@
+// Calculator App — a functional calculator with state management and button grid.
+// Demonstrates: enum, struct, impl, match, view, @state, grid layout,
+// closures, error handling, immutable state transitions.
+
+enum Op { Add; Subtract; Multiply; Divide }
+
+impl Op {
+    fn symbol(self) -> String {
+        match self { Add => "+"; Subtract => "-"; Multiply => "x"; Divide => "/" }
+    }
+    fn apply(self, left f64, right f64) -> f64 ! String {
+        match self {
+            Add      => left + right
+            Subtract => left - right
+            Multiply => left * right
+            Divide   => {
+                if right == 0.0 { return err("Division by zero") }
+                left / right
+            }
+        }
+    }
+}
+
+// The calculator's internal state machine
+enum CalcState {
+    First                      // entering first number
+    WaitingSecond(f64, Op)     // operator pressed, awaiting input
+    Second(f64, Op)            // entering second number
+    Result                     // showing a result
+    Error(String)              // showing an error
+}
+
+struct Calculator {
+    display String
+    state CalcState
+    clear_next bool
+}
+
+impl Calculator {
+    fn new() -> Calculator {
+        Calculator { display: "0", state: CalcState.First, clear_next: false }
+    }
+
+    fn digit(self, d String) -> Calculator {
+        if self.clear_next {
+            return Calculator {
+                display: d,
+                state: match self.state {
+                    WaitingSecond(l, op) => CalcState.Second(l, op)
+                    _ => CalcState.First
+                },
+                clear_next: false,
+            }
+        }
+        new_display := if self.display == "0" { d } else { self.display + d }
+        Calculator {
+            display: new_display,
+            state: match self.state {
+                WaitingSecond(l, op) => CalcState.Second(l, op)
+                _ => self.state
+            },
+            clear_next: false,
+        }
+    }
+
+    fn decimal(self) -> Calculator {
+        if self.display.contains(".") { return self }
+        display := if self.clear_next { "0." } else { self.display + "." }
+        Calculator { display, state: self.state, clear_next: false }
+    }
+
+    fn operator(self, op Op) -> Calculator {
+        val := parse_f64(self.display)
+        match self.state {
+            First => Calculator { display: self.display, state: CalcState.WaitingSecond(val, op), clear_next: true }
+            Second(left, prev) => {
+                match prev.apply(left, val) {
+                    ok(r) => Calculator { display: format_num(r), state: CalcState.WaitingSecond(r, op), clear_next: true }
+                    err(m) => Calculator { display: m, state: CalcState.Error(m), clear_next: true }
+                }
+            }
+            WaitingSecond(left, _) => Calculator { display: self.display, state: CalcState.WaitingSecond(left, op), clear_next: true }
+            Result => Calculator { display: self.display, state: CalcState.WaitingSecond(val, op), clear_next: true }
+            Error(_) => self
+        }
+    }
+
+    fn equals(self) -> Calculator {
+        match self.state {
+            Second(left, op) => {
+                right := parse_f64(self.display)
+                match op.apply(left, right) {
+                    ok(r) => Calculator { display: format_num(r), state: CalcState.Result, clear_next: true }
+                    err(m) => Calculator { display: m, state: CalcState.Error(m), clear_next: true }
+                }
+            }
+            _ => self
+        }
+    }
+
+    fn clear(self) -> Calculator { Calculator.new() }
+    fn negate(self) -> Calculator {
+        if self.display == "0" { return self }
+        d := if self.display.starts_with("-") { self.display.trim_start("-") } else { "-" + self.display }
+        Calculator { display: d, state: self.state, clear_next: false }
+    }
+    fn percent(self) -> Calculator {
+        v := parse_f64(self.display) / 100.0
+        Calculator { display: format_num(v), state: self.state, clear_next: true }
+    }
+}
+
+fn format_num(n f64) -> String {
+    if n == n.floor() { "{n:.0}" } else { "{n}" }
+}
+
+// A calculator button with configurable appearance
+view CalcButton {
+    @prop label: String
+    @prop fg: Color = .primary
+    @prop bg: Color = .surface
+    @prop wide: bool = false
+    @prop action: fn()
+
+    body {
+        Button(label) { action() }
+            .font(.title2).color(fg).background(bg)
+            .frame(width: if wide { 160 } else { 72 }, height: 72)
+            .corner_radius(36)
+    }
+}
+
+view CalculatorApp {
+    @state calc: Calculator = Calculator.new()
+
+    body {
+        Column(spacing: 12) {
+            Spacer()
+            // Display
+            Text(calc.display)
+                .font(.system(size: 64, weight: .light))
+                .align(.trailing).padding(horizontal: 24)
+                .line_limit(1).minimize_scale_factor(0.5)
+
+            // Button rows
+            Column(spacing: 10) {
+                Row(spacing: 10) {
+                    CalcButton(label: "AC", fg: .black, bg: .gray_light) { calc = calc.clear() }
+                    CalcButton(label: "+/-", fg: .black, bg: .gray_light) { calc = calc.negate() }
+                    CalcButton(label: "%", fg: .black, bg: .gray_light) { calc = calc.percent() }
+                    CalcButton(label: "/", fg: .white, bg: .orange) { calc = calc.operator(Op.Divide) }
+                }
+                for row in [["7","8","9","x"], ["4","5","6","-"], ["1","2","3","+"]] {
+                    Row(spacing: 10) {
+                        for d in row[0..3] {
+                            CalcButton(label: d) { calc = calc.digit(d) }
+                        }
+                        CalcButton(label: row[3], fg: .white, bg: .orange) {
+                            op := match row[3] {
+                                "x" => Op.Multiply; "-" => Op.Subtract; _ => Op.Add
+                            }
+                            calc = calc.operator(op)
+                        }
+                    }
+                }
+                Row(spacing: 10) {
+                    CalcButton(label: "0", wide: true) { calc = calc.digit("0") }
+                    CalcButton(label: ".") { calc = calc.decimal() }
+                    CalcButton(label: "=", fg: .white, bg: .orange) { calc = calc.equals() }
+                }
+            }
+        }
+        .padding(16).background(.black)
+    }
+}
+
+fn main() {
+    app := CalculatorApp()
+    app.run()
+}

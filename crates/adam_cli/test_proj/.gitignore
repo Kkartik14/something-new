@@ -1,0 +1,4 @@
+build/
+.adam/
+adam.lock
+*.o

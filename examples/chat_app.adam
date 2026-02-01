@@ -1,0 +1,163 @@
+// Chat App — real-time messaging with channels and concurrent receivers.
+// Demonstrates: struct, channels, spawn, select, after, view with @state,
+// scrollable lists, text input, simulated multi-user communication.
+
+struct Message {
+    id i32
+    sender String
+    text String
+    timestamp String
+}
+
+impl Message {
+    fn new(id i32, sender String, text String) -> Message {
+        Message { id, sender, text, timestamp: now().format("HH:mm") }
+    }
+    fn is_mine(self) -> bool { self.sender == "You" }
+}
+
+// Events that flow through the chat channel
+enum ChatEvent {
+    NewMessage(Message)
+    UserJoined(String)
+    Typing(String)
+}
+
+// Simulates a remote user sending messages on a channel
+fn simulate_user(name String, ch chan[ChatEvent], base_id i32) {
+    lines := [
+        "Hey, how's it going?",
+        "I've been learning Adam, it's great!",
+        "The concurrency model is so clean.",
+        "Have you tried the view system yet?",
+    ]
+    spawn {
+        ch.send(ChatEvent.UserJoined(name))
+        for i in 0..lines.len() {
+            sleep((2 + i).seconds)
+            ch.send(ChatEvent.Typing(name))
+            sleep(1.seconds)
+            msg := Message.new(base_id + i, name, lines[i])
+            ch.send(ChatEvent.NewMessage(msg))
+        }
+    }
+}
+
+// A single message bubble, aligned based on sender
+view MessageBubble {
+    @prop message: Message
+
+    body {
+        Row {
+            if message.is_mine() { Spacer() }
+            Column(spacing: 2) {
+                if !message.is_mine() {
+                    Text(message.sender).font(.caption).color(.gray)
+                }
+                Text(message.text)
+                    .padding(10)
+                    .background(if message.is_mine() { .blue } else { .surface })
+                    .color(if message.is_mine() { .white } else { .primary })
+                    .corner_radius(16)
+                Text(message.timestamp).font(.tiny).color(.gray)
+            }
+            .max_width(280)
+            if !message.is_mine() { Spacer() }
+        }
+    }
+}
+
+// Typing indicator with animated dots
+view TypingIndicator {
+    @prop name: String
+    body {
+        Text("{name} is typing...").font(.caption).color(.gray)
+            .padding(horizontal: 16, vertical: 4).animation(.pulse)
+    }
+}
+
+// Main chat view
+view ChatApp {
+    @state messages: [Message] = []
+    @state events: [String] = []
+    @state input: String = ""
+    @state typing_user: ?String = nil
+    @state next_id: i32 = 1
+    @state event_ch: chan[ChatEvent] = chan[ChatEvent](20)
+
+    on_appear {
+        // Start two simulated users
+        simulate_user("Alice", event_ch, 1000)
+        simulate_user("Bob", event_ch, 2000)
+        start_listener()
+    }
+
+    body {
+        Column(spacing: 0) {
+            // Header
+            Row(spacing: 8) {
+                Text("Adam Chat").font(.headline)
+                Spacer()
+                Text("{messages.len()} messages").font(.caption).color(.gray)
+            }
+            .padding(16).background(.surface)
+
+            // Message list
+            ScrollView(anchor: .bottom) {
+                Column(spacing: 8) {
+                    for event in events {
+                        Text(event).font(.caption).color(.gray).align(.center)
+                    }
+                    for msg in messages {
+                        MessageBubble(message: msg)
+                    }
+                }
+                .padding(16)
+            }
+            .flex(1)
+
+            if user := typing_user {
+                TypingIndicator(name: user)
+            }
+
+            // Input bar
+            Row(spacing: 8) {
+                TextField(text: input, placeholder: "Type a message...")
+                    .flex(1).on_submit { send_message() }
+                Button("Send") { send_message() }
+                    .background(.blue).color(.white).corner_radius(20)
+                    .disabled(input.is_empty())
+            }
+            .padding(12).background(.surface)
+        }
+    }
+
+    fn send_message(mut self) {
+        if input.is_empty() { return }
+        messages.push(Message.new(next_id, "You", input))
+        next_id += 1
+        input = ""
+    }
+
+    fn start_listener(mut self) {
+        spawn {
+            loop {
+                select {
+                    event := event_ch.recv() => {
+                        match event {
+                            NewMessage(msg) => { typing_user = nil; messages.push(msg) }
+                            UserJoined(name) => { events.push("{name} joined the chat") }
+                            Typing(name) => { typing_user = name }
+                        }
+                    }
+                    after 3.seconds => { typing_user = nil }
+                }
+            }
+        }
+    }
+}
+
+fn main() {
+    app := ChatApp()
+    app.run()
+}

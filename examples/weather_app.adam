@@ -1,0 +1,156 @@
+// Weather App — simulated weather fetching with channels and reactive UI.
+// Demonstrates: struct, enum, channels, spawn, select, after,
+// view with @state, loading states, error handling.
+
+enum Condition { Sunny; Cloudy; Rainy; Snowy; Windy }
+
+impl Condition {
+    fn icon(self) -> String {
+        match self {
+            Sunny => "sun"; Cloudy => "cloud"; Rainy => "rain"
+            Snowy => "snow"; Windy => "wind"
+        }
+    }
+    fn description(self) -> String {
+        match self {
+            Sunny => "Clear skies"; Cloudy => "Overcast"; Rainy => "Light rain"
+            Snowy => "Snowfall"; Windy => "Strong winds"
+        }
+    }
+}
+
+struct Weather {
+    city String
+    temp f64
+    humidity i32
+    condition Condition
+}
+
+enum FetchResult { Success(Weather); Error(String) }
+
+// Simulates fetching weather data from an API over a channel
+fn fetch_weather(city String, ch chan[FetchResult]) {
+    spawn {
+        sleep(1.seconds)
+        weather := match city {
+            "Tokyo"     => Weather { city: "Tokyo",     temp: 22.5, humidity: 65, condition: Condition.Sunny }
+            "London"    => Weather { city: "London",    temp: 14.2, humidity: 80, condition: Condition.Rainy }
+            "New York"  => Weather { city: "New York",  temp: 18.7, humidity: 55, condition: Condition.Cloudy }
+            "Sydney"    => Weather { city: "Sydney",    temp: 26.1, humidity: 70, condition: Condition.Sunny }
+            "Reykjavik" => Weather { city: "Reykjavik", temp: -2.3, humidity: 90, condition: Condition.Snowy }
+            _           => Weather { city, temp: 20.0, humidity: 50, condition: Condition.Windy }
+        }
+        ch.send(FetchResult.Success(weather))
+    }
+}
+
+// Fetch all cities concurrently, collecting results with a timeout
+fn fetch_all(cities [String]) -> [FetchResult] {
+    ch := chan[FetchResult](cities.len())
+    for city in cities { fetch_weather(city, ch) }
+
+    mut results := [FetchResult]()
+    for _ in 0..cities.len() {
+        select {
+            result := ch.recv() => results.push(result)
+            after 5.seconds => results.push(FetchResult.Error("Timed out"))
+        }
+    }
+    results
+}
+
+// A card displaying weather for one city
+view WeatherCard {
+    @prop weather: Weather
+
+    body {
+        Column(spacing: 8) {
+            Row(spacing: 8) {
+                Image(weather.condition.icon()).size(32)
+                Text(weather.city).font(.headline)
+            }
+            Text("{weather.temp:.1}C").font(.large_title).color(.blue)
+            Row(spacing: 16) {
+                Text("Humidity: {weather.humidity}%").font(.caption).color(.gray)
+            }
+            Text(weather.condition.description()).font(.subheadline).color(.gray)
+        }
+        .padding(16).background(.surface).corner_radius(12)
+    }
+}
+
+// Placeholder card while loading
+view LoadingCard {
+    body {
+        Column(spacing: 8) {
+            Placeholder().size(width: 120, height: 20)
+            Placeholder().size(width: 80, height: 40)
+        }
+        .padding(16).background(.surface).corner_radius(12)
+    }
+}
+
+// Main weather app view
+view WeatherApp {
+    @state cities: [String] = ["Tokyo", "London", "New York", "Sydney", "Reykjavik"]
+    @state weather_data: [Weather] = []
+    @state loading: bool = true
+    @state error: ?String = nil
+
+    on_appear { refresh() }
+
+    body {
+        Column(spacing: 16) {
+            // Header with refresh button
+            Row(spacing: 12) {
+                Text("Weather").font(.title)
+                Spacer()
+                Button("Refresh") { refresh() }.disabled(loading).color(.blue)
+            }
+
+            // Error banner
+            if msg := error {
+                Text(msg).color(.red).padding(8).background(.red_light).corner_radius(8)
+            }
+
+            // Weather cards grid
+            ScrollView {
+                Grid(columns: 2, spacing: 12) {
+                    if loading {
+                        for _ in 0..cities.len() { LoadingCard() }
+                    } else {
+                        for w in weather_data { WeatherCard(weather: w) }
+                    }
+                }
+            }
+            .flex(1)
+
+            if !loading {
+                Text("Updated just now").font(.caption).color(.gray).align(.center)
+            }
+        }
+        .padding(24)
+    }
+
+    fn refresh(mut self) {
+        loading = true
+        error = nil
+        spawn {
+            results := fetch_all(cities)
+            mut data := [Weather]()
+            for r in results {
+                match r {
+                    Success(w) => data.push(w)
+                    Error(msg) => { error = msg }
+                }
+            }
+            weather_data = data
+            loading = false
+        }
+    }
+}
+
+fn main() {
+    app := WeatherApp()
+    app.run()
+}

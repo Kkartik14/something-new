@@ -1,0 +1,11 @@
+// Tests for the main module.
+
+use std.test.{assert, assert_eq}
+
+test "hello world" {
+    assert(true)
+}
+
+test "basic math" {
+    assert_eq(1 + 1, 2)
+}

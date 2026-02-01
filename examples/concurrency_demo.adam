@@ -1,0 +1,186 @@
+// Concurrency Demo — advanced concurrency patterns in Adam.
+// Demonstrates: spawn, chan, select, after, spawn_group,
+// fan-out/fan-in, pipelines, parallel fetching, timeouts.
+
+// --- 1. Parallel Web Fetcher — multiple URLs with a global timeout ---
+
+struct FetchResponse { url String; status i32; duration_ms i64 }
+
+fn simulate_fetch(url String) -> FetchResponse ! String {
+    delay := match url {
+        u if u.contains("fast")  => 100
+        u if u.contains("slow")  => 3000
+        u if u.contains("error") => 500
+        _                        => 800
+    }
+    sleep(delay.milliseconds)
+    if url.contains("error") { return err("Connection refused: {url}") }
+    FetchResponse { url, status: 200, duration_ms: delay }
+}
+
+fn parallel_fetch_demo() {
+    print("=== Parallel Web Fetcher ===")
+    urls := [
+        "https://api.example.com/fast/users",
+        "https://api.example.com/fast/posts",
+        "https://api.example.com/slow/comments",
+        "https://api.example.com/error/auth",
+        "https://api.example.com/data",
+    ]
+    ch := chan[String](urls.len())
+    for url in urls {
+        spawn {
+            match simulate_fetch(url) {
+                ok(r) => ch.send("OK [{r.status}] {r.url} ({r.duration_ms}ms)")
+                err(m) => ch.send("FAIL {url}: {m}")
+            }
+        }
+    }
+    mut done := 0
+    print("Fetching {urls.len()} URLs (2s timeout)...")
+    loop {
+        if done >= urls.len() { break }
+        select {
+            msg := ch.recv() => { done += 1; print("  [{done}/{urls.len()}] {msg}") }
+            after 2.seconds => { print("  Timeout! {done}/{urls.len()} completed."); break }
+        }
+    }
+    print("")
+}
+
+// --- 2. Pipeline — generator -> square -> filter -> sum ---
+
+fn generate(out chan[i32], count i32) {
+    spawn { for i in 1..count+1 { out.send(i) }; out.close() }
+}
+fn square(inp chan[i32], out chan[i32]) {
+    spawn { for v in inp { out.send(v * v) }; out.close() }
+}
+fn filter_above(inp chan[i32], out chan[i32], threshold i32) {
+    spawn { for v in inp { if v > threshold { out.send(v) } }; out.close() }
+}
+fn sum_all(inp chan[i32], result chan[i32]) {
+    spawn { mut t := 0; for v in inp { t += v }; result.send(t) }
+}
+
+fn pipeline_demo() {
+    print("=== Pipeline Pattern ===")
+    nums := chan[i32](20)
+    sq := chan[i32](20)
+    filt := chan[i32](20)
+    result := chan[i32]()
+    generate(nums, 20)
+    square(nums, sq)
+    filter_above(sq, filt, 100)
+    sum_all(filt, result)
+    print("Sum of squares > 100 from 1..20: {result.recv()}")
+    print("")
+}
+
+// --- 3. Fan-Out / Fan-In — one producer, N workers, one collector ---
+
+struct Job { id i32; payload String }
+struct JobResult { job_id i32; worker_id i32; output String }
+
+fn worker(id i32, jobs chan[Job], results chan[JobResult]) {
+    spawn {
+        for job in jobs {
+            sleep(200.milliseconds)
+            results.send(JobResult {
+                job_id: job.id, worker_id: id,
+                output: "Processed '{job.payload}' by worker {id}",
+            })
+        }
+    }
+}
+
+fn fan_out_fan_in_demo() {
+    print("=== Fan-Out / Fan-In ===")
+    num_workers := 4
+    num_jobs := 12
+    jobs := chan[Job](num_jobs)
+    results := chan[JobResult](num_jobs)
+    for i in 0..num_workers { worker(i, jobs, results) }
+    for i in 0..num_jobs { jobs.send(Job { id: i, payload: "task-{i}" }) }
+    jobs.close()
+
+    mut counts := Map[i32, i32].new()
+    for _ in 0..num_jobs {
+        r := results.recv()
+        print("  {r.output}")
+        counts.set(r.worker_id, (counts.get(r.worker_id) ?? 0) + 1)
+    }
+    print("Distribution:")
+    for (wid, c) in counts { print("  Worker {wid}: {c} jobs") }
+    print("")
+}
+
+// --- 4. Select with Timeout and Shutdown ---
+
+fn heartbeat_monitor() {
+    print("=== Select with Timeout ===")
+    heartbeat := chan[String]()
+    done := chan[bool]()
+    spawn {
+        for i in 0..7 {
+            sleep([500, 300, 800, 200, 1500, 400, 2500][i].milliseconds)
+            heartbeat.send("beat-{i}")
+        }
+    }
+    spawn { sleep(4.seconds); done.send(true) }
+
+    mut beats := 0
+    mut timeouts := 0
+    mut running := true
+    print("Monitoring (1s per-beat timeout, 4s total)...")
+    loop {
+        if !running { break }
+        select {
+            msg := heartbeat.recv() => { beats += 1; print("  {msg} (total: {beats})") }
+            _ := done.recv() => { print("  Shutdown signal."); running = false }
+            after 1.seconds => {
+                timeouts += 1
+                print("  No heartbeat for 1s ({timeouts} timeouts)")
+                if timeouts >= 3 { print("  Too many timeouts."); running = false }
+            }
+        }
+    }
+    print("Done: {beats} beats, {timeouts} timeouts")
+    print("")
+}
+
+// --- 5. Spawn Group with Error Collection ---
+
+fn batch_demo() {
+    print("=== Spawn Group ===")
+    items := ["alpha", "beta", "gamma", "delta", "epsilon"]
+    group := spawn_group()
+    for item in items {
+        group.spawn {
+            sleep(300.milliseconds)
+            if item == "gamma" { return err("Failed '{item}'") }
+            "Done: {item}"
+        }
+    }
+    mut ok := 0
+    mut fail := 0
+    for r in group.wait() {
+        match r {
+            ok(m)  => { print("  OK: {m}"); ok += 1 }
+            err(e) => { print("  ERR: {e}"); fail += 1 }
+        }
+    }
+    print("{ok} succeeded, {fail} failed")
+}
+
+fn main() {
+    print("Adam Concurrency Patterns")
+    print("=========================")
+    print("")
+    parallel_fetch_demo()
+    pipeline_demo()
+    fan_out_fan_in_demo()
+    heartbeat_monitor()
+    batch_demo()
+    print("All demos complete.")
+}
