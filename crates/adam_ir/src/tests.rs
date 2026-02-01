@@ -418,6 +418,7 @@ fn opt_dead_code_basic() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     assert_eq!(module.functions[0].blocks.len(), 2);
@@ -459,6 +460,7 @@ fn opt_simplify_cfg_merge() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     assert_eq!(module.functions[0].blocks.len(), 2);
@@ -485,6 +487,7 @@ fn opt_remove_nops() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     assert_eq!(module.functions[0].blocks[0].instructions.len(), 3);
@@ -535,6 +538,7 @@ fn verify_invalid_goto_target() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
     let result = verify_module(&module);
     assert!(!result.is_ok(), "invalid goto target should fail verification");
@@ -563,6 +567,7 @@ fn verify_invalid_branch_target() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
@@ -594,6 +599,7 @@ fn verify_duplicate_block_id() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
@@ -618,6 +624,7 @@ fn verify_missing_entry() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
@@ -758,6 +765,7 @@ fn regression_const_fold_negate_i64_min_no_panic() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     // Must not panic.

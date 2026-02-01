@@ -1,0 +1,4 @@
+// settings.gradle — Adam Android host project settings.
+
+rootProject.name = 'AdamHost'
+include ':app'

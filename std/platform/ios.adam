@@ -1,0 +1,105 @@
+// ios.adam — Adam declarations for iOS platform APIs.
+//
+// These functions map to the C FFI functions in platform/ios/apis/.
+// They are available when compiling with --target=ios or --target=ios-simulator.
+
+module platform.ios
+
+// ---------------------------------------------------------------------------
+// Screen metrics
+// ---------------------------------------------------------------------------
+
+/// Returns the screen width in points.
+@extern("adam_ios_screen_width")
+pub fn screen_width() -> f64
+
+/// Returns the screen height in points.
+@extern("adam_ios_screen_height")
+pub fn screen_height() -> f64
+
+/// Returns the pixel scale factor (e.g. 2.0 for Retina).
+@extern("adam_ios_screen_scale")
+pub fn screen_scale() -> f64
+
+/// Edge insets representing the safe area.
+pub struct EdgeInsets {
+    top f64
+    bottom f64
+    left f64
+    right f64
+}
+
+/// Returns the safe area insets (notch, home indicator, etc.).
+@extern("adam_ios_safe_area")
+pub fn safe_area() -> EdgeInsets
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+
+/// Returns true if the device is in dark mode.
+@extern("adam_ios_is_dark_mode")
+pub fn is_dark_mode() -> bool
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/// Open a URL in the default browser or app.
+/// Returns true on success, false if the URL is invalid.
+@extern("adam_ios_open_url")
+pub fn open_url(url String) -> bool
+
+/// Present the system share sheet with the given text.
+@extern("adam_ios_share")
+pub fn share(text String)
+
+// ---------------------------------------------------------------------------
+// Storage (persisted via UserDefaults)
+// ---------------------------------------------------------------------------
+
+/// Store a key-value pair that persists across app launches.
+@extern("adam_ios_store")
+pub fn store(key String, value String)
+
+/// Load a previously stored value. Returns nil if not found.
+@extern("adam_ios_load")
+pub fn load(key String) -> ?String
+
+// ---------------------------------------------------------------------------
+// Haptics
+// ---------------------------------------------------------------------------
+
+/// Trigger light haptic feedback.
+@extern("adam_ios_haptic_light")
+pub fn haptic_light()
+
+/// Trigger medium haptic feedback.
+@extern("adam_ios_haptic_medium")
+pub fn haptic_medium()
+
+/// Trigger heavy haptic feedback.
+@extern("adam_ios_haptic_heavy")
+pub fn haptic_heavy()
+
+// ---------------------------------------------------------------------------
+// Status bar
+// ---------------------------------------------------------------------------
+
+pub enum StatusBarStyle {
+    Default
+    Light
+    Dark
+}
+
+/// Set the status bar appearance.
+@extern("adam_ios_set_status_bar_style")
+pub fn set_status_bar_style(style StatusBarStyle)
+
+// ---------------------------------------------------------------------------
+// Keyboard
+// ---------------------------------------------------------------------------
+
+/// Dismiss the on-screen keyboard.
+@extern("adam_ios_dismiss_keyboard")
+pub fn dismiss_keyboard()

@@ -12,6 +12,19 @@ pub struct IrModule {
     pub functions: Vec<IrFunction>,
     pub globals: Vec<IrGlobal>,
     pub string_literals: Vec<String>,
+    pub struct_defs: Vec<IrStructDef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IrStructDef {
+    pub name: String,
+    pub fields: Vec<IrStructField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IrStructField {
+    pub name: String,
+    pub ty: IrType,
 }
 
 #[derive(Debug, Clone)]

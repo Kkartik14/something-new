@@ -34,6 +34,13 @@ pub fn lower_module(ast: &SourceFile) -> IrModule {
             Item::Struct(s) => {
                 // Register struct as a global type (no code generated).
                 lowerer.struct_names.push(s.name.name.clone());
+                lowerer.struct_defs.push(IrStructDef {
+                    name: s.name.name.clone(),
+                    fields: s.fields.iter().map(|f| IrStructField {
+                        name: f.name.name.clone(),
+                        ty: lowerer.lower_type(&f.ty.node),
+                    }).collect(),
+                });
             }
             Item::Enum(e) => {
                 lowerer.enum_names.push(e.name.name.clone());
@@ -48,6 +55,7 @@ pub fn lower_module(ast: &SourceFile) -> IrModule {
         functions: lowerer.functions,
         globals: lowerer.globals,
         string_literals: lowerer.string_literals,
+        struct_defs: lowerer.struct_defs,
     }
 }
 
@@ -57,6 +65,7 @@ struct Lowerer {
     functions: Vec<IrFunction>,
     globals: Vec<IrGlobal>,
     string_literals: Vec<String>,
+    struct_defs: Vec<IrStructDef>,
     fn_ids: HashMap<String, FnId>,
     struct_names: Vec<String>,
     enum_names: Vec<String>,
@@ -80,6 +89,7 @@ impl Lowerer {
             functions: Vec::new(),
             globals: Vec::new(),
             string_literals: Vec::new(),
+            struct_defs: Vec::new(),
             fn_ids: HashMap::new(),
             struct_names: Vec::new(),
             enum_names: Vec::new(),
@@ -1100,11 +1110,16 @@ impl Lowerer {
         hash
     }
 
-    /// Placeholder field name to index mapping.
-    /// In a full compiler, this would consult type information.
-    fn field_name_to_index(&self, _name: &str) -> u32 {
-        // TODO: look up in type context once available.
-        0
+    /// Look up a field name's index in the struct definitions.
+    fn field_name_to_index(&self, name: &str) -> u32 {
+        for sdef in &self.struct_defs {
+            for (idx, field) in sdef.fields.iter().enumerate() {
+                if field.name == name {
+                    return idx as u32;
+                }
+            }
+        }
+        0 // fallback
     }
 
     // ================================================================

@@ -1,0 +1,162 @@
+// mod.adam — Unified cross-platform API.
+//
+// This module provides a single API surface that works on both iOS and Android.
+// At compile time, the correct platform implementation is selected based on
+// the --target flag. Adam code should use `platform.*` functions, which
+// dispatch to the appropriate native implementation.
+
+module platform
+
+// Compile-time platform detection selects the right implementation.
+// The compiler maps these calls to the C FFI functions listed in
+// adam_bridge::ffi::PlatformFfiTable.
+
+// ---------------------------------------------------------------------------
+// Screen metrics
+// ---------------------------------------------------------------------------
+
+/// Returns the screen width in logical points (dp on Android, points on iOS).
+pub fn screen_width() -> f64 {
+    #if platform == "ios"
+        return platform.ios.screen_width()
+    #elif platform == "android"
+        return platform.android.screen_width()
+    #endif
+}
+
+/// Returns the screen height in logical points.
+pub fn screen_height() -> f64 {
+    #if platform == "ios"
+        return platform.ios.screen_height()
+    #elif platform == "android"
+        return platform.android.screen_height()
+    #endif
+}
+
+/// Returns the pixel scale factor (e.g. 2.0 for Retina, 2.75 for xxhdpi).
+pub fn screen_scale() -> f64 {
+    #if platform == "ios"
+        return platform.ios.screen_scale()
+    #elif platform == "android"
+        return platform.android.screen_scale()
+    #endif
+}
+
+/// Edge insets (safe area, status bar, etc.).
+pub struct EdgeInsets {
+    top f64
+    bottom f64
+    left f64
+    right f64
+}
+
+/// Returns the safe area insets (notch, status bar, home indicator).
+pub fn safe_area() -> EdgeInsets {
+    #if platform == "ios"
+        return platform.ios.safe_area()
+    #elif platform == "android"
+        return platform.android.safe_area()
+    #endif
+}
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+
+/// Returns true if the device is in dark mode.
+pub fn is_dark_mode() -> bool {
+    #if platform == "ios"
+        return platform.ios.is_dark_mode()
+    #elif platform == "android"
+        return platform.android.is_dark_mode()
+    #endif
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/// Open a URL in the default browser or app.
+pub fn open_url(url String) -> bool {
+    #if platform == "ios"
+        return platform.ios.open_url(url)
+    #elif platform == "android"
+        return platform.android.open_url(url)
+    #endif
+}
+
+/// Present the system share sheet with the given text.
+pub fn share(text String) {
+    #if platform == "ios"
+        platform.ios.share(text)
+    #elif platform == "android"
+        platform.android.share(text)
+    #endif
+}
+
+// ---------------------------------------------------------------------------
+// Storage (persisted across app launches)
+// ---------------------------------------------------------------------------
+
+/// Store a key-value pair that persists across app launches.
+/// Uses UserDefaults on iOS, SharedPreferences on Android.
+pub fn store(key String, value String) {
+    #if platform == "ios"
+        platform.ios.store(key, value)
+    #elif platform == "android"
+        platform.android.store(key, value)
+    #endif
+}
+
+/// Load a previously stored value. Returns nil if not found.
+pub fn load(key String) -> ?String {
+    #if platform == "ios"
+        return platform.ios.load(key)
+    #elif platform == "android"
+        return platform.android.load(key)
+    #endif
+}
+
+// ---------------------------------------------------------------------------
+// Haptics
+// ---------------------------------------------------------------------------
+
+/// Trigger light haptic feedback.
+pub fn haptic_light() {
+    #if platform == "ios"
+        platform.ios.haptic_light()
+    #elif platform == "android"
+        platform.android.haptic_light()
+    #endif
+}
+
+/// Trigger medium haptic feedback.
+pub fn haptic_medium() {
+    #if platform == "ios"
+        platform.ios.haptic_medium()
+    #elif platform == "android"
+        platform.android.haptic_medium()
+    #endif
+}
+
+/// Trigger heavy haptic feedback.
+pub fn haptic_heavy() {
+    #if platform == "ios"
+        platform.ios.haptic_heavy()
+    #elif platform == "android"
+        platform.android.haptic_heavy()
+    #endif
+}
+
+// ---------------------------------------------------------------------------
+// Keyboard
+// ---------------------------------------------------------------------------
+
+/// Dismiss the on-screen keyboard.
+pub fn dismiss_keyboard() {
+    #if platform == "ios"
+        platform.ios.dismiss_keyboard()
+    #elif platform == "android"
+        platform.android.dismiss_keyboard()
+    #endif
+}

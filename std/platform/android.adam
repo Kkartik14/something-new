@@ -1,0 +1,91 @@
+// android.adam — Adam declarations for Android platform APIs.
+//
+// These functions map to the C functions in platform/android/jni/apis.c
+// which dispatch to Java via JNI. Available when compiling with
+// --target=android or --target=android-emulator.
+
+module platform.android
+
+// ---------------------------------------------------------------------------
+// Screen metrics
+// ---------------------------------------------------------------------------
+
+/// Returns the screen width in density-independent pixels (dp).
+@extern("adam_platform_screen_width")
+pub fn screen_width() -> f64
+
+/// Returns the screen height in density-independent pixels (dp).
+@extern("adam_platform_screen_height")
+pub fn screen_height() -> f64
+
+/// Returns the pixel density (e.g. 2.0 for xxhdpi).
+@extern("adam_platform_screen_scale")
+pub fn screen_scale() -> f64
+
+/// Edge insets for safe area (status bar, navigation bar, etc.).
+pub struct EdgeInsets {
+    top f64
+    bottom f64
+    left f64
+    right f64
+}
+
+/// Returns the safe area insets.
+@extern("adam_platform_safe_area")
+pub fn safe_area() -> EdgeInsets
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+
+/// Returns true if the device is in dark mode.
+@extern("adam_platform_is_dark_mode")
+pub fn is_dark_mode() -> bool
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/// Open a URL in the default browser or app.
+@extern("adam_platform_open_url_c")
+pub fn open_url(url String) -> bool
+
+/// Share text via the system share sheet.
+@extern("adam_platform_share_c")
+pub fn share(text String)
+
+// ---------------------------------------------------------------------------
+// Storage (persisted via SharedPreferences)
+// ---------------------------------------------------------------------------
+
+/// Store a key-value pair that persists across app launches.
+@extern("adam_platform_store_c")
+pub fn store(key String, value String)
+
+/// Load a previously stored value. Returns nil if not found.
+@extern("adam_platform_load_c")
+pub fn load(key String) -> ?String
+
+// ---------------------------------------------------------------------------
+// Haptics
+// ---------------------------------------------------------------------------
+
+/// Trigger light haptic feedback.
+@extern("adam_platform_haptic_light")
+pub fn haptic_light()
+
+/// Trigger medium haptic feedback.
+@extern("adam_platform_haptic_medium")
+pub fn haptic_medium()
+
+/// Trigger heavy haptic feedback.
+@extern("adam_platform_haptic_heavy")
+pub fn haptic_heavy()
+
+// ---------------------------------------------------------------------------
+// Keyboard
+// ---------------------------------------------------------------------------
+
+/// Dismiss the on-screen keyboard.
+@extern("adam_platform_dismiss_keyboard_c")
+pub fn dismiss_keyboard()

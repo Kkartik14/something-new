@@ -240,6 +240,7 @@ pub fn verify_function_standalone(func: &IrFunction) -> VerifyResult {
         functions: vec![func.clone()],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
     verify_module(&module)
 }

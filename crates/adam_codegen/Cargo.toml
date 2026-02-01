@@ -6,3 +6,9 @@ edition.workspace = true
 [dependencies]
 adam_ir = { path = "../adam_ir" }
 adam_types = { path = "../adam_types" }
+inkwell = { version = "0.8", features = ["llvm21-1"] }
+
+[dev-dependencies]
+adam_lexer = { path = "../adam_lexer" }
+adam_parser = { path = "../adam_parser" }
+adam_runtime = { path = "../adam_runtime" }

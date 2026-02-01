@@ -12,6 +12,7 @@ members = [
     "crates/adam_runtime",
     "crates/adam_std",
     "crates/adam_ui",
+    "crates/adam_bridge",
     "crates/adam_cli",
     "crates/adam_lsp",
 ]

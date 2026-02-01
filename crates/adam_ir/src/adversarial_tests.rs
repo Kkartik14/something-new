@@ -411,6 +411,7 @@ fn adversarial_const_fold_negate_i64_min() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     // This should not panic. If it does, that's a bug in constant_fold.
@@ -772,6 +773,7 @@ fn adversarial_verifier_catches_self_referencing_block() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     // This is actually valid IR (it's an infinite loop).
@@ -808,6 +810,7 @@ fn adversarial_verifier_catches_nonexistent_target() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -840,6 +843,7 @@ fn adversarial_verifier_catches_duplicate_local_ids() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -870,6 +874,7 @@ fn adversarial_verifier_switch_with_invalid_default() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -894,6 +899,7 @@ fn adversarial_verifier_empty_function_no_blocks() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -1098,6 +1104,7 @@ fn adversarial_printer_all_terminator_types() {
         }],
         globals: vec![],
         string_literals: vec!["hello".into()],
+        struct_defs: vec![],
     };
 
     let output = print_module(&module);
@@ -1578,6 +1585,7 @@ fn adversarial_cfg_simplify_dangling_references() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     // bb0 -> bb1 can be merged (bb1 has only one predecessor: bb0... wait,
@@ -1624,6 +1632,7 @@ fn adversarial_cfg_simplify_dangling_references() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     // Before CFG simplify, this should verify.
@@ -1908,6 +1917,7 @@ fn adversarial_verifier_instruction_references_invalid_fn() {
         }],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -1930,6 +1940,7 @@ fn adversarial_print_module_with_globals() {
             IrGlobal { name: "GLOBAL_S".into(), ty: IrType::String },
         ],
         string_literals: vec!["hello".into(), "world".into()],
+        struct_defs: vec![],
     };
 
     let output = print_module(&module);
@@ -2080,6 +2091,7 @@ fn adversarial_verify_module_with_duplicate_function_names() {
         ],
         globals: vec![],
         string_literals: vec![],
+        struct_defs: vec![],
     };
 
     let result = verify_module(&module);
@@ -2097,6 +2109,7 @@ fn clone_module(m: &IrModule) -> IrModule {
         functions: m.functions.clone(),
         globals: m.globals.clone(),
         string_literals: m.string_literals.clone(),
+        struct_defs: m.struct_defs.clone(),
     }
 }
 
