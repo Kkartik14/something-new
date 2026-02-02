@@ -12,3 +12,8 @@ adam_types = { path = "../adam_types" }
 adam_borrow = { path = "../adam_borrow" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[dev-dependencies]
+adam_ir = { path = "../adam_ir" }
+adam_lexer = { path = "../adam_lexer" }
+adam_parser = { path = "../adam_parser" }

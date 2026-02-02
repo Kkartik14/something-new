@@ -44,9 +44,12 @@ dependencies = [
 name = "adam_codegen"
 version = "0.1.0"
 dependencies = [
+ "adam_ast",
+ "adam_borrow",
  "adam_ir",
  "adam_lexer",
  "adam_parser",
+ "adam_resolve",
  "adam_runtime",
  "adam_types",
  "inkwell",
@@ -73,6 +76,7 @@ version = "0.1.0"
 dependencies = [
  "adam_ast",
  "adam_borrow",
+ "adam_ir",
  "adam_lexer",
  "adam_parser",
  "adam_resolve",

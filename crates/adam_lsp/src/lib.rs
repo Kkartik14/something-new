@@ -25,3 +25,5 @@ pub use symbols::{DocumentSymbol, SymbolKind, document_symbols};
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod stress_tests;

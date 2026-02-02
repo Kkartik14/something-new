@@ -14,3 +14,5 @@ pub use targets::{Platform, Arch, TargetConfig, OutputFormat};
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod pipeline_stress_tests;

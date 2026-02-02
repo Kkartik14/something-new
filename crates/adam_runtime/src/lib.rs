@@ -1400,3 +1400,6 @@ mod stdlib_integration_tests {
 
 #[cfg(test)]
 mod adversarial_tests;
+
+#[cfg(test)]
+mod extreme_stress_tests;
