@@ -69,15 +69,28 @@ pub struct TypeChecker {
     current_return_type: Option<TypeId>,
     /// Errors collected.
     errors: Vec<TypeError>,
+    /// Generic function name -> TypeVarIds of its generic params.
+    fn_generic_params: HashMap<String, Vec<TypeVarId>>,
 }
 
 impl TypeChecker {
     pub fn new() -> Self {
+        let ctx = TypeContext::new();
+
+        // Seed built-in function signatures.
+        let mut fn_sigs = HashMap::new();
+        let print_sig = FnSig {
+            params: vec![ctx.string()],
+            return_type: ctx.unit(),
+        };
+        fn_sigs.insert("print".to_string(), print_sig.clone());
+        fn_sigs.insert("println".to_string(), print_sig);
+
         Self {
-            ctx: TypeContext::new(),
+            ctx,
             expr_types: HashMap::new(),
             env: vec![HashMap::new()],
-            fn_sigs: HashMap::new(),
+            fn_sigs,
             struct_ids: HashMap::new(),
             enum_ids: HashMap::new(),
             variant_ids: HashMap::new(),
@@ -86,6 +99,7 @@ impl TypeChecker {
             substitutions: HashMap::new(),
             current_return_type: None,
             errors: vec![],
+            fn_generic_params: HashMap::new(),
         }
     }
 
@@ -353,6 +367,92 @@ impl TypeChecker {
         self.ctx.resolve(id, &self.substitutions)
     }
 
+    /// Substitute TypeVars in a type according to a mapping.
+    fn substitute_type(&mut self, ty_id: TypeId, subs: &HashMap<TypeVarId, TypeId>) -> TypeId {
+        if subs.is_empty() {
+            return ty_id;
+        }
+        let ty = self.ctx.ty(ty_id).clone();
+        match ty {
+            Ty::TypeVar(var) => {
+                if let Some(&replacement) = subs.get(&var) {
+                    replacement
+                } else {
+                    ty_id
+                }
+            }
+            Ty::Array(elem, size) => {
+                let new_elem = self.substitute_type(elem, subs);
+                if new_elem == elem { ty_id } else { self.ctx.intern(Ty::Array(new_elem, size)) }
+            }
+            Ty::Tuple(elems) => {
+                let new_elems: Vec<_> = elems.iter().map(|&e| self.substitute_type(e, subs)).collect();
+                if new_elems == elems { ty_id } else { self.ctx.intern(Ty::Tuple(new_elems)) }
+            }
+            Ty::Optional(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Optional(new_inner)) }
+            }
+            Ty::Result(ok, err) => {
+                let new_ok = self.substitute_type(ok, subs);
+                let new_err = self.substitute_type(err, subs);
+                if new_ok == ok && new_err == err { ty_id } else { self.ctx.intern(Ty::Result(new_ok, new_err)) }
+            }
+            Ty::Ref(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Ref(new_inner)) }
+            }
+            Ty::MutRef(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::MutRef(new_inner)) }
+            }
+            Ty::Box(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Box(new_inner)) }
+            }
+            Ty::Rc(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Rc(new_inner)) }
+            }
+            Ty::Arc(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Arc(new_inner)) }
+            }
+            Ty::Channel(inner) => {
+                let new_inner = self.substitute_type(inner, subs);
+                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Channel(new_inner)) }
+            }
+            Ty::Function(sig) => {
+                let new_params: Vec<_> = sig.params.iter().map(|&p| self.substitute_type(p, subs)).collect();
+                let new_ret = self.substitute_type(sig.return_type, subs);
+                if new_params == sig.params && new_ret == sig.return_type {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Function(FnSig { params: new_params, return_type: new_ret }))
+                }
+            }
+            // Primitives, structs, enums, Generic, Error, Never — no TypeVars inside.
+            _ => ty_id,
+        }
+    }
+
+    /// Create a fresh instantiation of a generic function's signature.
+    /// Each call site gets its own TypeVars so they can infer independently.
+    fn instantiate_fn_sig(&mut self, fn_name: &str, sig: &FnSig) -> FnSig {
+        if let Some(generic_tvars) = self.fn_generic_params.get(fn_name).cloned() {
+            let mut sub_map = HashMap::new();
+            for old_var in &generic_tvars {
+                let fresh = self.ctx.fresh_type_var();
+                sub_map.insert(*old_var, fresh);
+            }
+            let params: Vec<_> = sig.params.iter().map(|&p| self.substitute_type(p, &sub_map)).collect();
+            let return_type = self.substitute_type(sig.return_type, &sub_map);
+            FnSig { params, return_type }
+        } else {
+            sig.clone()
+        }
+    }
+
     // ---- Source file ----
 
     fn check_source_file(&mut self, file: &SourceFile) {
@@ -537,6 +637,19 @@ impl TypeChecker {
     }
 
     fn build_fn_sig(&mut self, f: &FnDef) -> FnSig {
+        // If the function has generic params, create TypeVars for them.
+        let mut generic_tvars = Vec::new();
+        if !f.generic_params.is_empty() {
+            self.push_scope();
+            for gp in &f.generic_params {
+                let tv = self.ctx.fresh_type_var();
+                if let Ty::TypeVar(id) = self.ctx.ty(tv).clone() {
+                    generic_tvars.push(id);
+                }
+                self.define(&gp.name.name, tv);
+            }
+        }
+
         let params: Vec<_> = f
             .params
             .iter()
@@ -547,6 +660,13 @@ impl TypeChecker {
             .as_ref()
             .map(|t| self.resolve_ast_type(t))
             .unwrap_or(self.ctx.unit());
+
+        if !f.generic_params.is_empty() {
+            self.pop_scope();
+            self.fn_generic_params
+                .insert(f.name.name.clone(), generic_tvars);
+        }
+
         FnSig {
             params,
             return_type,
@@ -572,8 +692,16 @@ impl TypeChecker {
                 .fn_sigs
                 .get(&f.name.name)
                 .cloned()
-                .unwrap_or(self.build_fn_sig(f));
+                .unwrap_or_else(|| self.build_fn_sig(f));
             self.current_return_type = Some(sig.return_type);
+
+            // Bind generic param names so `T` resolves inside the body.
+            if let Some(generic_tvars) = self.fn_generic_params.get(&f.name.name).cloned() {
+                for (gp, &tvar_id) in f.generic_params.iter().zip(generic_tvars.iter()) {
+                    let tv_ty_id = self.ctx.intern(Ty::TypeVar(tvar_id));
+                    self.define(&gp.name.name, tv_ty_id);
+                }
+            }
 
             // Bind params.
             for (i, param) in f.params.iter().enumerate() {
@@ -868,12 +996,26 @@ impl TypeChecker {
             }
 
             Expr::Call(call) => {
+                // Extract callee function name for generic instantiation.
+                let callee_name = match &call.callee.node {
+                    Expr::Identifier(ident) => Some(ident.name.clone()),
+                    _ => None,
+                };
+
                 let callee_ty = self.infer_expr(&call.callee);
                 let callee_resolved = self.apply_subs(callee_ty);
                 let arg_types: Vec<_> = call.args.iter().map(|a| self.infer_expr(a)).collect();
 
                 match self.ctx.ty(callee_resolved).clone() {
                     Ty::Function(sig) => {
+                        // If this is a generic function, instantiate with fresh TypeVars
+                        // so each call site infers types independently.
+                        let sig = if let Some(ref name) = callee_name {
+                            self.instantiate_fn_sig(name, &sig)
+                        } else {
+                            sig
+                        };
+
                         if arg_types.len() != sig.params.len() {
                             self.err(
                                 format!(

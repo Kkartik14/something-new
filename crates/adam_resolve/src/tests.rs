@@ -665,6 +665,39 @@ fn test_levenshtein_distant() {
     assert_eq!(crate::errors::levenshtein("abc", "xyz"), 3);
 }
 
+// ---- Built-in functions don't trigger errors ----
+
+#[test]
+fn test_builtin_print_resolved() {
+    let result = resolve_ok(
+        "fn main() {
+            print(\"hello\")
+        }",
+    );
+    assert!(error_count(&result) == 0);
+}
+
+#[test]
+fn test_builtin_println_resolved() {
+    let result = resolve_ok(
+        "fn main() {
+            println(\"hello\")
+        }",
+    );
+    assert!(error_count(&result) == 0);
+}
+
+#[test]
+fn test_builtin_print_with_variable() {
+    let result = resolve_ok(
+        "fn main() {
+            name := \"world\"
+            print(name)
+        }",
+    );
+    assert!(error_count(&result) == 0);
+}
+
 // ---- Built-in types don't trigger errors ----
 
 #[test]
@@ -927,4 +960,103 @@ fn test_self_type_in_impl() {
     );
     // Self should resolve as a type param in impl scope.
     assert!(has_decl(&result, "Self", &DeclKind::TypeParam));
+}
+
+// ---- Multi-file module resolution ----
+
+fn parse_ast(src: &str) -> adam_ast::item::SourceFile {
+    let lexer = Lexer::new(src);
+    let lex_result = lexer.tokenize();
+    assert!(lex_result.errors.is_empty(), "lex errors: {:?}", lex_result.errors);
+    let parse = Parser::new(lex_result.tokens).parse();
+    assert!(parse.errors.is_empty(), "parse errors: {:?}", parse.errors);
+    parse.ast
+}
+
+#[test]
+fn test_multi_file_import_single() {
+    use std::collections::HashMap;
+    use crate::resolver::resolve_multi;
+
+    let main_src = "use utils.greet\nfn main() {\n    greet()\n}";
+    let utils_src = "pub fn greet() {}";
+
+    let main_ast = parse_ast(main_src);
+    let utils_ast = parse_ast(utils_src);
+
+    let mut modules = HashMap::new();
+    modules.insert("utils".to_string(), utils_ast);
+
+    let result = resolve_multi(&main_ast, &modules);
+    assert!(
+        result.errors.is_empty(),
+        "expected no errors, got: {:?}",
+        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_multi_file_import_multiple() {
+    use std::collections::HashMap;
+    use crate::resolver::resolve_multi;
+
+    let main_src = "use math.{add, sub}\nfn main() {\n    add()\n    sub()\n}";
+    let math_src = "pub fn add() {}\npub fn sub() {}";
+
+    let main_ast = parse_ast(main_src);
+    let math_ast = parse_ast(math_src);
+
+    let mut modules = HashMap::new();
+    modules.insert("math".to_string(), math_ast);
+
+    let result = resolve_multi(&main_ast, &modules);
+    assert!(
+        result.errors.is_empty(),
+        "expected no errors, got: {:?}",
+        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_multi_file_import_wildcard() {
+    use std::collections::HashMap;
+    use crate::resolver::resolve_multi;
+
+    let main_src = "use helpers.*\nfn main() {\n    foo()\n    bar()\n}";
+    let helpers_src = "pub fn foo() {}\npub fn bar() {}\nfn private_fn() {}";
+
+    let main_ast = parse_ast(main_src);
+    let helpers_ast = parse_ast(helpers_src);
+
+    let mut modules = HashMap::new();
+    modules.insert("helpers".to_string(), helpers_ast);
+
+    let result = resolve_multi(&main_ast, &modules);
+    assert!(
+        result.errors.is_empty(),
+        "expected no errors, got: {:?}",
+        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_multi_file_private_not_exported() {
+    use std::collections::HashMap;
+    use crate::resolver::resolve_multi;
+
+    let main_src = "use helpers.*\nfn main() {\n    secret()\n}";
+    let helpers_src = "fn secret() {}"; // private
+
+    let main_ast = parse_ast(main_src);
+    let helpers_ast = parse_ast(helpers_src);
+
+    let mut modules = HashMap::new();
+    modules.insert("helpers".to_string(), helpers_ast);
+
+    let result = resolve_multi(&main_ast, &modules);
+    // `secret` is private, so wildcard import shouldn't bring it in.
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for calling private function `secret`"
+    );
 }

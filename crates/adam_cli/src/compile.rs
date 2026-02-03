@@ -1,5 +1,6 @@
 //! Compilation pipeline — `adam build`, `adam run`, `adam check`.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -83,6 +84,83 @@ fn find_source(opts: &CompileOpts) -> Result<PathBuf, String> {
     }
 
     Err("no file specified and no adam.toml found".to_string())
+}
+
+/// Resolve a dotted module path to a file path relative to a source directory.
+///
+/// Tries `<src_dir>/<seg1>/<seg2>.adam` first, then `<src_dir>/<seg1>/<seg2>/mod.adam`.
+fn resolve_module_path(src_dir: &Path, segments: &[String]) -> Option<PathBuf> {
+    if segments.is_empty() {
+        return None;
+    }
+    // Build the directory path from all segments except the last.
+    let mut dir = src_dir.to_path_buf();
+    for seg in &segments[..segments.len() - 1] {
+        dir.push(seg);
+    }
+    let last = &segments[segments.len() - 1];
+
+    // Try <dir>/<last>.adam
+    let file_path = dir.join(format!("{}.adam", last));
+    if file_path.exists() {
+        return Some(file_path);
+    }
+
+    // Try <dir>/<last>/mod.adam
+    let mod_path = dir.join(last).join("mod.adam");
+    if mod_path.exists() {
+        return Some(mod_path);
+    }
+
+    None
+}
+
+/// Collect all `use` paths from a source file AST.
+fn collect_use_paths(ast: &adam_ast::item::SourceFile) -> Vec<Vec<String>> {
+    let mut paths = Vec::new();
+    for item in &ast.items {
+        if let adam_ast::item::Item::Use(use_decl) = &item.node {
+            let segments: Vec<String> = use_decl.path.iter().map(|s| s.name.clone()).collect();
+            if segments.len() >= 2 {
+                // Module path is everything except the last segment for Single imports.
+                match &use_decl.items {
+                    adam_ast::item::UseItems::Single => {
+                        paths.push(segments[..segments.len() - 1].to_vec());
+                    }
+                    _ => {
+                        paths.push(segments);
+                    }
+                }
+            }
+        }
+    }
+    paths
+}
+
+/// Load and parse all modules referenced by use declarations.
+fn load_modules(
+    src_dir: &Path,
+    ast: &adam_ast::item::SourceFile,
+) -> Result<HashMap<String, adam_ast::item::SourceFile>, String> {
+    let mut modules = HashMap::new();
+    let use_paths = collect_use_paths(ast);
+
+    for mod_segments in use_paths {
+        let mod_key = mod_segments.join(".");
+        if modules.contains_key(&mod_key) {
+            continue;
+        }
+        if let Some(file_path) = resolve_module_path(src_dir, &mod_segments) {
+            let source = fs::read_to_string(&file_path)
+                .map_err(|e| format!("failed to read module {}: {}", mod_key, e))?;
+            let tokens = lex_source(&source)?;
+            let mod_ast = parse_tokens(tokens)?;
+            modules.insert(mod_key, mod_ast);
+        }
+        // If module file not found, skip silently — the resolver will handle undefined names.
+    }
+
+    Ok(modules)
 }
 
 /// Helper: lex source, returning tokens or formatted errors.
@@ -180,11 +258,28 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
         return Ok(());
     }
 
-    // Step 3: Resolve names.
+    // Step 3: Resolve names (with cross-file module support).
     if opts.verbose {
         println!("[3/7] Resolving names");
     }
-    let resolved = resolve_ast(&ast)?;
+    let src_dir = source_path.parent().unwrap_or(Path::new("."));
+    let modules = load_modules(src_dir, &ast)?;
+    let resolved = if modules.is_empty() {
+        resolve_ast(&ast)?
+    } else {
+        if opts.verbose {
+            println!("  loaded {} module(s): {}", modules.len(),
+                modules.keys().cloned().collect::<Vec<_>>().join(", "));
+        }
+        let result = adam_resolve::resolve_multi(&ast, &modules);
+        if !result.errors.is_empty() {
+            return Err(result.errors.iter()
+                .map(|e| format!("resolve error: {}", e))
+                .collect::<Vec<_>>()
+                .join("\n"));
+        }
+        result
+    };
 
     // Step 4: Type check.
     if opts.verbose {

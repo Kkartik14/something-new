@@ -1,5 +1,7 @@
 //! Scope builder — walks the AST and resolves names.
 
+use std::collections::HashMap;
+
 use adam_ast::common::*;
 use adam_ast::expr::*;
 use adam_ast::item::*;
@@ -29,12 +31,82 @@ pub fn resolve(ast: &SourceFile) -> ResolveResult {
     }
 }
 
+/// Resolve names across multiple modules.
+///
+/// `modules` maps a dotted module path (e.g. `"utils"`, `"math.vector"`) to
+/// the parsed AST of that module. The entry point file should be passed as
+/// `main_ast` and is resolved in the root scope. Imported modules get their
+/// own child scopes, and `use` declarations pull public names into the
+/// importer's scope.
+pub fn resolve_multi(
+    main_ast: &SourceFile,
+    modules: &HashMap<String, SourceFile>,
+) -> ResolveResult {
+    let mut resolver = Resolver::new();
+
+    // First pass: declare all names from all modules in module sub-scopes.
+    for (mod_path, mod_ast) in modules {
+        let mod_scope = resolver.enter_scope(ScopeKind::Module);
+        resolver.module_scopes.insert(mod_path.clone(), mod_scope);
+        for item in &mod_ast.items {
+            resolver.declare_item_name(&item.node);
+        }
+        // Track which items are public.
+        for item in &mod_ast.items {
+            if let Some((name, vis)) = item_name_and_visibility(&item.node) {
+                if vis == Visibility::Public {
+                    resolver.module_exports
+                        .entry(mod_path.clone())
+                        .or_default()
+                        .push(name.to_string());
+                }
+            }
+        }
+        resolver.exit_scope();
+    }
+
+    // Second pass: resolve main file (use declarations will now find modules).
+    resolver.resolve_source_file(main_ast);
+
+    // Third pass: resolve module bodies.
+    for (mod_path, mod_ast) in modules {
+        let scope = resolver.module_scopes[mod_path];
+        resolver.current_scope = scope;
+        for item in &mod_ast.items {
+            resolver.resolve_item(&item.node);
+        }
+    }
+
+    ResolveResult {
+        scope_tree: resolver.scope_tree,
+        declarations: resolver.declarations,
+        errors: resolver.errors,
+    }
+}
+
+/// Extract the name and visibility from a top-level item (if it has one).
+fn item_name_and_visibility(item: &Item) -> Option<(&str, Visibility)> {
+    match item {
+        Item::Function(f) => Some((&f.name.name, f.visibility)),
+        Item::Struct(s) => Some((&s.name.name, s.visibility)),
+        Item::Enum(e) => Some((&e.name.name, e.visibility)),
+        Item::Trait(t) => Some((&t.name.name, t.visibility)),
+        Item::View(v) => Some((&v.name.name, v.visibility)),
+        Item::Mod(m) => Some((&m.name.name, m.visibility)),
+        Item::Impl(_) | Item::Use(_) => None,
+    }
+}
+
 /// The resolver walks the AST and builds the scope tree.
 struct Resolver {
     scope_tree: ScopeTree,
     current_scope: ScopeId,
     declarations: Vec<Declaration>,
     errors: Vec<ResolveError>,
+    /// Map from dotted module path to the scope ID of that module.
+    module_scopes: HashMap<String, ScopeId>,
+    /// Map from dotted module path to public item names.
+    module_exports: HashMap<String, Vec<String>>,
 }
 
 impl Resolver {
@@ -46,6 +118,8 @@ impl Resolver {
             current_scope: root,
             declarations: vec![],
             errors: vec![],
+            module_scopes: HashMap::new(),
+            module_exports: HashMap::new(),
         }
     }
 
@@ -103,6 +177,9 @@ impl Resolver {
     }
 
     fn check_name(&mut self, name: &str, span: Span) {
+        if is_builtin_function(name) {
+            return;
+        }
         if self.lookup(name).is_none() {
             let candidates = self.scope_tree.names_in_scope(self.current_scope);
             let suggestion = suggest(name, &candidates);
@@ -362,21 +439,77 @@ impl Resolver {
     }
 
     fn resolve_use_decl(&mut self, use_decl: &UseDecl) {
-        // For now, just declare the imported names. Full cross-file
-        // resolution comes when the module system is wired up.
+        // Build the module path (all segments except the imported name for Single imports).
+        let path_strs: Vec<&str> = use_decl.path.iter().map(|s| s.name.as_str()).collect();
+
         match &use_decl.items {
             UseItems::Single => {
-                // Last path segment is the imported name.
-                if let Some(last) = use_decl.path.last() {
+                if use_decl.path.len() >= 2 {
+                    // e.g. `use math.vector.Vec3` → module "math.vector", name "Vec3"
+                    let mod_path = path_strs[..path_strs.len() - 1].join(".");
+                    let name = use_decl.path.last().unwrap();
+
+                    if let Some(&mod_scope) = self.module_scopes.get(&mod_path) {
+                        // Look up the name in the module's scope.
+                        if let Some(decl_id) = self.scope_tree.lookup_local(mod_scope, &name.name) {
+                            // Re-declare it in the current scope as an import.
+                            let kind = self.declarations[decl_id as usize].kind.clone();
+                            self.declare(&name.name, kind, name.span);
+                        } else {
+                            self.errors.push(ResolveError::new(
+                                ResolveErrorKind::ImportNotFound {
+                                    path: path_strs.join("."),
+                                },
+                                name.span,
+                            ));
+                        }
+                    } else {
+                        // Module not loaded — declare as import anyway (forward compat).
+                        self.declare(&name.name, DeclKind::Import, name.span);
+                    }
+                } else if let Some(last) = use_decl.path.last() {
+                    // Single-segment use (e.g. `use utils`) — just declare the name.
                     self.declare(&last.name, DeclKind::Import, last.span);
                 }
             }
             UseItems::All => {
-                // Wildcard import — nothing to declare until we know the module's exports.
+                // `use foo.bar.*` — import all public names from the module.
+                let mod_path = path_strs.join(".");
+                if let Some(exports) = self.module_exports.get(&mod_path).cloned() {
+                    if let Some(&mod_scope) = self.module_scopes.get(&mod_path) {
+                        for export_name in &exports {
+                            if let Some(decl_id) = self.scope_tree.lookup_local(mod_scope, export_name) {
+                                let kind = self.declarations[decl_id as usize].kind.clone();
+                                let span = self.declarations[decl_id as usize].span;
+                                self.declare(export_name, kind, span);
+                            }
+                        }
+                    }
+                }
+                // If module not found, silently skip (will error when names are used).
             }
             UseItems::Multiple(names) => {
-                for name in names {
-                    self.declare(&name.name, DeclKind::Import, name.span);
+                // `use foo.bar.{A, B}` — import specific names.
+                let mod_path = path_strs.join(".");
+                if let Some(&mod_scope) = self.module_scopes.get(&mod_path) {
+                    for name in names {
+                        if let Some(decl_id) = self.scope_tree.lookup_local(mod_scope, &name.name) {
+                            let kind = self.declarations[decl_id as usize].kind.clone();
+                            self.declare(&name.name, kind, name.span);
+                        } else {
+                            self.errors.push(ResolveError::new(
+                                ResolveErrorKind::ImportNotFound {
+                                    path: format!("{}.{}", mod_path, name.name),
+                                },
+                                name.span,
+                            ));
+                        }
+                    }
+                } else {
+                    // Module not loaded — declare as imports anyway.
+                    for name in names {
+                        self.declare(&name.name, DeclKind::Import, name.span);
+                    }
                 }
             }
         }
@@ -757,6 +890,11 @@ impl Resolver {
             Type::Inferred => {}
         }
     }
+}
+
+/// Check if a name is a built-in function provided by the runtime.
+fn is_builtin_function(name: &str) -> bool {
+    matches!(name, "print" | "println")
 }
 
 /// Check if a type name is a built-in primitive type.

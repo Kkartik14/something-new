@@ -12,6 +12,6 @@ mod tests;
 #[cfg(test)]
 mod adversarial_tests;
 
-pub use resolver::{resolve, ResolveResult};
+pub use resolver::{resolve, resolve_multi, ResolveResult};
 pub use scope::{ScopeTree, ScopeId, DeclId, Declaration, DeclKind, ScopeKind};
 pub use errors::{ResolveError, ResolveErrorKind};

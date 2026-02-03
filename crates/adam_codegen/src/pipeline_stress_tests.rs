@@ -178,7 +178,7 @@ fn pipeline_function_with_mut_param() {
 #[test]
 fn pipeline_function_with_own_param() {
     assert_pipeline_clean(
-        "fn consume(own s String) {\n    x := s\n}",
+        "fn consume(own s String) {\n    print(s)\n}",
     );
 }
 

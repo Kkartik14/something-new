@@ -171,9 +171,12 @@ impl<'ctx> CodeGen<'ctx> {
                 // Track the actual LLVM type stored, so loads use the right type.
                 self.var_value_types.insert(*var_id, val.get_type());
             }
-            Instruction::Drop(_var_id) => {
-                // Drop will be implemented in P8.S4 (memory management).
-                // For now, this is a no-op for primitive types.
+            Instruction::Drop(var_id) => {
+                if let (Some(&ptr), Some(ty)) =
+                    (self.variables.get(var_id), local_types.get(var_id))
+                {
+                    self.codegen_drop(ptr, ty);
+                }
             }
             Instruction::Nop => {}
         }

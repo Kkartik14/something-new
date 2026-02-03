@@ -160,7 +160,48 @@ impl Lowerer {
     }
 
     fn pop_scope(&mut self) {
+        // Emit drops for all non-Copy variables leaving scope.
+        if let Some(scope) = self.var_env.last() {
+            let drops: Vec<VarId> = scope
+                .values()
+                .copied()
+                .filter(|&var_id| {
+                    let ty = &self.locals[var_id as usize].ty;
+                    !Self::is_copy_type(ty)
+                })
+                .collect();
+            for var_id in drops {
+                self.emit(Instruction::Drop(var_id));
+            }
+        }
         self.var_env.pop();
+    }
+
+    /// Emit drops for all non-Copy variables in ALL scopes (used before return).
+    fn emit_drops_for_all_scopes(&mut self) {
+        let all_vars: Vec<VarId> = self
+            .var_env
+            .iter()
+            .flat_map(|scope| scope.values().copied())
+            .filter(|&var_id| {
+                let ty = &self.locals[var_id as usize].ty;
+                !Self::is_copy_type(ty)
+            })
+            .collect();
+        for var_id in all_vars {
+            self.emit(Instruction::Drop(var_id));
+        }
+    }
+
+    /// Returns true for types that are implicitly copied (never need dropping).
+    fn is_copy_type(ty: &IrType) -> bool {
+        matches!(
+            ty,
+            IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
+                | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64
+                | IrType::F32 | IrType::F64
+                | IrType::Bool | IrType::Char | IrType::Unit | IrType::Void
+        )
     }
 
     fn define_var(&mut self, name: &str, var: VarId) {
@@ -287,7 +328,7 @@ impl Lowerer {
                     .ty
                     .as_ref()
                     .map(|t| self.lower_type(&t.node))
-                    .unwrap_or(IrType::I64);
+                    .unwrap_or_else(|| self.infer_expr_type(&let_stmt.value.node));
                 let var = self.fresh_var(&let_stmt.name.name, ty);
                 self.emit(Instruction::Assign(var, RValue::Use(operand)));
                 self.define_var(&let_stmt.name.name, var);
@@ -971,6 +1012,8 @@ impl Lowerer {
                     .as_ref()
                     .map(|v| self.lower_expr(&v.node))
                     .unwrap_or(Operand::Constant(Constant::Unit));
+                // Emit drops for all in-scope non-Copy locals before returning.
+                self.emit_drops_for_all_scopes();
                 self.set_terminator(Terminator::Return(Some(op)));
                 // Create unreachable continuation block.
                 let dead = self.new_block();
@@ -1125,6 +1168,48 @@ impl Lowerer {
     // ================================================================
     // Type lowering
     // ================================================================
+
+    /// Infer the IR type of an expression (best-effort, for untyped let bindings).
+    fn infer_expr_type(&self, expr: &Expr) -> IrType {
+        match expr {
+            Expr::IntLiteral(_) => IrType::I64,
+            Expr::FloatLiteral(_) => IrType::F64,
+            Expr::BoolLiteral(_) => IrType::Bool,
+            Expr::CharLiteral(_) => IrType::Char,
+            Expr::StringLiteral(_) | Expr::StringInterpolation(_) => IrType::String,
+            Expr::NilLiteral => IrType::Unit,
+            Expr::Identifier(ident) => {
+                // Look up the variable's type in our locals.
+                if let Some(var_id) = self.lookup_var(&ident.name) {
+                    self.locals[var_id as usize].ty.clone()
+                } else {
+                    IrType::I64
+                }
+            }
+            Expr::Binary(bin) => {
+                // Arithmetic/comparison — infer from left operand.
+                match bin.op {
+                    BinaryOp::Eq | BinaryOp::NotEq | BinaryOp::Lt | BinaryOp::LtEq
+                    | BinaryOp::Gt | BinaryOp::GtEq | BinaryOp::And | BinaryOp::Or => IrType::Bool,
+                    _ => self.infer_expr_type(&bin.left.node),
+                }
+            }
+            Expr::Unary(unary) => {
+                match unary.op {
+                    UnaryOp::Not => IrType::Bool,
+                    _ => self.infer_expr_type(&unary.operand.node),
+                }
+            }
+            Expr::ArrayLiteral(_) => IrType::Array(Box::new(IrType::I64), None),
+            Expr::TupleLiteral(elems) => {
+                IrType::Tuple(elems.iter().map(|e| self.infer_expr_type(&e.node)).collect())
+            }
+            Expr::Range(_) => IrType::Array(Box::new(IrType::I64), None),
+            Expr::ChanCreate(cc) => IrType::Channel(Box::new(self.lower_type(&cc.element_type.node))),
+            Expr::StructLiteral(sl) => IrType::Struct(sl.name.name.clone()),
+            _ => IrType::I64, // conservative default
+        }
+    }
 
     fn lower_type(&self, ty: &Type) -> IrType {
         match ty {

@@ -849,3 +849,60 @@ fn regression_multi_part_string_interpolation_parses() {
         result.errors
     );
 }
+
+// ================================================================
+// Drop insertion tests
+// ================================================================
+
+/// Helper: count the number of Drop instructions across all blocks of a function.
+fn count_drops(func: &IrFunction) -> usize {
+    func.blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .filter(|i| matches!(i, Instruction::Drop(_)))
+        .count()
+}
+
+#[test]
+fn drop_emitted_for_string_variable() {
+    let module = lower(r#"fn main() {
+    s := "hello"
+}"#);
+    let f = first_fn(&module);
+    let drops = count_drops(f);
+    assert!(drops > 0, "expected Drop instructions for String variable, found {}", drops);
+}
+
+#[test]
+fn no_drop_for_integer_variable() {
+    let module = lower(r#"fn main() {
+    x := 42
+}"#);
+    let f = first_fn(&module);
+    let drops = count_drops(f);
+    assert_eq!(drops, 0, "integer variables should not produce Drop instructions");
+}
+
+#[test]
+fn drop_emitted_in_nested_block() {
+    let module = lower(r#"fn main() {
+    if true {
+        s := "inner"
+    }
+}"#);
+    let f = first_fn(&module);
+    let drops = count_drops(f);
+    assert!(drops > 0, "expected Drop for String in nested block");
+}
+
+#[test]
+fn multiple_drops_for_multiple_strings() {
+    let module = lower(r#"fn main() {
+    a := "one"
+    b := "two"
+    c := "three"
+}"#);
+    let f = first_fn(&module);
+    let drops = count_drops(f);
+    assert!(drops >= 3, "expected at least 3 Drops for 3 String variables, found {}", drops);
+}
