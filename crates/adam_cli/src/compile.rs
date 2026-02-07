@@ -313,22 +313,25 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "main".to_string());
 
-    let mut codegen = if let Some(ref target) = opts.target {
-        let target_config = adam_codegen::targets::Platform::from_cli_name(target)
-            .ok_or_else(|| format!("unknown target: {}", target))?;
-        let triple = match target_config {
-            adam_codegen::targets::Platform::IOS => "aarch64-apple-ios",
-            adam_codegen::targets::Platform::IOSSimulator => {
-                if cfg!(target_arch = "aarch64") {
-                    "aarch64-apple-ios-simulator"
-                } else {
-                    "x86_64-apple-ios-simulator"
-                }
+    // Resolve target configuration.
+    let target_config = if let Some(ref target) = opts.target {
+        let platform = adam_codegen::targets::Platform::from_cli_name(target)
+            .ok_or_else(|| format!("unknown target '{}' (expected: ios, ios-simulator, android, android-emulator, macos, linux)", target))?;
+        Some(match platform {
+            adam_codegen::targets::Platform::IOS => adam_codegen::targets::ios::ios_device_target(),
+            adam_codegen::targets::Platform::IOSSimulator => adam_codegen::targets::ios::ios_simulator_target(),
+            adam_codegen::targets::Platform::Android => adam_codegen::targets::android::android_device_target(),
+            adam_codegen::targets::Platform::AndroidEmulator => adam_codegen::targets::android::android_emulator_target(),
+            adam_codegen::targets::Platform::MacOS | adam_codegen::targets::Platform::Linux => {
+                adam_codegen::TargetConfig::host()
             }
-            adam_codegen::targets::Platform::Android => "aarch64-linux-android24",
-            _ => return Err(format!("unsupported cross-compilation target: {}", target)),
-        };
-        adam_codegen::CodeGen::with_triple(&context, &module_name, triple)
+        })
+    } else {
+        None
+    };
+
+    let mut codegen = if let Some(ref config) = target_config {
+        adam_codegen::CodeGen::with_triple(&context, &module_name, &config.triple)
     } else {
         adam_codegen::CodeGen::new(&context, &module_name)
     };
@@ -352,14 +355,28 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
     // Link.
     let runtime_lib = adam_codegen::find_runtime_library(None)
         .map_err(|e| format!("{}", e))?;
-    let exe_path = build_dir.join(&module_name);
-    adam_codegen::link_object(&object_path, &runtime_lib, &exe_path)
-        .map_err(|e| format!("link error: {}", e))?;
 
-    if opts.verbose {
-        println!("Built: {}", exe_path.display());
+    if let Some(ref config) = target_config {
+        // Cross-compilation: use target-specific output name and linker.
+        let output_name = config.output_filename(&module_name);
+        let output_path = build_dir.join(&output_name);
+        adam_codegen::link_with_target_config(&object_path, &runtime_lib, &output_path, config)
+            .map_err(|e| format!("link error: {}", e))?;
+        if opts.verbose {
+            println!("Built: {} (target: {})", output_path.display(), config.platform);
+        } else {
+            println!("{}", output_path.display());
+        }
     } else {
-        println!("{}", exe_path.display());
+        // Native build: use standard linker.
+        let exe_path = build_dir.join(&module_name);
+        adam_codegen::link_object(&object_path, &runtime_lib, &exe_path)
+            .map_err(|e| format!("link error: {}", e))?;
+        if opts.verbose {
+            println!("Built: {}", exe_path.display());
+        } else {
+            println!("{}", exe_path.display());
+        }
     }
 
     Ok(())
@@ -559,5 +576,68 @@ mod tests {
             "fn apply(f fn(i32) -> i32, x i32) -> i32 {\n    f(x)\n}\nfn main() {\n    double := |x i32| x * 2\n    result := apply(double, 21)\n}"
         );
         assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    // ============================================================
+    // Cross-compilation target resolution tests
+    // ============================================================
+
+    #[test]
+    fn test_target_ios_resolves() {
+        let platform = adam_codegen::targets::Platform::from_cli_name("ios").unwrap();
+        assert_eq!(platform, adam_codegen::targets::Platform::IOS);
+        let config = adam_codegen::targets::ios::ios_device_target();
+        assert_eq!(config.triple, "aarch64-apple-ios");
+        assert!(config.frameworks.contains(&"UIKit".to_string()));
+    }
+
+    #[test]
+    fn test_target_ios_simulator_resolves() {
+        let platform = adam_codegen::targets::Platform::from_cli_name("ios-simulator").unwrap();
+        assert_eq!(platform, adam_codegen::targets::Platform::IOSSimulator);
+        let config = adam_codegen::targets::ios::ios_simulator_target();
+        assert!(config.triple.contains("simulator"));
+    }
+
+    #[test]
+    fn test_target_android_resolves() {
+        let platform = adam_codegen::targets::Platform::from_cli_name("android").unwrap();
+        assert_eq!(platform, adam_codegen::targets::Platform::Android);
+        let config = adam_codegen::targets::android::android_device_target();
+        assert!(config.triple.starts_with("aarch64-linux-android"));
+        assert!(config.system_libs.contains(&"android".to_string()));
+    }
+
+    #[test]
+    fn test_target_android_emulator_resolves() {
+        let platform = adam_codegen::targets::Platform::from_cli_name("android-emulator").unwrap();
+        assert_eq!(platform, adam_codegen::targets::Platform::AndroidEmulator);
+        let config = adam_codegen::targets::android::android_emulator_target();
+        assert!(config.triple.starts_with("x86_64-linux-android"));
+    }
+
+    #[test]
+    fn test_target_unknown_fails() {
+        assert!(adam_codegen::targets::Platform::from_cli_name("wasm").is_none());
+        assert!(adam_codegen::targets::Platform::from_cli_name("windows").is_none());
+    }
+
+    #[test]
+    fn test_target_output_filename() {
+        let ios_config = adam_codegen::targets::ios::ios_device_target();
+        assert_eq!(ios_config.output_filename("app"), "libapp.a");
+
+        let android_config = adam_codegen::targets::android::android_device_target();
+        assert_eq!(android_config.output_filename("app"), "libapp.so");
+    }
+
+    #[test]
+    fn test_host_target_config() {
+        let host = adam_codegen::TargetConfig::host();
+        #[cfg(target_os = "macos")]
+        assert_eq!(host.platform, adam_codegen::targets::Platform::MacOS);
+        #[cfg(target_os = "linux")]
+        assert_eq!(host.platform, adam_codegen::targets::Platform::Linux);
+        assert!(!host.triple.is_empty());
     }
 }

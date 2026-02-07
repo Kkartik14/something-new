@@ -307,6 +307,7 @@ impl Parser {
         self.skip_newlines();
 
         let mut methods = vec![];
+        let mut associated_types = vec![];
         while !self.at(TokenKind::RBrace) && !self.at(TokenKind::Eof) {
             let method_start = self.current_span();
             let method_vis = self.parse_visibility();
@@ -314,6 +315,10 @@ impl Parser {
                 let def = self.parse_fn_def(method_vis)?;
                 let s = method_start.merge(self.prev_span());
                 methods.push(Spanned::new(def, s));
+            } else if self.at(TokenKind::TypeKw) {
+                self.advance(); // consume 'type'
+                let type_name = self.expect_ident()?;
+                associated_types.push(AssociatedTypeDef { name: type_name });
             } else {
                 return Err(self.error_at_current(&format!(
                     "expected method definition in trait, found {}",
@@ -330,6 +335,7 @@ impl Parser {
             name,
             generic_params,
             methods,
+            associated_types,
         })
     }
 
@@ -362,6 +368,7 @@ impl Parser {
         self.skip_newlines();
 
         let mut methods = vec![];
+        let mut associated_type_bindings = vec![];
         while !self.at(TokenKind::RBrace) && !self.at(TokenKind::Eof) {
             let method_start = self.current_span();
             let method_vis = self.parse_visibility();
@@ -369,6 +376,12 @@ impl Parser {
                 let def = self.parse_fn_def(method_vis)?;
                 let s = method_start.merge(self.prev_span());
                 methods.push(Spanned::new(def, s));
+            } else if self.at(TokenKind::TypeKw) {
+                self.advance(); // consume 'type'
+                let type_name = self.expect_ident()?;
+                self.expect(TokenKind::Assign)?;
+                let concrete_type = self.parse_type()?;
+                associated_type_bindings.push((type_name, concrete_type));
             } else {
                 return Err(self.error_at_current(&format!(
                     "expected method definition in impl, found {}",
@@ -385,6 +398,7 @@ impl Parser {
             trait_name,
             target_type,
             methods,
+            associated_type_bindings,
         })
     }
 

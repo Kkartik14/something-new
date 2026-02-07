@@ -922,6 +922,63 @@ fn test_string_interpolation() {
     assert!(has_string, "String interpolation should produce String");
 }
 
+#[test]
+fn test_string_interpolation_with_int() {
+    let src = r#"fn main() {
+    x := 42
+    msg := "value is {x}"
+}"#;
+    let result = typecheck_ok(src);
+    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(has_string, "String interpolation with int should produce String");
+}
+
+#[test]
+fn test_string_interpolation_with_float() {
+    let src = r#"fn main() {
+    x := 3.14
+    msg := "pi is {x}"
+}"#;
+    let result = typecheck_ok(src);
+    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(has_string, "String interpolation with float should produce String");
+}
+
+#[test]
+fn test_string_interpolation_with_bool() {
+    let src = r#"fn main() {
+    b := true
+    msg := "flag is {b}"
+}"#;
+    let result = typecheck_ok(src);
+    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(has_string, "String interpolation with bool should produce String");
+}
+
+#[test]
+fn test_string_interpolation_undefined_var() {
+    let src = r#"fn main() {
+    msg := "hello {undefined_var}"
+}"#;
+    let result = typecheck_with_errors(src);
+    assert!(
+        !result.errors.is_empty(),
+        "Interpolation with undefined variable should produce an error"
+    );
+}
+
+#[test]
+fn test_string_interpolation_multiple_parts() {
+    let src = r#"fn main() {
+    x := 1
+    y := 2
+    msg := "x={x} y={y}"
+}"#;
+    let result = typecheck_ok(src);
+    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(has_string, "Multi-part string interpolation should produce String");
+}
+
 // ============================================================
 // 65: Block expression
 // ============================================================
@@ -1573,4 +1630,244 @@ fn error_non_exhaustive_match_shows_type() {
         "Error should mention type 'i32': {:?}",
         result.errors
     );
+}
+
+// ============================================================
+// Exhaustiveness checking for nested patterns
+// ============================================================
+
+#[test]
+fn exhaustive_nested_enum_all_variants_covered() {
+    // Nested enum: Option wrapping Shape — all inner variants covered.
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+}
+enum Opt {
+    Some(Shape)
+    None
+}
+fn describe(o Opt) -> i32 {
+    match o {
+        Opt.Some(Shape.Circle(r)) => 1
+        Opt.Some(Shape.Square(s)) => 2
+        Opt.None => 0
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn non_exhaustive_nested_enum_missing_inner_variant() {
+    // Missing Shape.Square inside Some — should report non-exhaustive.
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+}
+enum Opt {
+    Some(Shape)
+    None
+}
+fn describe(o Opt) -> i32 {
+    match o {
+        Opt.Some(Shape.Circle(r)) => 1
+        Opt.None => 0
+    }
+}"#;
+    let result = typecheck_with_errors(src);
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("Some")),
+        "Should report missing Some(Square): {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn exhaustive_enum_with_wildcard_inner() {
+    // Wildcard inside Some covers all inner variants.
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+}
+enum Opt {
+    Some(Shape)
+    None
+}
+fn describe(o Opt) -> i32 {
+    match o {
+        Opt.Some(_) => 1
+        Opt.None => 0
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn exhaustive_enum_with_binding_inner() {
+    // Binding inside Some covers all inner variants.
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+}
+enum Opt {
+    Some(Shape)
+    None
+}
+fn describe(o Opt) -> i32 {
+    match o {
+        Opt.Some(s) => 1
+        Opt.None => 0
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn non_exhaustive_missing_outer_variant() {
+    // Missing None entirely.
+    let src = r#"enum Opt {
+    Some(i32)
+    None
+}
+fn get(o Opt) -> i32 {
+    match o {
+        Opt.Some(x) => x
+    }
+}"#;
+    let result = typecheck_with_errors(src);
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("None")),
+        "Should report missing None: {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn exhaustive_or_pattern_covers_all() {
+    // Or-pattern covering all variants.
+    let src = r#"enum Color {
+    Red
+    Green
+    Blue
+}
+fn code(c Color) -> i32 {
+    match c {
+        Color.Red => 0
+        Color.Green | Color.Blue => 1
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn exhaustive_bool_both_branches() {
+    let src = r#"fn check(b bool) -> i32 {
+    match b {
+        true => 1
+        false => 0
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn non_exhaustive_bool_missing_false() {
+    let src = r#"fn check(b bool) -> i32 {
+    match b {
+        true => 1
+    }
+}"#;
+    let result = typecheck_with_errors(src);
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("non-exhaustive")),
+        "Should report non-exhaustive bool match: {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn exhaustive_nested_wildcard_shortcircuit() {
+    // Wildcard at top level covers everything — no need to recurse.
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+}
+fn area(s Shape) -> f64 {
+    match s {
+        Shape.Circle(r) => r
+        _ => 0.0
+    }
+}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn non_exhaustive_deeply_nested() {
+    // Three levels deep: Result wrapping Opt wrapping Shape
+    let src = r#"enum Shape {
+    Circle(f64)
+    Square(f64)
+    Triangle(f64)
+}
+enum Opt {
+    Some(Shape)
+    None
+}
+enum Res {
+    Ok(Opt)
+    Err(String)
+}
+fn process(r Res) -> i32 {
+    match r {
+        Res.Ok(Opt.Some(Shape.Circle(x))) => 1
+        Res.Ok(Opt.Some(Shape.Square(x))) => 2
+        Res.Ok(Opt.None) => 3
+        Res.Err(msg) => 4
+    }
+}"#;
+    let result = typecheck_with_errors(src);
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("non-exhaustive")),
+        "Should report missing Ok(Some(Triangle)): {:?}",
+        result.errors
+    );
+}
+
+// ============================================================
+// Associated types
+// ============================================================
+
+#[test]
+fn test_trait_with_associated_type_parses() {
+    // Trait with associated type should parse and type-check without error.
+    let src = r#"trait Container {
+    type Item
+    fn get(self) -> i32
+}
+fn main() {}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
+}
+
+#[test]
+fn test_impl_with_associated_type_binding() {
+    // Impl block binds the associated type.
+    let src = r#"trait Container {
+    type Item
+    fn size(self) -> i32
+}
+struct MyVec {}
+impl Container for MyVec {
+    type Item = i32
+    fn size(self) -> i32 { 0 }
+}
+fn main() {}"#;
+    let result = typecheck_ok(src);
+    assert!(result.errors.is_empty());
 }

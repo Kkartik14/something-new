@@ -31,6 +31,7 @@ pub mod render;
 pub mod input;
 pub mod animation;
 pub mod components;
+pub mod skia_backend;
 
 // Re-exports for convenience
 pub use state::{ReactiveCell, ViewId, CellId, Binding, SubscriptionRegistry};
@@ -38,6 +39,7 @@ pub use view::{View, ViewContext};
 pub use vtree::{ViewNode, ContainerKind, Modifiers, Color, EdgeInsets, Key, ActionId, BindingId};
 pub use layout::{LayoutRect, LayoutNode, Constraints, TextMeasure, EstimatedTextMeasure};
 pub use render::{RenderBackend, RenderCommand, TestRenderBackend};
+pub use skia_backend::SkiaRenderBackend;
 pub use input::{InputEvent, UIEvent, EventProcessor, HitTestResult};
 pub use animation::{Animation, AnimationManager, Easing, SpringParams};
 pub use components::ViewModifiers;

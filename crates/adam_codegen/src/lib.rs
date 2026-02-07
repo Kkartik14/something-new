@@ -9,7 +9,7 @@ pub mod link;
 pub mod targets;
 
 pub use context::CodeGen;
-pub use link::{link_object, find_runtime_library};
+pub use link::{link_object, link_with_target_config, find_runtime_library};
 pub use targets::{Platform, Arch, TargetConfig, OutputFormat};
 
 #[cfg(test)]

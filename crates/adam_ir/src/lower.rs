@@ -632,8 +632,6 @@ impl Lowerer {
             }
 
             Expr::StringInterpolation(parts) => {
-                // Lower each part, concatenate via calls.
-                // For now, produce a simplified representation.
                 let mut result = None;
                 for part in parts {
                     let operand = match part {
@@ -642,13 +640,59 @@ impl Lowerer {
                             Operand::Constant(Constant::String(idx))
                         }
                         StringPart::Interpolation(expr) => {
-                            self.lower_expr(&expr.node)
+                            let raw = self.lower_expr(&expr.node);
+                            let expr_ty = self.infer_expr_type(&expr.node);
+                            match expr_ty {
+                                IrType::String => raw,
+                                IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
+                                | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64 => {
+                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    self.emit(Instruction::Assign(
+                                        tmp,
+                                        RValue::CallNamed("__int_to_string".to_string(), vec![raw]),
+                                    ));
+                                    Operand::Var(tmp)
+                                }
+                                IrType::F32 | IrType::F64 => {
+                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    self.emit(Instruction::Assign(
+                                        tmp,
+                                        RValue::CallNamed("__float_to_string".to_string(), vec![raw]),
+                                    ));
+                                    Operand::Var(tmp)
+                                }
+                                IrType::Bool => {
+                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    self.emit(Instruction::Assign(
+                                        tmp,
+                                        RValue::CallNamed("__bool_to_string".to_string(), vec![raw]),
+                                    ));
+                                    Operand::Var(tmp)
+                                }
+                                IrType::Char => {
+                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    self.emit(Instruction::Assign(
+                                        tmp,
+                                        RValue::CallNamed("__char_to_string".to_string(), vec![raw]),
+                                    ));
+                                    Operand::Var(tmp)
+                                }
+                                _ => {
+                                    // For other types, attempt int_to_string as fallback
+                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    self.emit(Instruction::Assign(
+                                        tmp,
+                                        RValue::CallNamed("__int_to_string".to_string(), vec![raw]),
+                                    ));
+                                    Operand::Var(tmp)
+                                }
+                            }
                         }
                     };
                     result = Some(match result {
                         None => operand,
                         Some(prev) => {
-                            let tmp = self.fresh_tmp();
+                            let tmp = self.fresh_var(format!("_concat{}", self.next_var), IrType::String);
                             self.emit(Instruction::Assign(
                                 tmp,
                                 RValue::CallNamed("__str_concat".to_string(), vec![prev, operand]),

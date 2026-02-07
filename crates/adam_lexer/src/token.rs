@@ -57,6 +57,7 @@ pub enum TokenKind {
     Trait,
     Impl,
     View,
+    TypeKw,
     Let,
     Mut,
     Own,
@@ -195,6 +196,7 @@ impl TokenKind {
                 | TokenKind::Nil
                 | TokenKind::SelfValue
                 | TokenKind::SelfType
+                | TokenKind::TypeKw
         )
     }
 }
@@ -214,6 +216,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Trait => write!(f, "`trait`"),
             TokenKind::Impl => write!(f, "`impl`"),
             TokenKind::View => write!(f, "`view`"),
+            TokenKind::TypeKw => write!(f, "`type`"),
             TokenKind::Let => write!(f, "`let`"),
             TokenKind::Mut => write!(f, "`mut`"),
             TokenKind::Own => write!(f, "`own`"),

@@ -209,3 +209,14 @@ impl Default for OwnershipTracker {
         Self::new()
     }
 }
+
+/// Tracks the origin of a borrow — what a reference points to.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BorrowOrigin {
+    /// Points to a local variable declared at a given scope depth.
+    Local { name: String, scope_depth: usize },
+    /// Points to a function parameter (always valid for the function's lifetime).
+    Param { name: String },
+    /// Unknown origin (e.g. from a function call).
+    Unknown,
+}

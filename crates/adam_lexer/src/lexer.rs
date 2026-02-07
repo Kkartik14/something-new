@@ -309,6 +309,7 @@ impl<'src> Lexer<'src> {
             "trait" => TokenKind::Trait,
             "impl" => TokenKind::Impl,
             "view" => TokenKind::View,
+            "type" => TokenKind::TypeKw,
             "let" => TokenKind::Let,
             "mut" => TokenKind::Mut,
             "own" => TokenKind::Own,

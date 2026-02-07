@@ -16,7 +16,7 @@ use adam_ast::types::Type;
 use adam_resolve::ResolveResult;
 use adam_types::TypeCheckResult;
 
-use crate::ownership::{OwnershipTracker, VarState};
+use crate::ownership::{BorrowOrigin, OwnershipTracker, VarState};
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -66,6 +66,14 @@ pub struct BorrowChecker {
     var_types: HashMap<String, String>,
     /// Declarations from the resolver for mutability lookup.
     decl_mutability: HashMap<String, bool>,
+    /// Current scope depth (0 = function body).
+    scope_depth: usize,
+    /// Variable name -> scope depth at which it was declared.
+    var_scopes: HashMap<String, usize>,
+    /// Borrow origins: ref_var_name -> what it points to.
+    borrow_origins: HashMap<String, BorrowOrigin>,
+    /// Names of function parameters (always outlive locals).
+    fn_params: Vec<String>,
 }
 
 impl BorrowChecker {
@@ -76,6 +84,10 @@ impl BorrowChecker {
             fn_param_ownerships: HashMap::new(),
             var_types: HashMap::new(),
             decl_mutability: HashMap::new(),
+            scope_depth: 0,
+            var_scopes: HashMap::new(),
+            borrow_origins: HashMap::new(),
+            fn_params: Vec::new(),
         }
     }
 
@@ -195,6 +207,15 @@ impl BorrowChecker {
         let outer_tracker = std::mem::replace(&mut self.tracker, OwnershipTracker::new());
         let outer_var_types = self.var_types.clone();
         let outer_decl_mut = self.decl_mutability.clone();
+        let outer_scope_depth = self.scope_depth;
+        let outer_var_scopes = self.var_scopes.clone();
+        let outer_borrow_origins = self.borrow_origins.clone();
+        let outer_fn_params = self.fn_params.clone();
+
+        self.scope_depth = 0;
+        self.var_scopes.clear();
+        self.borrow_origins.clear();
+        self.fn_params.clear();
 
         // Register parameters.
         for param in &func.params {
@@ -207,6 +228,10 @@ impl BorrowChecker {
                 self.var_types.insert(param.name.name.clone(), ty_name);
             }
             self.decl_mutability.insert(param.name.name.clone(), mutable);
+
+            // Register as function parameter for borrow origin analysis.
+            self.fn_params.push(param.name.name.clone());
+            self.var_scopes.insert(param.name.name.clone(), 0);
         }
 
         // Check the body.
@@ -218,6 +243,10 @@ impl BorrowChecker {
         self.tracker = outer_tracker;
         self.var_types = outer_var_types;
         self.decl_mutability = outer_decl_mut;
+        self.scope_depth = outer_scope_depth;
+        self.var_scopes = outer_var_scopes;
+        self.borrow_origins = outer_borrow_origins;
+        self.fn_params = outer_fn_params;
     }
 
     /// Extract a simple type name string from an AST Type node.
@@ -238,9 +267,46 @@ impl BorrowChecker {
     // ---- Blocks ------------------------------------------------------------
 
     fn check_block(&mut self, block: &Block) {
+        self.scope_depth += 1;
         for stmt in &block.stmts {
             self.check_stmt(&stmt.node);
         }
+        self.check_scope_exit();
+        self.scope_depth -= 1;
+    }
+
+    /// On scope exit, check if any reference in an outer scope points to a
+    /// local variable that is about to be destroyed.
+    fn check_scope_exit(&mut self) {
+        let dying_depth = self.scope_depth;
+        let mut errors_to_add = Vec::new();
+
+        for (ref_var, origin) in &self.borrow_origins {
+            if let BorrowOrigin::Local { name: src_name, scope_depth: src_depth } = origin {
+                // The ref_var's own scope depth.
+                let ref_depth = self.var_scopes.get(ref_var).copied().unwrap_or(0);
+
+                // If the source variable lives at the dying depth and the
+                // reference lives in an outer (smaller) scope, the reference
+                // will outlive its source.
+                if *src_depth == dying_depth && ref_depth < dying_depth {
+                    errors_to_add.push(format!(
+                        "reference '{}' would outlive the value '{}' it borrows",
+                        ref_var, src_name
+                    ));
+                }
+            }
+        }
+
+        for msg in errors_to_add {
+            self.errors.push(BorrowError::new(msg, Span { start: 0, end: 0 }));
+        }
+
+        // Clean up borrow origins for variables going out of scope.
+        self.borrow_origins.retain(|name, _| {
+            self.var_scopes.get(name).copied().unwrap_or(0) < dying_depth
+        });
+        self.var_scopes.retain(|_, depth| *depth < dying_depth);
     }
 
     // ---- Statements --------------------------------------------------------
@@ -285,6 +351,14 @@ impl BorrowChecker {
             if let Some(ty_name) = self.expr_type_name(&let_stmt.value.node) {
                 self.var_types.insert(let_stmt.name.name.clone(), ty_name);
             }
+        }
+
+        // Track scope depth for this variable.
+        self.var_scopes.insert(let_stmt.name.name.clone(), self.scope_depth);
+
+        // Track borrow origins: if RHS is &expr, record what it points to.
+        if let Some(origin) = self.extract_borrow_origin(&let_stmt.value.node) {
+            self.borrow_origins.insert(let_stmt.name.name.clone(), origin);
         }
     }
 
@@ -833,6 +907,11 @@ impl BorrowChecker {
 
                 // The target is now re-owned (assignment restores owned state).
                 self.tracker.mark_owned(&ident.name, is_mut);
+
+                // Track borrow origins for assignments: x = &y.
+                if let Some(origin) = self.extract_borrow_origin(&assign.value.node) {
+                    self.borrow_origins.insert(ident.name.clone(), origin);
+                }
             }
             Expr::FieldAccess(fa) => {
                 // Check the root object is mutable.
@@ -889,6 +968,18 @@ impl BorrowChecker {
         for (name, var_span) in &used_vars {
             // Check if the variable exists in the current scope.
             if self.tracker.get_state(name).is_some() {
+                // Enforce Send: captured variables must be safe to transfer across threads.
+                if !self.is_var_send(name) {
+                    self.error(
+                        format!(
+                            "cannot capture '{}' in spawn: type '{}' does not implement Send",
+                            name,
+                            self.var_types.get(name).cloned().unwrap_or_else(|| "unknown".into())
+                        ),
+                        *var_span,
+                    );
+                }
+
                 if !self.is_var_copy(name) {
                     // Check it is usable first.
                     if let Some(VarState::Moved { moved_at }) = self.tracker.get_state(name) {
@@ -911,21 +1002,80 @@ impl BorrowChecker {
 
     /// Check that a return expression does not return a reference to a local.
     fn check_return_ref(&mut self, expr: &Expr, span: Span) {
-        if let Expr::Unary(u) = expr {
-            if u.op == UnaryOp::Ref {
-                if let Expr::Identifier(ident) = &u.operand.node {
-                    // If the referenced variable is a local, this is an error.
-                    if self.tracker.get_state(&ident.name).is_some() {
-                        self.error(
-                            format!(
-                                "cannot return reference to local variable '{}'",
-                                ident.name
-                            ),
-                            span,
-                        );
+        if let Some(local_name) = self.references_local(expr) {
+            self.error(
+                format!("cannot return reference to local variable '{}'", local_name),
+                span,
+            );
+        }
+    }
+
+    /// Recursively check if an expression is a reference to a local variable.
+    /// Returns the name of the referenced local if found.
+    fn references_local(&self, expr: &Expr) -> Option<String> {
+        match expr {
+            // Direct reference: &x
+            Expr::Unary(u) if u.op == UnaryOp::Ref => {
+                self.expr_references_local_target(&u.operand.node)
+            }
+            // If expression: check both branches
+            Expr::If(if_expr) => {
+                // Check then branch (last expr in block)
+                if let Some(last) = if_expr.then_block.stmts.last() {
+                    if let Stmt::Expr(e) = &last.node {
+                        if let Some(name) = self.references_local(&e.node) {
+                            return Some(name);
+                        }
                     }
                 }
+                // Check else branch
+                match &if_expr.else_block {
+                    Some(ElseBlock::Else(block)) => {
+                        if let Some(last) = block.stmts.last() {
+                            if let Stmt::Expr(e) = &last.node {
+                                return self.references_local(&e.node);
+                            }
+                        }
+                    }
+                    Some(ElseBlock::ElseIf(elif)) => {
+                        return self.references_local(&Expr::If(Box::new(elif.node.clone())));
+                    }
+                    None => {}
+                }
+                None
             }
+            // Block expression: check last expression
+            Expr::Block(block) => {
+                if let Some(last) = block.stmts.last() {
+                    if let Stmt::Expr(e) = &last.node {
+                        return self.references_local(&e.node);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
+    /// Check if a ref target expression (the operand of &) refers to a local.
+    fn expr_references_local_target(&self, expr: &Expr) -> Option<String> {
+        match expr {
+            Expr::Identifier(ident) => {
+                if self.tracker.get_state(&ident.name).is_some() {
+                    Some(ident.name.clone())
+                } else {
+                    None
+                }
+            }
+            // &x.field — field of a local
+            Expr::FieldAccess(fa) => {
+                self.expr_references_local_target(&fa.object.node)
+            }
+            // &arr[0] — index into a local
+            Expr::Index(idx) => {
+                self.expr_references_local_target(&idx.object.node)
+            }
+            _ => None,
         }
     }
 
@@ -935,6 +1085,55 @@ impl BorrowChecker {
             .get(name)
             .map(|ty| OwnershipTracker::is_copy_type(ty))
             .unwrap_or(false)
+    }
+
+    /// Extract a borrow origin from an expression, if it's a reference.
+    fn extract_borrow_origin(&self, expr: &Expr) -> Option<BorrowOrigin> {
+        if let Expr::Unary(u) = expr {
+            if u.op == UnaryOp::Ref {
+                // Get the target variable name.
+                if let Some(name) = self.extract_ref_target_name(&u.operand.node) {
+                    if self.fn_params.contains(&name) {
+                        return Some(BorrowOrigin::Param { name });
+                    }
+                    let depth = self.var_scopes.get(&name).copied().unwrap_or(0);
+                    return Some(BorrowOrigin::Local { name, scope_depth: depth });
+                }
+            }
+        }
+        None
+    }
+
+    /// Extract the root variable name from a ref target (handles field access and indexing).
+    fn extract_ref_target_name(&self, expr: &Expr) -> Option<String> {
+        match expr {
+            Expr::Identifier(ident) => Some(ident.name.clone()),
+            Expr::FieldAccess(fa) => self.extract_ref_target_name(&fa.object.node),
+            Expr::Index(idx) => self.extract_ref_target_name(&idx.object.node),
+            _ => None,
+        }
+    }
+
+    /// Check if a variable's type implements Send (safe to transfer across threads).
+    fn is_var_send(&self, name: &str) -> bool {
+        self.var_types
+            .get(name)
+            .map(|ty| Self::is_send_type(ty))
+            .unwrap_or(true) // unknown types assumed Send
+    }
+
+    /// Check if a type name is Send. Primitives, String, and channels are Send.
+    /// Rc and raw pointers are not Send.
+    fn is_send_type(type_name: &str) -> bool {
+        // Non-Send types
+        if type_name == "Rc" || type_name.starts_with("Rc[") {
+            return false;
+        }
+        if type_name == "UnsafeCell" || type_name.starts_with("UnsafeCell[") {
+            return false;
+        }
+        // All primitives, String, channels, and user-defined types are Send by default
+        true
     }
 
     /// Collect all variable identifiers used in a block (shallow — not inside nested fns).

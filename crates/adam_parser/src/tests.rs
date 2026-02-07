@@ -1442,3 +1442,55 @@ fn test_parse_match_with_block_body() {
         panic!("expected match");
     }
 }
+
+// ============================================================
+// Associated types
+// ============================================================
+
+#[test]
+fn parse_trait_with_associated_type() {
+    let ast = parse_ok(r#"trait Iterator {
+    type Item
+    fn next(self) -> i32
+}"#);
+    if let Item::Trait(t) = &ast.items[0].node {
+        assert_eq!(t.name.name, "Iterator");
+        assert_eq!(t.associated_types.len(), 1);
+        assert_eq!(t.associated_types[0].name.name, "Item");
+        assert_eq!(t.methods.len(), 1);
+    } else {
+        panic!("expected trait");
+    }
+}
+
+#[test]
+fn parse_impl_with_associated_type_binding() {
+    let ast = parse_ok(r#"impl Iterator for Vec {
+    type Item = i32
+    fn next(self) -> i32 { 0 }
+}"#);
+    if let Item::Impl(imp) = &ast.items[0].node {
+        assert_eq!(imp.associated_type_bindings.len(), 1);
+        assert_eq!(imp.associated_type_bindings[0].0.name, "Item");
+        assert!(matches!(imp.associated_type_bindings[0].1.node, Type::Named(_)));
+        assert_eq!(imp.methods.len(), 1);
+    } else {
+        panic!("expected impl");
+    }
+}
+
+#[test]
+fn parse_trait_multiple_associated_types() {
+    let ast = parse_ok(r#"trait Map {
+    type Key
+    type Value
+    fn get(self, k i32) -> i32
+}"#);
+    if let Item::Trait(t) = &ast.items[0].node {
+        assert_eq!(t.associated_types.len(), 2);
+        assert_eq!(t.associated_types[0].name.name, "Key");
+        assert_eq!(t.associated_types[1].name.name, "Value");
+    } else {
+        panic!("expected trait");
+    }
+}

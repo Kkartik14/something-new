@@ -3,5 +3,10 @@ name = "adam_ui"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = []
+skia = ["skia-safe"]
+
 [dependencies]
 adam_runtime = { path = "../adam_runtime" }
+skia-safe = { version = "0.75", optional = true }

@@ -1040,3 +1040,158 @@ fn regression_borrow_and_move_in_same_call() {
     );
     assert_error_contains(&result, "borrow");
 }
+
+// ===========================================================================
+// Send/Sync enforcement in spawn
+// ===========================================================================
+
+#[test]
+fn test_spawn_with_int_ok() {
+    // i32 is Send — should be fine.
+    assert_no_errors(
+        "fn main() {
+            x := 42
+            spawn {
+                y := x
+            }
+        }",
+    );
+}
+
+#[test]
+fn test_spawn_with_rc_not_send() {
+    // Rc is not Send — should produce a Send error.
+    let result = assert_has_errors(
+        "fn main() {
+            r: Rc = make_rc()
+            spawn {
+                x := r
+            }
+        }",
+    );
+    assert_error_contains(&result, "Send");
+}
+
+#[test]
+fn test_spawn_with_rc_generic_not_send() {
+    // Rc[i32] is not Send — should produce a Send error.
+    let result = assert_has_errors(
+        "fn main() {
+            r: Rc[i32] = make_rc(42)
+            spawn {
+                x := r
+            }
+        }",
+    );
+    assert_error_contains(&result, "Send");
+}
+
+#[test]
+fn test_spawn_with_unsafe_cell_not_send() {
+    // UnsafeCell is not Send.
+    let result = assert_has_errors(
+        "fn main() {
+            cell: UnsafeCell[i32] = make_cell(0)
+            spawn {
+                x := cell
+            }
+        }",
+    );
+    assert_error_contains(&result, "Send");
+}
+
+// ===========================================================================
+// Improved return reference checking
+// ===========================================================================
+
+#[test]
+fn test_return_ref_to_field() {
+    // return &local.field should be caught.
+    let result = assert_has_errors(
+        "struct Point {
+            x i32
+            y i32
+        }
+        fn bad() -> &i32 {
+            p := Point { x: 1, y: 2 }
+            return &p.x
+        }",
+    );
+    assert_error_contains(&result, "cannot return reference to local");
+}
+
+#[test]
+fn test_return_ref_to_index() {
+    // return &arr[0] should be caught.
+    let result = assert_has_errors(
+        "fn bad() -> &i32 {
+            arr := [1, 2, 3]
+            return &arr[0]
+        }",
+    );
+    assert_error_contains(&result, "cannot return reference to local");
+}
+
+#[test]
+fn test_return_ref_to_param_ok() {
+    // Returning a reference to a parameter is OK (caller owns the value).
+    assert_no_errors(
+        "fn ok(x &i32) -> &i32 {
+            return x
+        }",
+    );
+}
+
+#[test]
+fn test_return_ref_nested_field() {
+    // return &local.a.b should be caught.
+    let result = assert_has_errors(
+        "struct Inner { val i32 }
+        struct Outer { inner Inner }
+        fn bad() -> &i32 {
+            o := Outer { inner: Inner { val: 5 } }
+            return &o.inner.val
+        }",
+    );
+    assert_error_contains(&result, "cannot return reference to local");
+}
+
+// ===========================================================================
+// Region / borrow origin analysis
+// ===========================================================================
+
+#[test]
+fn test_ref_outlives_local_in_inner_scope() {
+    // Reference created in outer scope points to local in inner scope.
+    let result = assert_has_errors(
+        "fn bad() {
+            mut r: &i32 = &0
+            if true {
+                x := 42
+                r = &x
+            }
+        }",
+    );
+    assert_error_contains(&result, "outlive");
+}
+
+#[test]
+fn test_ref_to_param_ok() {
+    // Reference to a parameter is always valid within the function.
+    assert_no_errors(
+        "fn ok(x i32) {
+            r := &x
+        }",
+    );
+}
+
+#[test]
+fn test_ref_to_same_scope_ok() {
+    // Reference to a variable in the same scope is fine.
+    assert_no_errors(
+        "fn ok() {
+            x := 42
+            r := &x
+        }",
+    );
+}

@@ -83,6 +83,31 @@ pub fn link_object(
     Ok(())
 }
 
+/// Link an object file using a TargetConfig for cross-compilation.
+pub fn link_with_target_config(
+    object_path: &Path,
+    runtime_lib_path: &Path,
+    output_path: &Path,
+    config: &crate::targets::TargetConfig,
+) -> Result<(), String> {
+    let mut cmd = Command::new(&config.linker);
+    let args = config.linker_command(object_path, runtime_lib_path, output_path);
+    for arg in &args {
+        cmd.arg(arg);
+    }
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("failed to run linker '{}': {}", config.linker, e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("linker failed for target {}: {}", config.platform, stderr));
+    }
+
+    Ok(())
+}
+
 /// Find the Adam runtime static library.
 ///
 /// Searches for `libadam_runtime.a` in:

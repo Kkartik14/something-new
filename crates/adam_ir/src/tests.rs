@@ -510,6 +510,195 @@ fn opt_full_pipeline() {
 }
 
 // ================================================================
+// Copy propagation tests
+// ================================================================
+
+#[test]
+fn opt_copy_prop_simple() {
+    // x = 5; y = x; return y  →  return should use x's var (or the constant after const prop)
+    let mut module = IrModule {
+        functions: vec![IrFunction {
+            id: 0,
+            name: "test".into(),
+            params: vec![],
+            return_type: IrType::I64,
+            entry: 0,
+            locals: vec![
+                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
+                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![
+                    Instruction::Assign(0, RValue::Constant(Constant::Int(5))),
+                    Instruction::Assign(1, RValue::Use(Operand::Var(0))), // y = x
+                ],
+                terminator: Terminator::Return(Some(Operand::Var(1))), // return y
+            }],
+        }],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::copy_propagation(&mut module);
+
+    // After copy prop, return should use var 0 (x) instead of var 1 (y).
+    let f = &module.functions[0];
+    if let Terminator::Return(Some(Operand::Var(v))) = &f.blocks[0].terminator {
+        assert_eq!(*v, 0, "copy prop should replace y with x in return");
+    } else {
+        panic!("expected return with var operand");
+    }
+}
+
+#[test]
+fn opt_copy_prop_no_prop_after_reassign() {
+    // x = 5; y = x; x = 10; return y  →  y should NOT be replaced (x was reassigned)
+    let mut module = IrModule {
+        functions: vec![IrFunction {
+            id: 0,
+            name: "test".into(),
+            params: vec![],
+            return_type: IrType::I64,
+            entry: 0,
+            locals: vec![
+                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
+                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![
+                    Instruction::Assign(0, RValue::Constant(Constant::Int(5))),
+                    Instruction::Assign(1, RValue::Use(Operand::Var(0))), // y = x
+                    Instruction::Assign(0, RValue::Constant(Constant::Int(10))), // x = 10
+                ],
+                terminator: Terminator::Return(Some(Operand::Var(1))), // return y
+            }],
+        }],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::copy_propagation(&mut module);
+
+    // y should still refer to var 1 since the copy y=x was invalidated by x=10.
+    // But wait — the copy y=x happened before x was reassigned. Copy prop records
+    // copies at the point of assignment. When x is reassigned, the copy y->x is
+    // invalidated. But y already got assigned. The return uses var 1 (y).
+    // Actually, copies maps dst->src. After y=x: copies = {1->0}.
+    // After x=10: x is reassigned, so we remove entries where src==0. copies = {}.
+    // Return uses var 1, which is not in copies, so no replacement. Correct!
+    let f = &module.functions[0];
+    if let Terminator::Return(Some(Operand::Var(v))) = &f.blocks[0].terminator {
+        assert_eq!(*v, 1, "should NOT propagate copy after source reassignment");
+    } else {
+        panic!("expected return with var operand");
+    }
+}
+
+// ================================================================
+// Constant propagation tests
+// ================================================================
+
+#[test]
+fn opt_const_prop_simple() {
+    // x = 5; y = x + 1  →  y = 5 + 1
+    let mut module = IrModule {
+        functions: vec![IrFunction {
+            id: 0,
+            name: "test".into(),
+            params: vec![],
+            return_type: IrType::I64,
+            entry: 0,
+            locals: vec![
+                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
+                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![
+                    Instruction::Assign(0, RValue::Constant(Constant::Int(5))),
+                    Instruction::Assign(
+                        1,
+                        RValue::BinaryOp(
+                            BinOp::Add,
+                            Operand::Var(0),       // x
+                            Operand::Constant(Constant::Int(1)),
+                        ),
+                    ),
+                ],
+                terminator: Terminator::Return(Some(Operand::Var(1))),
+            }],
+        }],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::constant_propagation(&mut module);
+
+    // After const prop, the BinaryOp should have Constant(5) instead of Var(0).
+    let f = &module.functions[0];
+    if let Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, lhs, _)) = &f.blocks[0].instructions[1] {
+        assert!(
+            matches!(lhs, Operand::Constant(Constant::Int(5))),
+            "const prop should replace Var(0) with Constant(5), got {:?}",
+            lhs
+        );
+    } else {
+        panic!("expected BinaryOp instruction");
+    }
+}
+
+#[test]
+fn opt_const_prop_then_fold() {
+    // x = 5; y = x + 1  →  after const prop + fold: y = 6
+    let mut module = IrModule {
+        functions: vec![IrFunction {
+            id: 0,
+            name: "test".into(),
+            params: vec![],
+            return_type: IrType::I64,
+            entry: 0,
+            locals: vec![
+                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
+                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![
+                    Instruction::Assign(0, RValue::Constant(Constant::Int(5))),
+                    Instruction::Assign(
+                        1,
+                        RValue::BinaryOp(
+                            BinOp::Add,
+                            Operand::Var(0),
+                            Operand::Constant(Constant::Int(1)),
+                        ),
+                    ),
+                ],
+                terminator: Terminator::Return(Some(Operand::Var(1))),
+            }],
+        }],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    // Run const prop then fold — the full optimize pipeline does this.
+    opt::constant_propagation(&mut module);
+    opt::constant_fold(&mut module);
+
+    let f = &module.functions[0];
+    let has_6 = f.blocks[0].instructions.iter().any(|i| {
+        matches!(i, Instruction::Assign(1, RValue::Constant(Constant::Int(6))))
+    });
+    assert!(has_6, "const prop + fold should produce y = 6");
+}
+
+// ================================================================
 // Verification tests
 // ================================================================
 
@@ -905,4 +1094,345 @@ fn multiple_drops_for_multiple_strings() {
     let f = first_fn(&module);
     let drops = count_drops(f);
     assert!(drops >= 3, "expected at least 3 Drops for 3 String variables, found {}", drops);
+}
+
+// ================================================================
+// String interpolation with type conversion
+// ================================================================
+
+#[test]
+fn lower_string_interpolation_with_int() {
+    let module = lower(r#"fn main() {
+    x := 42
+    msg := "value is {x}"
+}"#);
+    let f = first_fn(&module);
+
+    // Should have a __int_to_string call for the int interpolation.
+    let has_int_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
+    });
+    assert!(has_int_to_str, "int interpolation should emit __int_to_string call");
+
+    // Should also have __str_concat calls.
+    let has_concat = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__str_concat")
+    });
+    assert!(has_concat, "string interpolation should emit __str_concat calls");
+}
+
+#[test]
+fn lower_string_interpolation_with_bool() {
+    let module = lower(r#"fn main() {
+    b := true
+    msg := "flag is {b}"
+}"#);
+    let f = first_fn(&module);
+
+    let has_bool_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__bool_to_string")
+    });
+    assert!(has_bool_to_str, "bool interpolation should emit __bool_to_string call");
+}
+
+#[test]
+fn lower_string_interpolation_string_no_conversion() {
+    let module = lower(r#"fn main() {
+    name := "world"
+    msg := "hello {name}"
+}"#);
+    let f = first_fn(&module);
+
+    // String interpolation of a string var should NOT emit __int_to_string etc.
+    let has_int_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
+    });
+    assert!(!has_int_to_str, "string interpolation of String var should not emit __int_to_string");
+
+    // Should still have __str_concat.
+    let has_concat = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__str_concat")
+    });
+    assert!(has_concat, "string interpolation should emit __str_concat calls");
+}
+
+#[test]
+fn lower_string_interpolation_multi_type() {
+    let module = lower(r#"fn main() {
+    x := 1
+    y := 2
+    msg := "x={x} y={y}"
+}"#);
+    let f = first_fn(&module);
+
+    // Should have at least 2 __int_to_string calls (one for x, one for y).
+    let int_to_str_count = f.blocks.iter().flat_map(|b| &b.instructions).filter(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
+    }).count();
+    assert!(int_to_str_count >= 2, "multi-int interpolation should emit at least 2 __int_to_string calls, got {}", int_to_str_count);
+}
+
+// ================================================================
+// Function inlining tests
+// ================================================================
+
+#[test]
+fn opt_inline_simple_function() {
+    // add(a, b) = a + b; main calls add(3, 4) → should inline the add body
+    let mut module = IrModule {
+        functions: vec![
+            IrFunction {
+                id: 0,
+                name: "add".into(),
+                params: vec![
+                    IrParam { name: "a".into(), ty: IrType::I64 },
+                    IrParam { name: "b".into(), ty: IrType::I64 },
+                ],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "a".into(), ty: IrType::I64 },
+                    IrLocal { id: 1, name: "b".into(), ty: IrType::I64 },
+                    IrLocal { id: 2, name: "result".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(2, RValue::BinaryOp(
+                            BinOp::Add,
+                            Operand::Var(0),
+                            Operand::Var(1),
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(2))),
+                }],
+            },
+            IrFunction {
+                id: 1,
+                name: "main".into(),
+                params: vec![],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(0, RValue::CallNamed(
+                            "add".into(),
+                            vec![Operand::Constant(Constant::Int(3)), Operand::Constant(Constant::Int(4))],
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+        ],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::function_inline(&mut module);
+
+    // The main function should no longer have a CallNamed to "add".
+    let main_fn = &module.functions[1];
+    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "add")
+    });
+    assert!(!has_call, "add() call should have been inlined");
+
+    // Should have a BinaryOp(Add, ...) instruction in main instead.
+    let has_add = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _)))
+    });
+    assert!(has_add, "inlined add body should contain BinaryOp::Add");
+}
+
+#[test]
+fn opt_inline_recursive_not_inlined() {
+    // factorial(n) calls factorial(n-1) — should NOT be inlined
+    let mut module = IrModule {
+        functions: vec![
+            IrFunction {
+                id: 0,
+                name: "factorial".into(),
+                params: vec![IrParam { name: "n".into(), ty: IrType::I64 }],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "n".into(), ty: IrType::I64 },
+                    IrLocal { id: 1, name: "tmp".into(), ty: IrType::I64 },
+                    IrLocal { id: 2, name: "rec".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(1, RValue::BinaryOp(
+                            BinOp::Sub, Operand::Var(0), Operand::Constant(Constant::Int(1)),
+                        )),
+                        Instruction::Assign(2, RValue::CallNamed(
+                            "factorial".into(), vec![Operand::Var(1)],
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(2))),
+                }],
+            },
+            IrFunction {
+                id: 1,
+                name: "main".into(),
+                params: vec![],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(0, RValue::CallNamed(
+                            "factorial".into(), vec![Operand::Constant(Constant::Int(5))],
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+        ],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::function_inline(&mut module);
+
+    // factorial is recursive, so it should NOT be inlineable.
+    // The call in main should still be there.
+    let main_fn = &module.functions[1];
+    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "factorial")
+    });
+    assert!(has_call, "recursive function should NOT be inlined");
+}
+
+#[test]
+fn opt_inline_large_function_not_inlined() {
+    // A function with >= 20 instructions should NOT be inlined.
+    let many_instructions: Vec<Instruction> = (0..21u32)
+        .map(|i| Instruction::Assign(i + 1, RValue::Constant(Constant::Int(i as i64))))
+        .collect();
+
+    let mut locals: Vec<IrLocal> = vec![IrLocal { id: 0, name: "x".into(), ty: IrType::I64 }];
+    for i in 0..21u32 {
+        locals.push(IrLocal { id: i + 1, name: format!("t{}", i), ty: IrType::I64 });
+    }
+
+    let mut module = IrModule {
+        functions: vec![
+            IrFunction {
+                id: 0,
+                name: "big".into(),
+                params: vec![IrParam { name: "x".into(), ty: IrType::I64 }],
+                return_type: IrType::I64,
+                entry: 0,
+                locals,
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: many_instructions,
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+            IrFunction {
+                id: 1,
+                name: "main".into(),
+                params: vec![],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(0, RValue::CallNamed(
+                            "big".into(), vec![Operand::Constant(Constant::Int(1))],
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+        ],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::function_inline(&mut module);
+
+    // big() has >= 20 instructions, should NOT be inlined.
+    let main_fn = &module.functions[1];
+    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "big")
+    });
+    assert!(has_call, "large function should NOT be inlined");
+}
+
+#[test]
+fn opt_inline_param_substitution() {
+    // identity(x) = x; main calls identity(42) → result should use constant 42
+    let mut module = IrModule {
+        functions: vec![
+            IrFunction {
+                id: 0,
+                name: "identity".into(),
+                params: vec![IrParam { name: "x".into(), ty: IrType::I64 }],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![],
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+            IrFunction {
+                id: 1,
+                name: "main".into(),
+                params: vec![],
+                return_type: IrType::I64,
+                entry: 0,
+                locals: vec![
+                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
+                ],
+                blocks: vec![BasicBlock {
+                    id: 0,
+                    instructions: vec![
+                        Instruction::Assign(0, RValue::CallNamed(
+                            "identity".into(), vec![Operand::Constant(Constant::Int(42))],
+                        )),
+                    ],
+                    terminator: Terminator::Return(Some(Operand::Var(0))),
+                }],
+            },
+        ],
+        globals: vec![],
+        string_literals: vec![],
+        struct_defs: vec![],
+    };
+
+    opt::function_inline(&mut module);
+
+    // After inlining identity(42), res should be assigned Use(Constant(42))
+    let main_fn = &module.functions[1];
+    let has_const_42 = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(0, RValue::Use(Operand::Constant(Constant::Int(42)))))
+    });
+    assert!(has_const_42, "inlined identity(42) should produce Assign(res, Use(Constant(42)))");
+
+    // Should NOT have a CallNamed anymore.
+    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
+        matches!(i, Instruction::Assign(_, RValue::CallNamed(..)))
+    });
+    assert!(!has_call, "identity call should be fully inlined");
 }

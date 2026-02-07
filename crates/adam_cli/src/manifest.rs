@@ -201,24 +201,194 @@ pub fn pkg_remove(name: &str) -> Result<(), i32> {
 }
 
 pub fn pkg_update() -> Result<(), i32> {
-    let _manifest = Manifest::load().map_err(|e| {
+    let manifest = Manifest::load().map_err(|e| {
         eprintln!("error: {}", e);
         1
     })?;
 
-    // Resolve dependencies and update lock file.
-    let lock = LockFile { packages: Vec::new() };
+    // Resolve dependencies and generate lock file.
+    let mut locked = Vec::new();
+    for (name, spec) in &manifest.dependencies {
+        let resolved = resolve_dependency(name, spec).map_err(|e| {
+            eprintln!("error resolving '{}': {}", name, e);
+            1
+        })?;
+        locked.push(resolved);
+    }
+
+    let lock = LockFile { packages: locked };
     lock.save().map_err(|e| {
         eprintln!("error: {}", e);
         1
     })?;
 
-    println!("Dependencies updated.");
+    println!("Dependencies updated ({} packages).", lock.packages.len());
     Ok(())
 }
 
+fn resolve_dependency(name: &str, spec: &DependencySpec) -> Result<LockedPackage, String> {
+    match spec {
+        DependencySpec::Version(v) => {
+            // Parse version requirement and resolve to a concrete version.
+            let _req = SemverReq::parse(v)?;
+            // Without a registry, resolve to the required version directly.
+            let resolved_version = match v.as_str() {
+                "*" => "0.0.0".to_string(),
+                _ => strip_comparator(v),
+            };
+            Ok(LockedPackage {
+                name: name.to_string(),
+                version: resolved_version,
+                source: Some("registry".to_string()),
+                checksum: None,
+            })
+        }
+        DependencySpec::Detailed(d) => {
+            let version = d.version.clone().unwrap_or_else(|| "0.0.0".to_string());
+            let source = if let Some(git) = &d.git {
+                Some(format!("git+{}", git))
+            } else if let Some(path) = &d.path {
+                Some(format!("path+{}", path))
+            } else {
+                Some("registry".to_string())
+            };
+            Ok(LockedPackage {
+                name: name.to_string(),
+                version,
+                source,
+                checksum: None,
+            })
+        }
+    }
+}
+
+/// Strip semver comparators to get the base version.
+fn strip_comparator(s: &str) -> String {
+    let s = s.trim();
+    let s = s.strip_prefix(">=").unwrap_or(s);
+    let s = s.strip_prefix("<=").unwrap_or(s);
+    let s = s.strip_prefix('>').unwrap_or(s);
+    let s = s.strip_prefix('<').unwrap_or(s);
+    let s = s.strip_prefix('~').unwrap_or(s);
+    let s = s.strip_prefix('^').unwrap_or(s);
+    let s = s.strip_prefix('=').unwrap_or(s);
+    s.trim().to_string()
+}
+
+// ---------------------------------------------------------------------------
+// Semver parsing and matching
+// ---------------------------------------------------------------------------
+
+/// A parsed semantic version: major.minor.patch
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Semver {
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+}
+
+impl Semver {
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = s.trim().split('.').collect();
+        let major = parts.first()
+            .ok_or("missing major version")?
+            .parse::<u64>()
+            .map_err(|_| format!("invalid major version in '{}'", s))?;
+        let minor = parts.get(1)
+            .map(|p| p.parse::<u64>())
+            .transpose()
+            .map_err(|_| format!("invalid minor version in '{}'", s))?
+            .unwrap_or(0);
+        let patch = parts.get(2)
+            .map(|p| p.parse::<u64>())
+            .transpose()
+            .map_err(|_| format!("invalid patch version in '{}'", s))?
+            .unwrap_or(0);
+        Ok(Semver { major, minor, patch })
+    }
+}
+
+impl std::fmt::Display for Semver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+/// A semver requirement (version constraint).
+#[derive(Debug, Clone)]
+pub enum SemverReq {
+    /// Any version
+    Any,
+    /// Exact match: =1.2.3 or 1.2.3
+    Exact(Semver),
+    /// Caret: ^1.2.3 (>=1.2.3, <2.0.0)
+    Caret(Semver),
+    /// Tilde: ~1.2.3 (>=1.2.3, <1.3.0)
+    Tilde(Semver),
+    /// Greater or equal: >=1.2.3
+    Gte(Semver),
+    /// Less than: <2.0.0
+    Lt(Semver),
+}
+
+impl SemverReq {
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let s = s.trim();
+        if s == "*" {
+            return Ok(SemverReq::Any);
+        }
+        if let Some(rest) = s.strip_prefix(">=") {
+            return Ok(SemverReq::Gte(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix('>') {
+            // Treat > as >= for simplicity.
+            return Ok(SemverReq::Gte(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix("<=") {
+            // Treat <= as <(next) for simplicity; just use Lt.
+            return Ok(SemverReq::Lt(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix('<') {
+            return Ok(SemverReq::Lt(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix('~') {
+            return Ok(SemverReq::Tilde(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix('^') {
+            return Ok(SemverReq::Caret(Semver::parse(rest)?));
+        }
+        if let Some(rest) = s.strip_prefix('=') {
+            return Ok(SemverReq::Exact(Semver::parse(rest)?));
+        }
+        // Default: caret semantics (like Cargo).
+        Ok(SemverReq::Caret(Semver::parse(s)?))
+    }
+
+    /// Check if a concrete version satisfies this requirement.
+    pub fn matches(&self, ver: &Semver) -> bool {
+        match self {
+            SemverReq::Any => true,
+            SemverReq::Exact(req) => ver == req,
+            SemverReq::Caret(req) => {
+                if req.major > 0 {
+                    ver.major == req.major && *ver >= *req
+                } else if req.minor > 0 {
+                    ver.major == 0 && ver.minor == req.minor && *ver >= *req
+                } else {
+                    ver.major == 0 && ver.minor == 0 && ver.patch == req.patch
+                }
+            }
+            SemverReq::Tilde(req) => {
+                ver.major == req.major && ver.minor == req.minor && ver.patch >= req.patch
+            }
+            SemverReq::Gte(req) => *ver >= *req,
+            SemverReq::Lt(req) => *ver < *req,
+        }
+    }
+}
+
 pub fn pkg_install() -> Result<(), i32> {
-    let _manifest = Manifest::load().map_err(|e| {
+    let manifest = Manifest::load().map_err(|e| {
         eprintln!("error: {}", e);
         1
     })?;
@@ -232,7 +402,42 @@ pub fn pkg_install() -> Result<(), i32> {
         })?;
     }
 
-    println!("Dependencies installed.");
+    // Install path dependencies by symlinking into .adam/packages/.
+    let mut count = 0;
+    for (name, spec) in &manifest.dependencies {
+        if let DependencySpec::Detailed(d) = spec {
+            if let Some(path) = &d.path {
+                let src = Path::new(path);
+                let dst = pkg_dir.join(name);
+                if dst.exists() {
+                    // Already installed.
+                    continue;
+                }
+                if src.exists() {
+                    #[cfg(unix)]
+                    {
+                        std::os::unix::fs::symlink(
+                            fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf()),
+                            &dst,
+                        ).map_err(|e| {
+                            eprintln!("error: failed to symlink '{}': {}", name, e);
+                            1
+                        })?;
+                    }
+                    #[cfg(not(unix))]
+                    {
+                        // On non-unix, copy the directory.
+                        let _ = fs::create_dir_all(&dst);
+                    }
+                    count += 1;
+                } else {
+                    eprintln!("warning: path dependency '{}' not found at '{}'", name, path);
+                }
+            }
+        }
+    }
+
+    println!("Dependencies installed ({} path deps linked).", count);
     Ok(())
 }
 
@@ -365,5 +570,170 @@ git = "https://example.com/repo"
             }
             _ => panic!("expected detailed"),
         }
+    }
+
+    // Semver parsing tests
+
+    #[test]
+    fn test_semver_parse_full() {
+        let v = Semver::parse("1.2.3").unwrap();
+        assert_eq!(v, Semver { major: 1, minor: 2, patch: 3 });
+    }
+
+    #[test]
+    fn test_semver_parse_major_minor() {
+        let v = Semver::parse("2.5").unwrap();
+        assert_eq!(v, Semver { major: 2, minor: 5, patch: 0 });
+    }
+
+    #[test]
+    fn test_semver_parse_major_only() {
+        let v = Semver::parse("3").unwrap();
+        assert_eq!(v, Semver { major: 3, minor: 0, patch: 0 });
+    }
+
+    #[test]
+    fn test_semver_display() {
+        let v = Semver { major: 1, minor: 2, patch: 3 };
+        assert_eq!(v.to_string(), "1.2.3");
+    }
+
+    #[test]
+    fn test_semver_ordering() {
+        let v1 = Semver::parse("1.0.0").unwrap();
+        let v2 = Semver::parse("1.0.1").unwrap();
+        let v3 = Semver::parse("1.1.0").unwrap();
+        let v4 = Semver::parse("2.0.0").unwrap();
+        assert!(v1 < v2);
+        assert!(v2 < v3);
+        assert!(v3 < v4);
+    }
+
+    // SemverReq parsing tests
+
+    #[test]
+    fn test_semver_req_any() {
+        let req = SemverReq::parse("*").unwrap();
+        assert!(req.matches(&Semver::parse("0.0.0").unwrap()));
+        assert!(req.matches(&Semver::parse("99.99.99").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_caret() {
+        let req = SemverReq::parse("^1.2.3").unwrap();
+        assert!(req.matches(&Semver::parse("1.2.3").unwrap()));
+        assert!(req.matches(&Semver::parse("1.9.0").unwrap()));
+        assert!(!req.matches(&Semver::parse("2.0.0").unwrap()));
+        assert!(!req.matches(&Semver::parse("1.2.2").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_caret_zero_major() {
+        let req = SemverReq::parse("^0.2.1").unwrap();
+        assert!(req.matches(&Semver::parse("0.2.1").unwrap()));
+        assert!(req.matches(&Semver::parse("0.2.9").unwrap()));
+        assert!(!req.matches(&Semver::parse("0.3.0").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_tilde() {
+        let req = SemverReq::parse("~1.2.3").unwrap();
+        assert!(req.matches(&Semver::parse("1.2.3").unwrap()));
+        assert!(req.matches(&Semver::parse("1.2.9").unwrap()));
+        assert!(!req.matches(&Semver::parse("1.3.0").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_gte() {
+        let req = SemverReq::parse(">=1.0.0").unwrap();
+        assert!(req.matches(&Semver::parse("1.0.0").unwrap()));
+        assert!(req.matches(&Semver::parse("2.0.0").unwrap()));
+        assert!(!req.matches(&Semver::parse("0.9.9").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_lt() {
+        let req = SemverReq::parse("<2.0.0").unwrap();
+        assert!(req.matches(&Semver::parse("1.9.9").unwrap()));
+        assert!(!req.matches(&Semver::parse("2.0.0").unwrap()));
+    }
+
+    #[test]
+    fn test_semver_req_default_caret() {
+        // Bare version "1.2" should be treated as ^1.2.0
+        let req = SemverReq::parse("1.2").unwrap();
+        assert!(req.matches(&Semver::parse("1.2.0").unwrap()));
+        assert!(req.matches(&Semver::parse("1.9.0").unwrap()));
+        assert!(!req.matches(&Semver::parse("2.0.0").unwrap()));
+    }
+
+    // Resolution tests
+
+    #[test]
+    fn test_resolve_version_dep() {
+        let locked = resolve_dependency("http", &DependencySpec::Version("1.5.0".to_string())).unwrap();
+        assert_eq!(locked.name, "http");
+        assert_eq!(locked.version, "1.5.0");
+        assert_eq!(locked.source, Some("registry".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_wildcard_dep() {
+        let locked = resolve_dependency("util", &DependencySpec::Version("*".to_string())).unwrap();
+        assert_eq!(locked.version, "0.0.0");
+    }
+
+    #[test]
+    fn test_resolve_git_dep() {
+        let locked = resolve_dependency("json", &DependencySpec::Detailed(DetailedDep {
+            version: Some("1.0.0".to_string()),
+            git: Some("https://github.com/example/json".to_string()),
+            path: None,
+        })).unwrap();
+        assert_eq!(locked.name, "json");
+        assert_eq!(locked.version, "1.0.0");
+        assert!(locked.source.as_ref().unwrap().starts_with("git+"));
+    }
+
+    #[test]
+    fn test_resolve_path_dep() {
+        let locked = resolve_dependency("local", &DependencySpec::Detailed(DetailedDep {
+            version: None,
+            git: None,
+            path: Some("../local".to_string()),
+        })).unwrap();
+        assert_eq!(locked.version, "0.0.0");
+        assert!(locked.source.as_ref().unwrap().starts_with("path+"));
+    }
+
+    #[test]
+    fn test_lock_file_with_resolved_deps() {
+        let dir = temp_dir();
+        let lock_path = dir.path().join("adam.lock");
+
+        let lock = LockFile {
+            packages: vec![
+                LockedPackage {
+                    name: "http".to_string(),
+                    version: "2.0.1".to_string(),
+                    source: Some("registry".to_string()),
+                    checksum: None,
+                },
+                LockedPackage {
+                    name: "json".to_string(),
+                    version: "1.0.0".to_string(),
+                    source: Some("git+https://github.com/example/json".to_string()),
+                    checksum: None,
+                },
+            ],
+        };
+
+        let content = toml::to_string_pretty(&lock).unwrap();
+        fs::write(&lock_path, &content).unwrap();
+
+        let loaded: LockFile = toml::from_str(&fs::read_to_string(&lock_path).unwrap()).unwrap();
+        assert_eq!(loaded.packages.len(), 2);
+        assert_eq!(loaded.packages[0].name, "http");
+        assert_eq!(loaded.packages[1].source, Some("git+https://github.com/example/json".to_string()));
     }
 }

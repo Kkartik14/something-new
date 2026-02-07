@@ -975,7 +975,14 @@ impl TypeChecker {
             Expr::IntLiteral(_) => self.ctx.i32(),
             Expr::FloatLiteral(_) => self.ctx.f64(),
             Expr::StringLiteral(_) => self.ctx.string(),
-            Expr::StringInterpolation(_) => self.ctx.string(),
+            Expr::StringInterpolation(parts) => {
+                for part in parts {
+                    if let StringPart::Interpolation(expr) = part {
+                        self.infer_expr(expr);
+                    }
+                }
+                self.ctx.string()
+            }
             Expr::CharLiteral(_) => self.ctx.char(),
             Expr::BoolLiteral(_) => self.ctx.bool(),
             Expr::NilLiteral => {
@@ -1621,96 +1628,119 @@ impl TypeChecker {
     }
 
     fn check_exhaustiveness(&mut self, arms: &[MatchArm], scrutinee_ty: TypeId, span: Span) {
-        let resolved = self.apply_subs(scrutinee_ty);
-
-        // Check if there's a wildcard or binding that catches everything.
-        let has_wildcard = arms.iter().any(|arm| {
-            matches!(
-                arm.pattern.node,
-                Pattern::Wildcard | Pattern::Binding(_)
-            )
-        });
-        if has_wildcard {
-            return;
-        }
-
-        match self.ctx.ty(resolved).clone() {
-            Ty::Enum(enum_id) => {
-                let enum_info = self.ctx.enums[enum_id as usize].clone();
-                let variant_names: Vec<_> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
-
-                let mut covered = vec![false; variant_names.len()];
-                for arm in arms {
-                    if let Pattern::Variant(vp) = &arm.pattern.node {
-                        let name = &vp.name.name;
-                        let variant_name = if let Some(dot_pos) = name.find('.') {
-                            &name[dot_pos + 1..]
-                        } else {
-                            name.as_str()
-                        };
-                        if let Some(idx) = variant_names.iter().position(|v| v == variant_name) {
-                            covered[idx] = true;
-                        }
-                    } else if let Pattern::Or(pats) = &arm.pattern.node {
-                        for pat in pats {
-                            if let Pattern::Variant(vp) = &pat.node {
-                                let name = &vp.name.name;
-                                let variant_name = if let Some(dot_pos) = name.find('.') {
-                                    &name[dot_pos + 1..]
-                                } else {
-                                    name.as_str()
-                                };
-                                if let Some(idx) = variant_names.iter().position(|v| v == variant_name) {
-                                    covered[idx] = true;
-                                }
-                            }
-                        }
-                    }
+        let patterns: Vec<&Pattern> = arms.iter().map(|a| &a.pattern.node).collect();
+        let missing = self.find_missing_patterns(&patterns, scrutinee_ty);
+        if !missing.is_empty() {
+            let resolved = self.apply_subs(scrutinee_ty);
+            match self.ctx.ty(resolved).clone() {
+                Ty::Enum(_) => {
+                    self.err(
+                        format!("non-exhaustive match: missing variant(s): {}", missing.join(", ")),
+                        span,
+                    );
                 }
-
-                let missing: Vec<_> = variant_names
-                    .iter()
-                    .zip(covered.iter())
-                    .filter(|(_, &c)| !c)
-                    .map(|(name, _)| name.clone())
-                    .collect();
-
-                if !missing.is_empty() {
+                Ty::Bool => {
+                    self.err("non-exhaustive match on bool: add a wildcard `_` pattern", span);
+                }
+                _ => {
                     self.err(
                         format!(
-                            "non-exhaustive match: missing variant(s): {}",
-                            missing.join(", ")
+                            "non-exhaustive match on type `{}`: add a wildcard `_` pattern",
+                            self.ctx.display(resolved)
                         ),
                         span,
                     );
                 }
             }
-            Ty::Bool => {
-                let mut has_true = false;
-                let mut has_false = false;
-                for arm in arms {
-                    if let Pattern::Literal(lit) = &arm.pattern.node {
-                        if let Expr::BoolLiteral(true) = &lit.node {
-                            has_true = true;
+        }
+    }
+
+    /// Recursively find missing patterns for a type given a set of patterns.
+    /// Returns descriptions of missing pattern(s), or empty if exhaustive.
+    fn find_missing_patterns(&self, patterns: &[&Pattern], ty: TypeId) -> Vec<String> {
+        // Flatten Or patterns into the pattern list.
+        let mut flat: Vec<&Pattern> = Vec::new();
+        for &p in patterns {
+            if let Pattern::Or(subs) = p {
+                for sub in subs {
+                    flat.push(&sub.node);
+                }
+            } else {
+                flat.push(p);
+            }
+        }
+
+        // If any pattern is wildcard or binding, everything is covered.
+        if flat.iter().any(|p| matches!(p, Pattern::Wildcard | Pattern::Binding(_))) {
+            return vec![];
+        }
+
+        let resolved = self.apply_subs(ty);
+        match self.ctx.ty(resolved).clone() {
+            Ty::Enum(enum_id) => {
+                let enum_info = self.ctx.enums[enum_id as usize].clone();
+                let mut missing = Vec::new();
+
+                for variant in &enum_info.variants {
+                    // Collect sub-pattern lists from arms matching this variant.
+                    let sub_pattern_sets: Vec<Vec<&Pattern>> = flat.iter().filter_map(|&p| {
+                        if let Pattern::Variant(vp) = p {
+                            let name = &vp.name.name;
+                            let variant_name = if let Some(dot_pos) = name.find('.') {
+                                &name[dot_pos + 1..]
+                            } else {
+                                name.as_str()
+                            };
+                            if variant_name == variant.name {
+                                Some(vp.fields.iter().map(|f| &f.node).collect())
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
                         }
-                        if let Expr::BoolLiteral(false) = &lit.node {
-                            has_false = true;
+                    }).collect();
+
+                    if sub_pattern_sets.is_empty() {
+                        // No arm matches this variant at all.
+                        missing.push(variant.name.clone());
+                        continue;
+                    }
+
+                    // Variant is matched. If it has no fields, it's fully covered.
+                    if variant.fields.is_empty() {
+                        continue;
+                    }
+
+                    // Check each field position recursively.
+                    for (field_idx, field_ty) in variant.fields.iter().enumerate() {
+                        let field_pats: Vec<&Pattern> = sub_pattern_sets.iter()
+                            .filter_map(|sp| sp.get(field_idx).copied())
+                            .collect();
+                        let sub_missing = self.find_missing_patterns(&field_pats, *field_ty);
+                        for m in &sub_missing {
+                            missing.push(format!("{}({})", variant.name, m));
                         }
                     }
                 }
-                if !has_true || !has_false {
-                    self.err("non-exhaustive match on bool: add a wildcard `_` pattern", span);
-                }
+
+                missing
+            }
+            Ty::Bool => {
+                let has_true = flat.iter().any(|p| {
+                    matches!(p, Pattern::Literal(lit) if matches!(lit.node, Expr::BoolLiteral(true)))
+                });
+                let has_false = flat.iter().any(|p| {
+                    matches!(p, Pattern::Literal(lit) if matches!(lit.node, Expr::BoolLiteral(false)))
+                });
+                let mut missing = Vec::new();
+                if !has_true { missing.push("true".to_string()); }
+                if !has_false { missing.push("false".to_string()); }
+                missing
             }
             _ => {
                 // For integers, strings, etc. — require a wildcard.
-                self.err(
-                    format!(
-                        "non-exhaustive match on type `{}`: add a wildcard `_` pattern",
-                        self.ctx.display(resolved)
-                    ),
-                    span,
-                );
+                vec![format!("`_` for {}", self.ctx.display(resolved))]
             }
         }
     }

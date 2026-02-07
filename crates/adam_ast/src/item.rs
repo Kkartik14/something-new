@@ -100,6 +100,14 @@ pub struct TraitDef {
     pub name: Ident,
     pub generic_params: Vec<GenericParam>,
     pub methods: Vec<Spanned<FnDef>>,
+    /// Associated type declarations: `type Item`
+    pub associated_types: Vec<AssociatedTypeDef>,
+}
+
+/// Associated type declaration within a trait.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssociatedTypeDef {
+    pub name: Ident,
 }
 
 /// Impl block.
@@ -109,6 +117,8 @@ pub struct ImplBlock {
     pub trait_name: Option<Ident>,
     pub target_type: Spanned<Type>,
     pub methods: Vec<Spanned<FnDef>>,
+    /// Associated type definitions: `type Item = ConcreteType`
+    pub associated_type_bindings: Vec<(Ident, Spanned<Type>)>,
 }
 
 /// View definition.
