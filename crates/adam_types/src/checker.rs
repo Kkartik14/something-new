@@ -71,6 +71,8 @@ pub struct TypeChecker {
     errors: Vec<TypeError>,
     /// Generic function name -> TypeVarIds of its generic params.
     fn_generic_params: HashMap<String, Vec<TypeVarId>>,
+    /// Generic function name -> Vec of trait bound names per generic param.
+    fn_generic_bounds: HashMap<String, Vec<Vec<String>>>,
 }
 
 impl TypeChecker {
@@ -100,6 +102,7 @@ impl TypeChecker {
             current_return_type: None,
             errors: vec![],
             fn_generic_params: HashMap::new(),
+            fn_generic_bounds: HashMap::new(),
         }
     }
 
@@ -143,6 +146,50 @@ impl TypeChecker {
 
     fn err(&mut self, message: impl Into<String>, span: Span) {
         self.errors.push(TypeError::new(message, span));
+    }
+
+    /// Suggest a similar name from scope for typo diagnostics.
+    fn suggest_similar_name(&self, name: &str) -> Option<String> {
+        let mut best: Option<(usize, String)> = None;
+        for scope in self.env.iter().rev() {
+            for var_name in scope.keys() {
+                let dist = Self::edit_distance(name, var_name);
+                if dist <= 2 && dist < name.len() {
+                    if best.as_ref().map_or(true, |(d, _)| dist < *d) {
+                        best = Some((dist, var_name.clone()));
+                    }
+                }
+            }
+        }
+        // Also check function names.
+        for fn_name in self.fn_sigs.keys() {
+            let dist = Self::edit_distance(name, fn_name);
+            if dist <= 2 && dist < name.len() {
+                if best.as_ref().map_or(true, |(d, _)| dist < *d) {
+                    best = Some((dist, fn_name.clone()));
+                }
+            }
+        }
+        best.map(|(_, n)| n)
+    }
+
+    /// Simple edit distance (Levenshtein).
+    fn edit_distance(a: &str, b: &str) -> usize {
+        let a: Vec<char> = a.chars().collect();
+        let b: Vec<char> = b.chars().collect();
+        let (m, n) = (a.len(), b.len());
+        let mut dp = vec![vec![0usize; n + 1]; m + 1];
+        for i in 0..=m { dp[i][0] = i; }
+        for j in 0..=n { dp[0][j] = j; }
+        for i in 1..=m {
+            for j in 1..=n {
+                let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+                dp[i][j] = (dp[i - 1][j] + 1)
+                    .min(dp[i][j - 1] + 1)
+                    .min(dp[i - 1][j - 1] + cost);
+            }
+        }
+        dp[m][n]
     }
 
     // ---- Resolve AST type to internal TypeId ----
@@ -438,18 +485,60 @@ impl TypeChecker {
 
     /// Create a fresh instantiation of a generic function's signature.
     /// Each call site gets its own TypeVars so they can infer independently.
-    fn instantiate_fn_sig(&mut self, fn_name: &str, sig: &FnSig) -> FnSig {
+    /// Returns the instantiated sig and the fresh TypeIds for bound checking.
+    fn instantiate_fn_sig(&mut self, fn_name: &str, sig: &FnSig) -> (FnSig, Vec<TypeId>) {
         if let Some(generic_tvars) = self.fn_generic_params.get(fn_name).cloned() {
             let mut sub_map = HashMap::new();
+            let mut fresh_tvars = Vec::new();
             for old_var in &generic_tvars {
                 let fresh = self.ctx.fresh_type_var();
                 sub_map.insert(*old_var, fresh);
+                fresh_tvars.push(fresh);
             }
             let params: Vec<_> = sig.params.iter().map(|&p| self.substitute_type(p, &sub_map)).collect();
             let return_type = self.substitute_type(sig.return_type, &sub_map);
-            FnSig { params, return_type }
+            (FnSig { params, return_type }, fresh_tvars)
         } else {
-            sig.clone()
+            (sig.clone(), vec![])
+        }
+    }
+
+    /// Check that concrete types inferred for generic params satisfy trait bounds.
+    fn check_generic_bounds(&mut self, fn_name: &str, fresh_tvars: &[TypeId], span: Span) {
+        let bounds = match self.fn_generic_bounds.get(fn_name) {
+            Some(b) => b.clone(),
+            None => return,
+        };
+        for (i, &fresh_ty) in fresh_tvars.iter().enumerate() {
+            let concrete = self.apply_subs(fresh_ty);
+            let concrete_ty = self.ctx.ty(concrete).clone();
+            // Skip unresolved TypeVars and error types.
+            if concrete_ty == Ty::Error || matches!(concrete_ty, Ty::TypeVar(_)) {
+                continue;
+            }
+            if let Some(param_bounds) = bounds.get(i) {
+                let type_name = self.ctx.display(concrete);
+                for trait_name in param_bounds {
+                    if !self.type_implements_trait(concrete, trait_name) {
+                        self.err(
+                            format!(
+                                "type `{}` does not implement trait `{}`",
+                                type_name, trait_name
+                            ),
+                            span,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Check if a concrete type has a trait impl registered.
+    fn type_implements_trait(&self, type_id: TypeId, trait_name: &str) -> bool {
+        if let Some(&trait_id) = self.trait_ids.get(trait_name) {
+            self.ctx.trait_impls.iter().any(|imp| imp.trait_id == trait_id && imp.target_type == type_id)
+        } else {
+            false
         }
     }
 
@@ -663,8 +752,18 @@ impl TypeChecker {
 
         if !f.generic_params.is_empty() {
             self.pop_scope();
+            // Store bounds for each generic param.
+            let bounds: Vec<Vec<String>> = f
+                .generic_params
+                .iter()
+                .map(|gp| gp.bounds.iter().map(|b| b.name.clone()).collect())
+                .collect();
             self.fn_generic_params
                 .insert(f.name.name.clone(), generic_tvars);
+            if bounds.iter().any(|b| !b.is_empty()) {
+                self.fn_generic_bounds
+                    .insert(f.name.name.clone(), bounds);
+            }
         }
 
         FnSig {
@@ -896,7 +995,13 @@ impl TypeChecker {
                     let &(_, _, enum_ty) = &self.variant_ids[&ident.name];
                     enum_ty
                 } else {
-                    self.err(format!("undefined variable `{}`", ident.name), ident.span);
+                    let suggestion = self.suggest_similar_name(&ident.name);
+                    let msg = if let Some(similar) = suggestion {
+                        format!("undefined variable `{}`; did you mean `{}`?", ident.name, similar)
+                    } else {
+                        format!("undefined variable `{}`", ident.name)
+                    };
+                    self.err(msg, ident.span);
                     self.ctx.error()
                 }
             }
@@ -1010,17 +1115,18 @@ impl TypeChecker {
                     Ty::Function(sig) => {
                         // If this is a generic function, instantiate with fresh TypeVars
                         // so each call site infers types independently.
-                        let sig = if let Some(ref name) = callee_name {
+                        let (sig, fresh_tvars) = if let Some(ref name) = callee_name {
                             self.instantiate_fn_sig(name, &sig)
                         } else {
-                            sig
+                            (sig, vec![])
                         };
 
                         if arg_types.len() != sig.params.len() {
                             self.err(
                                 format!(
-                                    "expected {} arguments, found {}",
+                                    "expected {} arguments in call to `{}`, found {}",
                                     sig.params.len(),
+                                    callee_name.as_deref().unwrap_or("<closure>"),
                                     arg_types.len()
                                 ),
                                 span,
@@ -1030,6 +1136,14 @@ impl TypeChecker {
                                 self.unify(param, arg, call.args[i].span);
                             }
                         }
+
+                        // After unification, check that inferred types satisfy trait bounds.
+                        if let Some(ref name) = callee_name {
+                            if !fresh_tvars.is_empty() {
+                                self.check_generic_bounds(name, &fresh_tvars, span);
+                            }
+                        }
+
                         sig.return_type
                     }
                     Ty::Error => self.ctx.error(),
@@ -1591,7 +1705,10 @@ impl TypeChecker {
             _ => {
                 // For integers, strings, etc. — require a wildcard.
                 self.err(
-                    "non-exhaustive match: add a wildcard `_` pattern",
+                    format!(
+                        "non-exhaustive match on type `{}`: add a wildcard `_` pattern",
+                        self.ctx.display(resolved)
+                    ),
                     span,
                 );
             }

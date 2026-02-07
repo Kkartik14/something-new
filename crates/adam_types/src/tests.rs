@@ -1482,3 +1482,95 @@ fn generic_fn_wrong_return_type() {
     // Let's verify it at least parses and checks without panicking.
     let _ = result;
 }
+
+// ============================================================
+// Trait bound enforcement
+// ============================================================
+
+#[test]
+fn trait_bound_satisfied() {
+    // Type i32 implements Numeric trait → should pass.
+    let result = typecheck_ok(
+        "trait Numeric {\n    fn zero() -> i32\n}\nimpl Numeric for i32 {\n    fn zero() -> i32 {\n        0\n    }\n}\nfn double[T: Numeric](x T) -> T {\n    x\n}\nfn main() {\n    a := double(42)\n}"
+    );
+    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    assert!(has_i32, "Expected i32 from double(42)");
+}
+
+#[test]
+fn trait_bound_not_satisfied() {
+    // String does NOT implement Numeric → should error.
+    let result = typecheck(
+        "trait Numeric {\n    fn zero() -> i32\n}\nimpl Numeric for i32 {\n    fn zero() -> i32 {\n        0\n    }\n}\nfn double[T: Numeric](x T) -> T {\n    x\n}\nfn main() {\n    a := double(\"hello\")\n}"
+    );
+    assert!(
+        error_count(&result) >= 1,
+        "Expected trait bound error for String not implementing Numeric"
+    );
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("does not implement trait")),
+        "Error should mention trait bound violation: {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn trait_bound_multiple_bounds() {
+    // T: Numeric + Display — both must be satisfied.
+    let result = typecheck(
+        "trait Numeric {\n    fn zero() -> i32\n}\ntrait Display {\n    fn show() -> String\n}\nimpl Numeric for i32 {\n    fn zero() -> i32 { 0 }\n}\nfn render[T: Numeric + Display](x T) -> T {\n    x\n}\nfn main() {\n    a := render(42)\n}"
+    );
+    // i32 implements Numeric but NOT Display → should error.
+    assert!(
+        error_count(&result) >= 1,
+        "Expected trait bound error for missing Display impl"
+    );
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("Display")),
+        "Error should mention Display: {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn trait_bound_no_bounds_still_works() {
+    // Generic without bounds should still work.
+    typecheck_ok("fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n}");
+}
+
+#[test]
+fn trait_bound_arg_count_includes_fn_name() {
+    // Improved error message should include the function name.
+    let result = typecheck("fn add(a i32, b i32) -> i32 {\n    a\n}\nfn main() {\n    add(1)\n}");
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("add") && e.message.contains("2 arguments")),
+        "Error should mention function name 'add': {:?}",
+        result.errors
+    );
+}
+
+// ============================================================
+// Improved error messages
+// ============================================================
+
+#[test]
+fn error_undefined_variable_suggestion() {
+    // Typo: "countr" when "counter" exists → should suggest "counter".
+    let result = typecheck("fn main() {\n    counter := 5\n    x := countr\n}");
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("did you mean") && e.message.contains("counter")),
+        "Error should suggest 'counter': {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn error_non_exhaustive_match_shows_type() {
+    // Match on i32 without wildcard should mention the type.
+    let result = typecheck("fn main() {\n    x := 5\n    match x {\n        1 => { 1 }\n    }\n}");
+    assert!(
+        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("i32")),
+        "Error should mention type 'i32': {:?}",
+        result.errors
+    );
+}

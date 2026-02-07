@@ -479,4 +479,85 @@ mod tests {
         let result = find_source(&opts);
         assert!(result.is_err());
     }
+
+    // ============================================================
+    // End-to-end pipeline tests (source → IR, no LLVM linking)
+    // ============================================================
+
+    /// Run the pipeline from source through IR lowering, returning the IR module.
+    fn pipeline_to_ir(src: &str) -> adam_ir::ir::IrModule {
+        let tokens = lex_source(src).expect("lex failed");
+        let ast = parse_tokens(tokens).expect("parse failed");
+        let resolved = resolve_ast(&ast).expect("resolve failed");
+        let typed = typecheck_ast(&ast).expect("typecheck failed");
+        borrowcheck_ast(&ast, Some(&resolved), Some(&typed)).expect("borrowcheck failed");
+        adam_ir::lower_module(&ast)
+    }
+
+    #[test]
+    fn e2e_hello_world() {
+        let ir = pipeline_to_ir("fn main() {\n    print(\"Hello, Adam!\")\n}");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain a 'main' function"
+        );
+    }
+
+    #[test]
+    fn e2e_fibonacci() {
+        let ir = pipeline_to_ir(
+            "fn fib(n i32) -> i32 {\n    if n <= 1 {\n        n\n    } else {\n        fib(n - 1) + fib(n - 2)\n    }\n}\nfn main() {\n    result := fib(10)\n    print(\"done\")\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "fib"), "IR should contain 'fib'");
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    #[test]
+    fn e2e_generics() {
+        let ir = pipeline_to_ir(
+            "fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n    b := id(\"hello\")\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    #[test]
+    fn e2e_structs_and_methods() {
+        let ir = pipeline_to_ir(
+            "struct Point {\n    x i32\n    y i32\n}\nimpl Point {\n    fn sum(self) -> i32 {\n        self.x + self.y\n    }\n}\nfn main() {\n    p := Point { x: 3, y: 4 }\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    #[test]
+    fn e2e_enums_and_match() {
+        let ir = pipeline_to_ir(
+            "enum Color {\n    Red\n    Green\n    Blue\n}\nfn describe(c Color) -> i32 {\n    match c {\n        Color.Red => 0\n        Color.Green => 1\n        Color.Blue => 2\n    }\n}\nfn main() {\n    c := Red\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "describe"), "IR should contain 'describe'");
+    }
+
+    #[test]
+    fn e2e_ownership_and_borrowing() {
+        // Tests that the borrow checker accepts valid ownership patterns.
+        let ir = pipeline_to_ir(
+            "fn consume(own s String) {\n    print(s)\n}\nfn main() {\n    s := \"hello\"\n    consume(s)\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    #[test]
+    fn e2e_trait_with_impl() {
+        let ir = pipeline_to_ir(
+            "trait Greet {\n    fn greet(self) -> String\n}\nstruct Bot {\n    name String\n}\nimpl Greet for Bot {\n    fn greet(self) -> String {\n        self.name\n    }\n}\nfn main() {\n    b := Bot { name: \"Ada\" }\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
+
+    #[test]
+    fn e2e_closures() {
+        let ir = pipeline_to_ir(
+            "fn apply(f fn(i32) -> i32, x i32) -> i32 {\n    f(x)\n}\nfn main() {\n    double := |x i32| x * 2\n    result := apply(double, 21)\n}"
+        );
+        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+    }
 }
