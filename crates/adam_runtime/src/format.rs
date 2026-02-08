@@ -291,7 +291,11 @@ mod tests {
     fn test_parse_int_valid() {
         let input = b"42";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 42);
     }
 
@@ -299,7 +303,11 @@ mod tests {
     fn test_parse_int_negative() {
         let input = b"-100";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, -100);
     }
 
@@ -307,21 +315,33 @@ mod tests {
     fn test_parse_int_invalid() {
         let input = b"hello";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_int_empty() {
         let input = b"";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_int_with_whitespace() {
         let input = b"  123  ";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 123);
     }
 
@@ -329,7 +349,11 @@ mod tests {
     fn test_parse_int_float_string() {
         let input = b"3.14";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
@@ -344,7 +368,11 @@ mod tests {
     fn test_parse_float_valid() {
         let input = b"3.14";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 3.14).abs() < 1e-10);
     }
 
@@ -352,7 +380,11 @@ mod tests {
     fn test_parse_float_integer() {
         let input = b"42";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 42.0).abs() < 1e-10);
     }
 
@@ -360,7 +392,11 @@ mod tests {
     fn test_parse_float_negative() {
         let input = b"-2.5";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - (-2.5)).abs() < 1e-10);
     }
 
@@ -368,7 +404,11 @@ mod tests {
     fn test_parse_float_scientific() {
         let input = b"1.5e3";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 1500.0).abs() < 1e-10);
     }
 
@@ -376,7 +416,11 @@ mod tests {
     fn test_parse_float_invalid() {
         let input = b"abc";
         let mut out: f64 = 0.0;
-        assert!(!__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     // --- parse_bool ---
@@ -385,7 +429,11 @@ mod tests {
     fn test_parse_bool_true() {
         let input = b"true";
         let mut out: i8 = 0;
-        assert!(__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 1);
     }
 
@@ -393,7 +441,11 @@ mod tests {
     fn test_parse_bool_false() {
         let input = b"false";
         let mut out: i8 = 0;
-        assert!(__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 0);
     }
 
@@ -401,21 +453,33 @@ mod tests {
     fn test_parse_bool_yes_fails() {
         let input = b"yes";
         let mut out: i8 = 0;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_bool_empty_fails() {
         let input = b"";
         let mut out: i8 = 0;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_bool_capitalized_fails() {
         let input = b"True";
         let mut out: i8 = 0;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     // --- format_int ---
@@ -656,7 +720,11 @@ mod tests {
     fn test_parse_int_i64_max() {
         let input = b"9223372036854775807";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, i64::MAX);
     }
 
@@ -664,7 +732,11 @@ mod tests {
     fn test_parse_int_i64_min() {
         let input = b"-9223372036854775808";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, i64::MIN);
     }
 
@@ -672,14 +744,22 @@ mod tests {
     fn test_parse_int_overflow() {
         let input = b"9999999999999999999999";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_int_leading_zeros() {
         let input = b"007";
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 7);
     }
 
@@ -687,20 +767,32 @@ mod tests {
     fn test_parse_int_just_plus_sign() {
         let input = b"+";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_int_just_minus_sign() {
         let input = b"-";
         let mut out: i64 = 0;
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_int_null_out() {
         let input = b"42";
-        assert!(!__adam_parse_int(input.as_ptr(), input.len() as u64, std::ptr::null_mut()));
+        assert!(!__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            std::ptr::null_mut()
+        ));
     }
 
     // --- parse_float edge cases ---
@@ -709,7 +801,11 @@ mod tests {
     fn test_parse_float_inf() {
         let input = b"inf";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, f64::INFINITY);
     }
 
@@ -717,7 +813,11 @@ mod tests {
     fn test_parse_float_neg_inf() {
         let input = b"-inf";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, f64::NEG_INFINITY);
     }
 
@@ -725,7 +825,11 @@ mod tests {
     fn test_parse_float_nan() {
         let input = b"NaN";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!(out.is_nan());
     }
 
@@ -733,7 +837,11 @@ mod tests {
     fn test_parse_float_leading_zeros() {
         let input = b"00.5";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 0.5).abs() < 1e-10);
     }
 
@@ -742,7 +850,11 @@ mod tests {
         // ".5" should parse to 0.5
         let input = b".5";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 0.5).abs() < 1e-10);
     }
 
@@ -751,21 +863,33 @@ mod tests {
         // "1." should parse to 1.0
         let input = b"1.";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 1.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_parse_float_null_out() {
         let input = b"3.14";
-        assert!(!__adam_parse_float(input.as_ptr(), input.len() as u64, std::ptr::null_mut()));
+        assert!(!__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            std::ptr::null_mut()
+        ));
     }
 
     #[test]
     fn test_parse_float_empty() {
         let input = b"";
         let mut out: f64 = 0.0;
-        assert!(!__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     // --- parse_bool edge cases ---
@@ -775,7 +899,11 @@ mod tests {
         // The implementation trims, so " true " should work
         let input = b" true ";
         let mut out: i8 = 0;
-        assert!(__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 1);
     }
 
@@ -783,7 +911,11 @@ mod tests {
     fn test_parse_bool_false_with_whitespace() {
         let input = b"  false  ";
         let mut out: i8 = 0;
-        assert!(__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, 0);
     }
 
@@ -791,21 +923,33 @@ mod tests {
     fn test_parse_bool_uppercase_true_fails() {
         let input = b"TRUE";
         let mut out: i8 = 0;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_bool_mixed_case_fails() {
         let input = b"True";
         let mut out: i8 = -1;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
     fn test_parse_bool_1_fails() {
         let input = b"1";
         let mut out: i8 = 0;
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
     }
 
     #[test]
@@ -817,7 +961,11 @@ mod tests {
     #[test]
     fn test_parse_bool_null_out() {
         let input = b"true";
-        assert!(!__adam_parse_bool(input.as_ptr(), input.len() as u64, std::ptr::null_mut()));
+        assert!(!__adam_parse_bool(
+            input.as_ptr(),
+            input.len() as u64,
+            std::ptr::null_mut()
+        ));
     }
 
     // --- format_int extremes ---
@@ -853,7 +1001,10 @@ mod tests {
         let s = __adam_format_int_binary(i64::MIN);
         let result = adam_to_string(&s);
         assert!(result.starts_with("-0b1"));
-        assert_eq!(result, format!("-0b{:b}", (i64::MIN as i128).unsigned_abs()));
+        assert_eq!(
+            result,
+            format!("-0b{:b}", (i64::MIN as i128).unsigned_abs())
+        );
     }
 
     #[test]
@@ -913,7 +1064,12 @@ mod tests {
         // Should have exactly 10 decimal places
         let dot_pos = result.find('.').unwrap();
         let decimals = &result[dot_pos + 1..];
-        assert_eq!(decimals.len(), 10, "Expected 10 decimal places, got {}", decimals.len());
+        assert_eq!(
+            decimals.len(),
+            10,
+            "Expected 10 decimal places, got {}",
+            decimals.len()
+        );
         assert!(result.starts_with("3.1415926536"));
     }
 
@@ -950,20 +1106,14 @@ mod tests {
         // String containing \n, \r, \t, \0, \\, " all at once
         let input = b"a\nb\rc\td\0e\\f\"g";
         let s = __adam_format_debug_string(input.as_ptr(), input.len() as u64);
-        assert_eq!(
-            adam_to_string(&s),
-            "\"a\\nb\\rc\\td\\0e\\\\f\\\"g\""
-        );
+        assert_eq!(adam_to_string(&s), "\"a\\nb\\rc\\td\\0e\\\\f\\\"g\"");
     }
 
     #[test]
     fn test_debug_string_only_special_chars() {
         let input = b"\n\r\t\0\\\"";
         let s = __adam_format_debug_string(input.as_ptr(), input.len() as u64);
-        assert_eq!(
-            adam_to_string(&s),
-            "\"\\n\\r\\t\\0\\\\\\\"\""
-        );
+        assert_eq!(adam_to_string(&s), "\"\\n\\r\\t\\0\\\\\\\"\"");
     }
 
     // --- Debug char edge cases ---
@@ -1015,7 +1165,11 @@ mod tests {
         let formatted_str = adam_to_string(&formatted);
         let input = formatted_str.as_bytes();
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, original);
     }
 
@@ -1026,7 +1180,11 @@ mod tests {
         let formatted_str = adam_to_string(&formatted);
         let input = formatted_str.as_bytes();
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, original);
     }
 
@@ -1037,7 +1195,11 @@ mod tests {
         let formatted_str = adam_to_string(&formatted);
         let input = formatted_str.as_bytes();
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, original);
     }
 
@@ -1048,7 +1210,11 @@ mod tests {
         let formatted_str = adam_to_string(&formatted);
         let input = formatted_str.as_bytes();
         let mut out: i64 = 0;
-        assert!(__adam_parse_int(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_int(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert_eq!(out, original);
     }
 
@@ -1142,7 +1308,11 @@ mod tests {
     fn test_parse_float_with_whitespace() {
         let input = b"  3.14  ";
         let mut out: f64 = 0.0;
-        assert!(__adam_parse_float(input.as_ptr(), input.len() as u64, &mut out));
+        assert!(__adam_parse_float(
+            input.as_ptr(),
+            input.len() as u64,
+            &mut out
+        ));
         assert!((out - 3.14).abs() < 1e-10);
     }
 }

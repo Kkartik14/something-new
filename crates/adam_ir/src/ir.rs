@@ -35,17 +35,27 @@ pub struct IrGlobal {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrType {
-    I8, I16, I32, I64,
-    U8, U16, U32, U64,
-    F32, F64,
-    Bool, Char, Unit,
-    String, Str,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
+    Bool,
+    Char,
+    Unit,
+    String,
+    Str,
     Ptr(Box<IrType>),
     Array(Box<IrType>, Option<u64>),
     Tuple(Vec<IrType>),
     Struct(String),
     Enum(String),
-    Function(Vec<IrType>, Box<IrType>),  // params, return
+    Function(Vec<IrType>, Box<IrType>), // params, return
     Channel(Box<IrType>),
     Void,
 }
@@ -111,13 +121,27 @@ pub enum RValue {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinOp {
-    Add, Sub, Mul, Div, Mod,
-    Eq, NotEq, Lt, Gt, LtEq, GtEq,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Eq,
+    NotEq,
+    Lt,
+    Gt,
+    LtEq,
+    GtEq,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum UnOp { Neg, Not, Ref }
+pub enum UnOp {
+    Neg,
+    Not,
+    Ref,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AggregateKind {
@@ -138,7 +162,7 @@ pub enum Constant {
     Float(f64),
     Bool(bool),
     Char(char),
-    String(u32),  // index into string_literals
+    String(u32), // index into string_literals
     Unit,
     Nil,
 }
@@ -149,7 +173,7 @@ pub enum Terminator {
     Goto(BlockId),
     Branch(Operand, BlockId, BlockId),
     Switch(Operand, Vec<(Constant, BlockId)>, BlockId),
-    Spawn(BlockId, BlockId),  // (spawn_target, continuation)
+    Spawn(BlockId, BlockId), // (spawn_target, continuation)
     Select(Vec<SelectBranch>),
     Unreachable,
 }

@@ -463,7 +463,9 @@ mod tests {
     fn test_slider_component() {
         let node = slider(50.0, 0.0, 100.0, BindingId(1));
         match &node {
-            ViewNode::Slider { value, min, max, .. } => {
+            ViewNode::Slider {
+                value, min, max, ..
+            } => {
                 assert_eq!(*value, 50.0);
                 assert_eq!(*min, 0.0);
                 assert_eq!(*max, 100.0);
@@ -596,8 +598,7 @@ mod tests {
 
     #[test]
     fn test_accessibility_label() {
-        let node = button("X", ActionId(1))
-            .accessibility("Close button");
+        let node = button("X", ActionId(1)).accessibility("Close button");
         match &node {
             ViewNode::Button { modifiers, .. } => {
                 assert_eq!(
@@ -613,23 +614,25 @@ mod tests {
     fn test_counter_app() {
         // Build a counter app UI tree
         let count = 5;
-        let tree = column_spaced(12.0, vec![
-            styled_text(
-                &format!("Count: {}", count),
-                24.0,
-                Color::BLACK,
-            ),
-            row_spaced(8.0, vec![
-                button("-", ActionId(1))
-                    .background(Color::RED)
-                    .foreground(Color::WHITE)
-                    .corner_radius(8.0),
-                button("+", ActionId(2))
-                    .background(Color::GREEN)
-                    .foreground(Color::WHITE)
-                    .corner_radius(8.0),
-            ]),
-        ]);
+        let tree = column_spaced(
+            12.0,
+            vec![
+                styled_text(&format!("Count: {}", count), 24.0, Color::BLACK),
+                row_spaced(
+                    8.0,
+                    vec![
+                        button("-", ActionId(1))
+                            .background(Color::RED)
+                            .foreground(Color::WHITE)
+                            .corner_radius(8.0),
+                        button("+", ActionId(2))
+                            .background(Color::GREEN)
+                            .foreground(Color::WHITE)
+                            .corner_radius(8.0),
+                    ],
+                ),
+            ],
+        );
 
         match &tree {
             ViewNode::Container { kind, children, .. } => {
@@ -648,22 +651,28 @@ mod tests {
             .iter()
             .enumerate()
             .map(|(i, todo)| {
-                row_spaced(8.0, vec![
-                    toggle(false, BindingId(i as u64)),
-                    text(*todo),
-                    spacer(),
-                    button("X", ActionId(100 + i as u64))
-                        .background(Color::RED)
-                        .foreground(Color::WHITE),
-                ])
+                row_spaced(
+                    8.0,
+                    vec![
+                        toggle(false, BindingId(i as u64)),
+                        text(*todo),
+                        spacer(),
+                        button("X", ActionId(100 + i as u64))
+                            .background(Color::RED)
+                            .foreground(Color::WHITE),
+                    ],
+                )
             })
             .collect();
 
-        let tree = column_spaced(8.0, vec![
-            styled_text("Todo List", 28.0, Color::BLACK),
-            text_input("", "Add a todo...", BindingId(99)),
-            list(items),
-        ]);
+        let tree = column_spaced(
+            8.0,
+            vec![
+                styled_text("Todo List", 28.0, Color::BLACK),
+                text_input("", "Add a todo...", BindingId(99)),
+                list(items),
+            ],
+        );
 
         match &tree {
             ViewNode::Container { children, .. } => {

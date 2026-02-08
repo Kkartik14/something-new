@@ -5,11 +5,11 @@
 //! based on the target triple. At runtime, calls dispatch to the
 //! platform-specific C FFI functions.
 
-pub mod platform;
 pub mod ffi;
+pub mod platform;
 
 pub use platform::{
-    PlatformApi, PlatformKind, ScreenMetrics, EdgeInsets, HapticStyle, StatusBarStyle,
+    EdgeInsets, HapticStyle, PlatformApi, PlatformKind, ScreenMetrics, StatusBarStyle,
 };
 
 // ---------------------------------------------------------------------------
@@ -32,13 +32,34 @@ mod tests {
 
     #[test]
     fn test_platform_kind_from_triple() {
-        assert_eq!(PlatformKind::from_triple("aarch64-apple-ios"), PlatformKind::IOS);
-        assert_eq!(PlatformKind::from_triple("aarch64-apple-ios-simulator"), PlatformKind::IOSSimulator);
-        assert_eq!(PlatformKind::from_triple("x86_64-apple-ios-simulator"), PlatformKind::IOSSimulator);
-        assert_eq!(PlatformKind::from_triple("aarch64-linux-android24"), PlatformKind::Android);
-        assert_eq!(PlatformKind::from_triple("x86_64-linux-android24"), PlatformKind::Android);
-        assert_eq!(PlatformKind::from_triple("aarch64-apple-macosx"), PlatformKind::Desktop);
-        assert_eq!(PlatformKind::from_triple("x86_64-unknown-linux-gnu"), PlatformKind::Desktop);
+        assert_eq!(
+            PlatformKind::from_triple("aarch64-apple-ios"),
+            PlatformKind::IOS
+        );
+        assert_eq!(
+            PlatformKind::from_triple("aarch64-apple-ios-simulator"),
+            PlatformKind::IOSSimulator
+        );
+        assert_eq!(
+            PlatformKind::from_triple("x86_64-apple-ios-simulator"),
+            PlatformKind::IOSSimulator
+        );
+        assert_eq!(
+            PlatformKind::from_triple("aarch64-linux-android24"),
+            PlatformKind::Android
+        );
+        assert_eq!(
+            PlatformKind::from_triple("x86_64-linux-android24"),
+            PlatformKind::Android
+        );
+        assert_eq!(
+            PlatformKind::from_triple("aarch64-apple-macosx"),
+            PlatformKind::Desktop
+        );
+        assert_eq!(
+            PlatformKind::from_triple("x86_64-unknown-linux-gnu"),
+            PlatformKind::Desktop
+        );
     }
 
     #[test]

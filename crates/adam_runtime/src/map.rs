@@ -163,9 +163,7 @@ impl AdamMap {
 
     /// Check if resize is needed and perform it.
     fn maybe_resize(&mut self) {
-        if self.capacity == 0
-            || self.count * LOAD_FACTOR_DEN >= self.capacity * LOAD_FACTOR_NUM
-        {
+        if self.capacity == 0 || self.count * LOAD_FACTOR_DEN >= self.capacity * LOAD_FACTOR_NUM {
             self.resize(if self.capacity == 0 {
                 INITIAL_CAPACITY
             } else {
@@ -775,7 +773,12 @@ mod tests {
         assert_eq!(__adam_map_len(&m), 100);
         // All entries should still be accessible.
         for i in 0..100 {
-            assert_eq!(get_i32(&m, i), Some(i * 2), "key {} missing after resize", i);
+            assert_eq!(
+                get_i32(&m, i),
+                Some(i * 2),
+                "key {} missing after resize",
+                i
+            );
         }
         __adam_map_drop(&mut m);
     }
@@ -903,7 +906,13 @@ mod tests {
             insert_i32(&mut m, i, i);
         }
         for i in 0..n {
-            assert_eq!(remove_i32(&mut m, i), Some(i), "remove key {} should return {}", i, i);
+            assert_eq!(
+                remove_i32(&mut m, i),
+                Some(i),
+                "remove key {} should return {}",
+                i,
+                i
+            );
         }
         assert_eq!(__adam_map_len(&m), 0);
         assert!(__adam_map_is_empty(&m));
@@ -973,7 +982,12 @@ mod tests {
         assert_eq!(__adam_map_len(&m), 50);
         // Remaining keys should all be accessible.
         for i in (1..100).step_by(2) {
-            assert_eq!(get_i32(&m, i), Some(i), "odd key {} should still be present", i);
+            assert_eq!(
+                get_i32(&m, i),
+                Some(i),
+                "odd key {} should still be present",
+                i
+            );
         }
         // Insert new keys that may land on formerly occupied slots.
         for i in 200..300 {
@@ -1104,12 +1118,7 @@ mod tests {
 
         // Get should return the overwritten value.
         let mut out: i32 = 0;
-        let found = __adam_map_get(
-            &m,
-            std::ptr::null(),
-            hash,
-            &mut out as *mut i32 as *mut u8,
-        );
+        let found = __adam_map_get(&m, std::ptr::null(), hash, &mut out as *mut i32 as *mut u8);
         assert!(found);
         assert_eq!(out, 200);
 
@@ -1125,7 +1134,11 @@ mod tests {
         // Get.
         assert_eq!(get_i32(&m, 7), Some(77));
         // Contains.
-        assert!(__adam_map_contains_key(&m, 7_i32.to_ne_bytes().as_ptr(), hash_i32(7)));
+        assert!(__adam_map_contains_key(
+            &m,
+            7_i32.to_ne_bytes().as_ptr(),
+            hash_i32(7)
+        ));
         // Overwrite.
         assert!(insert_i32(&mut m, 7, 88));
         assert_eq!(get_i32(&m, 7), Some(88));

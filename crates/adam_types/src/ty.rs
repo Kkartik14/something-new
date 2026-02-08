@@ -173,23 +173,23 @@ impl TypeContext {
             trait_impls: vec![],
         };
         // Pre-intern common types so they have predictable IDs.
-        ctx.intern(Ty::I8);     // 0
-        ctx.intern(Ty::I16);    // 1
-        ctx.intern(Ty::I32);    // 2
-        ctx.intern(Ty::I64);    // 3
-        ctx.intern(Ty::U8);     // 4
-        ctx.intern(Ty::U16);    // 5
-        ctx.intern(Ty::U32);    // 6
-        ctx.intern(Ty::U64);    // 7
-        ctx.intern(Ty::F32);    // 8
-        ctx.intern(Ty::F64);    // 9
-        ctx.intern(Ty::Bool);   // 10
-        ctx.intern(Ty::Char);   // 11
-        ctx.intern(Ty::Unit);   // 12
+        ctx.intern(Ty::I8); // 0
+        ctx.intern(Ty::I16); // 1
+        ctx.intern(Ty::I32); // 2
+        ctx.intern(Ty::I64); // 3
+        ctx.intern(Ty::U8); // 4
+        ctx.intern(Ty::U16); // 5
+        ctx.intern(Ty::U32); // 6
+        ctx.intern(Ty::U64); // 7
+        ctx.intern(Ty::F32); // 8
+        ctx.intern(Ty::F64); // 9
+        ctx.intern(Ty::Bool); // 10
+        ctx.intern(Ty::Char); // 11
+        ctx.intern(Ty::Unit); // 12
         ctx.intern(Ty::String); // 13
-        ctx.intern(Ty::Str);    // 14
-        ctx.intern(Ty::Error);  // 15
-        ctx.intern(Ty::Never);  // 16
+        ctx.intern(Ty::Str); // 14
+        ctx.intern(Ty::Error); // 15
+        ctx.intern(Ty::Never); // 16
         ctx
     }
 
@@ -252,31 +252,72 @@ impl TypeContext {
 
     // ---- Well-known type IDs ----
 
-    pub fn i8(&self) -> TypeId { 0 }
-    pub fn i16(&self) -> TypeId { 1 }
-    pub fn i32(&self) -> TypeId { 2 }
-    pub fn i64(&self) -> TypeId { 3 }
-    pub fn u8(&self) -> TypeId { 4 }
-    pub fn u16(&self) -> TypeId { 5 }
-    pub fn u32(&self) -> TypeId { 6 }
-    pub fn u64(&self) -> TypeId { 7 }
-    pub fn f32(&self) -> TypeId { 8 }
-    pub fn f64(&self) -> TypeId { 9 }
-    pub fn bool(&self) -> TypeId { 10 }
-    pub fn char(&self) -> TypeId { 11 }
-    pub fn unit(&self) -> TypeId { 12 }
-    pub fn string(&self) -> TypeId { 13 }
-    pub fn str(&self) -> TypeId { 14 }
-    pub fn error(&self) -> TypeId { 15 }
-    pub fn never(&self) -> TypeId { 16 }
+    pub fn i8(&self) -> TypeId {
+        0
+    }
+    pub fn i16(&self) -> TypeId {
+        1
+    }
+    pub fn i32(&self) -> TypeId {
+        2
+    }
+    pub fn i64(&self) -> TypeId {
+        3
+    }
+    pub fn u8(&self) -> TypeId {
+        4
+    }
+    pub fn u16(&self) -> TypeId {
+        5
+    }
+    pub fn u32(&self) -> TypeId {
+        6
+    }
+    pub fn u64(&self) -> TypeId {
+        7
+    }
+    pub fn f32(&self) -> TypeId {
+        8
+    }
+    pub fn f64(&self) -> TypeId {
+        9
+    }
+    pub fn bool(&self) -> TypeId {
+        10
+    }
+    pub fn char(&self) -> TypeId {
+        11
+    }
+    pub fn unit(&self) -> TypeId {
+        12
+    }
+    pub fn string(&self) -> TypeId {
+        13
+    }
+    pub fn str(&self) -> TypeId {
+        14
+    }
+    pub fn error(&self) -> TypeId {
+        15
+    }
+    pub fn never(&self) -> TypeId {
+        16
+    }
 
     /// Check if a type is numeric (integer or float).
     pub fn is_numeric(&self, id: TypeId) -> bool {
         matches!(
             self.ty(id),
-            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64
-                | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64
-                | Ty::F32 | Ty::F64
+            Ty::I8
+                | Ty::I16
+                | Ty::I32
+                | Ty::I64
+                | Ty::U8
+                | Ty::U16
+                | Ty::U32
+                | Ty::U64
+                | Ty::F32
+                | Ty::F64
         )
     }
 
@@ -284,8 +325,7 @@ impl TypeContext {
     pub fn is_integer(&self, id: TypeId) -> bool {
         matches!(
             self.ty(id),
-            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64
-                | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64
+            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64
         )
     }
 
@@ -298,21 +338,31 @@ impl TypeContext {
     pub fn is_copy(&self, id: TypeId) -> bool {
         matches!(
             self.ty(id),
-            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64
-                | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64
-                | Ty::F32 | Ty::F64
-                | Ty::Bool | Ty::Char | Ty::Unit
-                | Ty::Never | Ty::Error
+            Ty::I8
+                | Ty::I16
+                | Ty::I32
+                | Ty::I64
+                | Ty::U8
+                | Ty::U16
+                | Ty::U32
+                | Ty::U64
+                | Ty::F32
+                | Ty::F64
+                | Ty::Bool
+                | Ty::Char
+                | Ty::Unit
+                | Ty::Never
+                | Ty::Error
         )
     }
 
     /// Check if a type is Send (safe to move across threads).
     pub fn is_send(&self, id: TypeId) -> bool {
         match self.ty(id) {
-            Ty::Rc(_) => false,  // Rc is not Send
-            Ty::Ref(_) | Ty::MutRef(_) => false,  // references not Send by default
+            Ty::Rc(_) => false,                  // Rc is not Send
+            Ty::Ref(_) | Ty::MutRef(_) => false, // references not Send by default
             Ty::Error | Ty::Never => true,
-            _ => true,  // most types are Send
+            _ => true, // most types are Send
         }
     }
 
@@ -365,7 +415,11 @@ impl TypeContext {
             Ty::Result(ok, err) => format!("{} ! {}", self.display(ok), self.display(err)),
             Ty::Function(sig) => {
                 let params: Vec<_> = sig.params.iter().map(|p| self.display(*p)).collect();
-                format!("fn({}) -> {}", params.join(", "), self.display(sig.return_type))
+                format!(
+                    "fn({}) -> {}",
+                    params.join(", "),
+                    self.display(sig.return_type)
+                )
             }
             Ty::Channel(inner) => format!("chan[{}]", self.display(inner)),
             Ty::TypeVar(v) => format!("?T{}", v),

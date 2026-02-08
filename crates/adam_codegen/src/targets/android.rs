@@ -5,8 +5,8 @@
 //! - `x86_64-linux-android` — Android Emulator (x86_64)
 //! - `armv7-linux-androideabi` — older 32-bit devices
 
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
 
 use super::{Arch, OutputFormat, Platform, TargetConfig};
 
@@ -196,9 +196,17 @@ pub fn find_ndk_toolchain(ndk_path: &PathBuf, arch: Arch) -> NdkToolchain {
 
     NdkToolchain {
         clang: if clang.exists() { Some(clang) } else { None },
-        clangpp: if clangpp.exists() { Some(clangpp) } else { None },
+        clangpp: if clangpp.exists() {
+            Some(clangpp)
+        } else {
+            None
+        },
         ar: if ar.exists() { Some(ar) } else { None },
-        sysroot: if sysroot.exists() { Some(sysroot) } else { None },
+        sysroot: if sysroot.exists() {
+            Some(sysroot)
+        } else {
+            None
+        },
     }
 }
 
@@ -208,7 +216,8 @@ pub fn validate_android_toolchain() -> Result<(), Vec<String>> {
 
     if find_ndk_path().is_none() {
         errors.push(
-            "Android NDK not found — set ANDROID_NDK_HOME or install via Android Studio".to_string(),
+            "Android NDK not found — set ANDROID_NDK_HOME or install via Android Studio"
+                .to_string(),
         );
     }
 

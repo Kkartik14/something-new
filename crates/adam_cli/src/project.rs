@@ -10,8 +10,13 @@ pub fn create_project(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("project name cannot be empty".to_string());
     }
-    if !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-        return Err("project name can only contain letters, numbers, hyphens, and underscores".to_string());
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(
+            "project name can only contain letters, numbers, hyphens, and underscores".to_string(),
+        );
     }
 
     let project_dir = Path::new(name);
@@ -27,7 +32,8 @@ pub fn create_project(name: &str) -> Result<(), String> {
 
     // Write adam.toml.
     let manifest = Manifest::new_project(name);
-    manifest.save_to(&project_dir.join("adam.toml"))
+    manifest
+        .save_to(&project_dir.join("adam.toml"))
         .map_err(|e| format!("failed to write manifest: {}", e))?;
 
     // Write src/main.adam.
@@ -56,8 +62,11 @@ test "basic math" {
     assert_eq(1 + 1, 2)
 }
 "#;
-    fs::write(project_dir.join("tests").join("main_test.adam"), test_content)
-        .map_err(|e| format!("failed to write test file: {}", e))?;
+    fs::write(
+        project_dir.join("tests").join("main_test.adam"),
+        test_content,
+    )
+    .map_err(|e| format!("failed to write test file: {}", e))?;
 
     // Write .gitignore.
     let gitignore = "build/\n.adam/\nadam.lock\n*.o\n";

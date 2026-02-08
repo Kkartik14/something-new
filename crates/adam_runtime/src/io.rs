@@ -112,7 +112,10 @@ pub extern "C" fn __adam_eprintln_str(ptr: *const u8, len: u64) {
 #[no_mangle]
 pub extern "C" fn __adam_read_line(out: *mut AdamString) -> AdamIoResult {
     if out.is_null() {
-        return io_err(io::Error::new(io::ErrorKind::InvalidInput, "null output pointer"));
+        return io_err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "null output pointer",
+        ));
     }
     let mut buf = String::new();
     match io::stdin().read_line(&mut buf) {
@@ -297,8 +300,8 @@ pub extern "C" fn __adam_fs_list_dir(
 ) -> AdamIoResult {
     unsafe {
         let path = path_str(path_ptr, path_len);
-        let entries: Result<Vec<_>, _> = fs::read_dir(path)
-            .map(|rd| rd.filter_map(|e| e.ok()).collect());
+        let entries: Result<Vec<_>, _> =
+            fs::read_dir(path).map(|rd| rd.filter_map(|e| e.ok()).collect());
         match entries {
             Ok(entries) => {
                 let count = entries.len();
@@ -446,10 +449,7 @@ pub extern "C" fn __adam_file_create(
 
 /// Read the **entire** remaining contents of a file handle into an `AdamString`.
 #[no_mangle]
-pub extern "C" fn __adam_file_read_all(
-    file: *mut AdamFile,
-    out: *mut AdamString,
-) -> AdamIoResult {
+pub extern "C" fn __adam_file_read_all(file: *mut AdamFile, out: *mut AdamString) -> AdamIoResult {
     unsafe {
         if file.is_null() || (*file).handle.is_null() {
             ptr::write(out, AdamString::from_bytes(b""));
@@ -482,10 +482,7 @@ pub extern "C" fn __adam_file_read_all(
 /// Returns `success = false, error_code = 0` at **EOF** (not a real error).
 /// Returns `success = false, error_code != 0` on actual I/O errors.
 #[no_mangle]
-pub extern "C" fn __adam_file_read_line(
-    file: *mut AdamFile,
-    out: *mut AdamString,
-) -> AdamIoResult {
+pub extern "C" fn __adam_file_read_line(file: *mut AdamFile, out: *mut AdamString) -> AdamIoResult {
     unsafe {
         if file.is_null() || (*file).handle.is_null() {
             ptr::write(out, AdamString::from_bytes(b""));
@@ -733,7 +730,10 @@ mod tests {
         let p = tmp_path("does_not_exist_12345");
         cleanup_file(&p);
         let path_bytes = p.to_str().unwrap().as_bytes();
-        assert!(!__adam_fs_exists(path_bytes.as_ptr(), path_bytes.len() as u64));
+        assert!(!__adam_fs_exists(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
     }
 
     // ------------------------------------------------------------------
@@ -752,7 +752,10 @@ mod tests {
             content.as_ptr(),
             content.len() as u64,
         );
-        assert!(__adam_fs_exists(path_bytes.as_ptr(), path_bytes.len() as u64));
+        assert!(__adam_fs_exists(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
 
         cleanup_file(&p);
     }
@@ -855,8 +858,14 @@ mod tests {
         fs::write(&p, b"data").unwrap();
 
         let path_bytes = p.to_str().unwrap().as_bytes();
-        assert!(__adam_fs_is_file(path_bytes.as_ptr(), path_bytes.len() as u64));
-        assert!(!__adam_fs_is_dir(path_bytes.as_ptr(), path_bytes.len() as u64));
+        assert!(__adam_fs_is_file(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
+        assert!(!__adam_fs_is_dir(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
 
         cleanup_file(&p);
     }
@@ -871,8 +880,14 @@ mod tests {
         fs::create_dir_all(&p).unwrap();
 
         let path_bytes = p.to_str().unwrap().as_bytes();
-        assert!(__adam_fs_is_dir(path_bytes.as_ptr(), path_bytes.len() as u64));
-        assert!(!__adam_fs_is_file(path_bytes.as_ptr(), path_bytes.len() as u64));
+        assert!(__adam_fs_is_dir(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
+        assert!(!__adam_fs_is_file(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
 
         cleanup_dir(&p);
     }
@@ -1205,8 +1220,14 @@ mod tests {
         cleanup_file(&p);
         let path_bytes = p.to_str().unwrap().as_bytes();
 
-        assert!(!__adam_fs_is_file(path_bytes.as_ptr(), path_bytes.len() as u64));
-        assert!(!__adam_fs_is_dir(path_bytes.as_ptr(), path_bytes.len() as u64));
+        assert!(!__adam_fs_is_file(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
+        assert!(!__adam_fs_is_dir(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64
+        ));
     }
 
     // ------------------------------------------------------------------
@@ -1557,7 +1578,9 @@ mod tests {
         fs::write(&p, b"some data").unwrap();
 
         let path_bytes = p.to_str().unwrap().as_bytes();
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_open(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 
@@ -1591,7 +1614,9 @@ mod tests {
         fs::write(&p, "first\nsecond_no_newline").unwrap();
 
         let path_bytes = p.to_str().unwrap().as_bytes();
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_open(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 
@@ -1632,7 +1657,9 @@ mod tests {
         cleanup_file(&p);
         let path_bytes = p.to_str().unwrap().as_bytes();
 
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_create(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 
@@ -1667,7 +1694,11 @@ mod tests {
 
         let expected_count = 50u64;
         for i in 0..expected_count {
-            fs::write(dir.join(format!("file_{:03}.txt", i)), format!("data_{}", i)).unwrap();
+            fs::write(
+                dir.join(format!("file_{:03}.txt", i)),
+                format!("data_{}", i),
+            )
+            .unwrap();
         }
 
         let path_bytes = dir.to_str().unwrap().as_bytes();
@@ -1757,7 +1788,10 @@ mod tests {
             !r.success,
             "fs_remove should fail when given a directory path"
         );
-        assert!(dir.is_dir(), "directory should still exist after failed remove");
+        assert!(
+            dir.is_dir(),
+            "directory should still exist after failed remove"
+        );
 
         cleanup_dir(&dir);
     }
@@ -1846,7 +1880,11 @@ mod tests {
         assert!(r.success);
 
         let mut size_before: u64 = 0;
-        let r = __adam_fs_file_size(path_bytes.as_ptr(), path_bytes.len() as u64, &mut size_before);
+        let r = __adam_fs_file_size(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64,
+            &mut size_before,
+        );
         assert!(r.success);
         assert_eq!(size_before, initial.len() as u64);
 
@@ -1860,7 +1898,11 @@ mod tests {
         assert!(r.success);
 
         let mut size_after: u64 = 0;
-        let r = __adam_fs_file_size(path_bytes.as_ptr(), path_bytes.len() as u64, &mut size_after);
+        let r = __adam_fs_file_size(
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64,
+            &mut size_after,
+        );
         assert!(r.success);
         assert_eq!(
             size_after,
@@ -1911,7 +1953,8 @@ mod tests {
         unsafe {
             let read_back = slice::from_raw_parts(out_ptr, out_len as usize);
             assert_eq!(
-                read_back, content.as_slice(),
+                read_back,
+                content.as_slice(),
                 "embedded null bytes must be preserved exactly"
             );
             // Verify each null individually.
@@ -1948,14 +1991,18 @@ mod tests {
         let content_b = b"content_for_b";
 
         let r = __adam_fs_write(
-            p1_bytes.as_ptr(), p1_bytes.len() as u64,
-            content_a.as_ptr(), content_a.len() as u64,
+            p1_bytes.as_ptr(),
+            p1_bytes.len() as u64,
+            content_a.as_ptr(),
+            content_a.len() as u64,
         );
         assert!(r.success);
 
         let r = __adam_fs_write(
-            p2_bytes.as_ptr(), p2_bytes.len() as u64,
-            content_b.as_ptr(), content_b.len() as u64,
+            p2_bytes.as_ptr(),
+            p2_bytes.len() as u64,
+            content_b.as_ptr(),
+            content_b.len() as u64,
         );
         assert!(r.success);
 
@@ -1989,7 +2036,9 @@ mod tests {
         cleanup_file(&p);
         let path_bytes = p.to_str().unwrap().as_bytes();
 
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_open(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(!r.success);
         assert!(r.error_msg.len > 0, "error message should not be empty");
@@ -2045,7 +2094,9 @@ mod tests {
         cleanup_file(&p);
         let path_bytes = p.to_str().unwrap().as_bytes();
 
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_create(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 
@@ -2092,14 +2143,18 @@ mod tests {
         let short_content = b"short";
 
         let r = __adam_fs_write(
-            path_bytes.as_ptr(), path_bytes.len() as u64,
-            long_content.as_ptr(), long_content.len() as u64,
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64,
+            long_content.as_ptr(),
+            long_content.len() as u64,
         );
         assert!(r.success);
 
         let r = __adam_fs_write(
-            path_bytes.as_ptr(), path_bytes.len() as u64,
-            short_content.as_ptr(), short_content.len() as u64,
+            path_bytes.as_ptr(),
+            path_bytes.len() as u64,
+            short_content.as_ptr(),
+            short_content.len() as u64,
         );
         assert!(r.success);
 
@@ -2107,7 +2162,11 @@ mod tests {
         let mut size: u64 = 0;
         let r = __adam_fs_file_size(path_bytes.as_ptr(), path_bytes.len() as u64, &mut size);
         assert!(r.success);
-        assert_eq!(size, short_content.len() as u64, "old data should not linger");
+        assert_eq!(
+            size,
+            short_content.len() as u64,
+            "old data should not linger"
+        );
 
         let mut out = AdamString::from_bytes(b"");
         let r = __adam_fs_read(path_bytes.as_ptr(), path_bytes.len() as u64, &mut out);
@@ -2133,7 +2192,9 @@ mod tests {
         fs::write(&p, b"original data that is long").unwrap();
 
         // Open with file_create (should truncate).
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_create(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 
@@ -2169,8 +2230,10 @@ mod tests {
         let parts: &[&[u8]] = &[b"one_", b"two_", b"three_", b"four_", b"five"];
         for part in parts {
             let r = __adam_fs_append(
-                path_bytes.as_ptr(), path_bytes.len() as u64,
-                part.as_ptr(), part.len() as u64,
+                path_bytes.as_ptr(),
+                path_bytes.len() as u64,
+                part.as_ptr(),
+                part.len() as u64,
             );
             assert!(r.success);
         }
@@ -2219,7 +2282,9 @@ mod tests {
         fs::write(&p, b"").unwrap();
 
         let path_bytes = p.to_str().unwrap().as_bytes();
-        let mut fh = AdamFile { handle: ptr::null_mut() };
+        let mut fh = AdamFile {
+            handle: ptr::null_mut(),
+        };
         let r = __adam_file_open(path_bytes.as_ptr(), path_bytes.len() as u64, &mut fh);
         assert!(r.success);
 

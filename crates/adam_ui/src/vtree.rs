@@ -69,7 +69,12 @@ pub struct EdgeInsets {
 
 impl EdgeInsets {
     pub const fn all(v: f32) -> Self {
-        Self { top: v, right: v, bottom: v, left: v }
+        Self {
+            top: v,
+            right: v,
+            bottom: v,
+            left: v,
+        }
     }
     pub const fn symmetric(horizontal: f32, vertical: f32) -> Self {
         Self {
@@ -278,9 +283,7 @@ pub enum ViewNode {
         modifiers: Modifiers,
     },
     /// Flexible spacer.
-    Spacer {
-        modifiers: Modifiers,
-    },
+    Spacer { modifiers: Modifiers },
     /// Empty node (placeholder / removed).
     Empty,
 }
@@ -315,20 +318,11 @@ pub enum Mutation {
         node: ViewNode,
     },
     /// Remove a node at a path.
-    Remove {
-        path: NodePath,
-        index: usize,
-    },
+    Remove { path: NodePath, index: usize },
     /// Replace a node with a different one.
-    Replace {
-        path: NodePath,
-        node: ViewNode,
-    },
+    Replace { path: NodePath, node: ViewNode },
     /// Update text content.
-    UpdateText {
-        path: NodePath,
-        new_content: String,
-    },
+    UpdateText { path: NodePath, new_content: String },
     /// Update modifiers.
     UpdateModifiers {
         path: NodePath,
@@ -358,12 +352,7 @@ pub fn diff(old: &ViewNode, new: &ViewNode) -> Vec<Mutation> {
     mutations
 }
 
-fn diff_node(
-    old: &ViewNode,
-    new: &ViewNode,
-    path: &mut NodePath,
-    mutations: &mut Vec<Mutation>,
-) {
+fn diff_node(old: &ViewNode, new: &ViewNode, path: &mut NodePath, mutations: &mut Vec<Mutation>) {
     // If nodes are identical, nothing to do
     if old == new {
         return;
@@ -372,8 +361,14 @@ fn diff_node(
     match (old, new) {
         // Same type: Text
         (
-            ViewNode::Text { content: old_content, modifiers: old_mods },
-            ViewNode::Text { content: new_content, modifiers: new_mods },
+            ViewNode::Text {
+                content: old_content,
+                modifiers: old_mods,
+            },
+            ViewNode::Text {
+                content: new_content,
+                modifiers: new_mods,
+            },
         ) => {
             if old_content != new_content {
                 mutations.push(Mutation::UpdateText {
@@ -391,8 +386,16 @@ fn diff_node(
 
         // Same type: Container (same kind)
         (
-            ViewNode::Container { kind: old_kind, children: old_children, modifiers: old_mods },
-            ViewNode::Container { kind: new_kind, children: new_children, modifiers: new_mods },
+            ViewNode::Container {
+                kind: old_kind,
+                children: old_children,
+                modifiers: old_mods,
+            },
+            ViewNode::Container {
+                kind: new_kind,
+                children: new_children,
+                modifiers: new_mods,
+            },
         ) if old_kind == new_kind => {
             if old_mods != new_mods {
                 mutations.push(Mutation::UpdateModifiers {
@@ -405,8 +408,16 @@ fn diff_node(
 
         // Same type: Button
         (
-            ViewNode::Button { label: old_label, action: old_act, modifiers: old_mods },
-            ViewNode::Button { label: new_label, action: new_act, modifiers: new_mods },
+            ViewNode::Button {
+                label: old_label,
+                action: old_act,
+                modifiers: old_mods,
+            },
+            ViewNode::Button {
+                label: new_label,
+                action: new_act,
+                modifiers: new_mods,
+            },
         ) => {
             if old_label != new_label || old_act != new_act {
                 mutations.push(Mutation::UpdateText {
@@ -424,8 +435,16 @@ fn diff_node(
 
         // Same type: TextInput
         (
-            ViewNode::TextInput { value: old_val, modifiers: old_mods, .. },
-            ViewNode::TextInput { value: new_val, modifiers: new_mods, .. },
+            ViewNode::TextInput {
+                value: old_val,
+                modifiers: old_mods,
+                ..
+            },
+            ViewNode::TextInput {
+                value: new_val,
+                modifiers: new_mods,
+                ..
+            },
         ) => {
             if old_val != new_val {
                 mutations.push(Mutation::UpdateText {
@@ -443,8 +462,14 @@ fn diff_node(
 
         // Same type: List
         (
-            ViewNode::List { items: old_items, modifiers: old_mods },
-            ViewNode::List { items: new_items, modifiers: new_mods },
+            ViewNode::List {
+                items: old_items,
+                modifiers: old_mods,
+            },
+            ViewNode::List {
+                items: new_items,
+                modifiers: new_mods,
+            },
         ) => {
             if old_mods != new_mods {
                 mutations.push(Mutation::UpdateModifiers {
@@ -457,8 +482,14 @@ fn diff_node(
 
         // Same type: Conditional
         (
-            ViewNode::Conditional { condition: old_cond, child: old_child },
-            ViewNode::Conditional { condition: new_cond, child: new_child },
+            ViewNode::Conditional {
+                condition: old_cond,
+                child: old_child,
+            },
+            ViewNode::Conditional {
+                condition: new_cond,
+                child: new_child,
+            },
         ) => {
             match (*old_cond, *new_cond) {
                 (true, true) => {
@@ -488,8 +519,14 @@ fn diff_node(
 
         // Same type: Progress
         (
-            ViewNode::Progress { value: old_val, modifiers: old_mods },
-            ViewNode::Progress { value: new_val, modifiers: new_mods },
+            ViewNode::Progress {
+                value: old_val,
+                modifiers: old_mods,
+            },
+            ViewNode::Progress {
+                value: new_val,
+                modifiers: new_mods,
+            },
         ) => {
             if old_val != new_val || old_mods != new_mods {
                 mutations.push(Mutation::Replace {
@@ -501,8 +538,16 @@ fn diff_node(
 
         // Same type: Toggle
         (
-            ViewNode::Toggle { is_on: old_on, modifiers: old_mods, .. },
-            ViewNode::Toggle { is_on: new_on, modifiers: new_mods, .. },
+            ViewNode::Toggle {
+                is_on: old_on,
+                modifiers: old_mods,
+                ..
+            },
+            ViewNode::Toggle {
+                is_on: new_on,
+                modifiers: new_mods,
+                ..
+            },
         ) => {
             if old_on != new_on || old_mods != new_mods {
                 mutations.push(Mutation::Replace {
@@ -514,8 +559,16 @@ fn diff_node(
 
         // Same type: Slider
         (
-            ViewNode::Slider { value: old_val, modifiers: old_mods, .. },
-            ViewNode::Slider { value: new_val, modifiers: new_mods, .. },
+            ViewNode::Slider {
+                value: old_val,
+                modifiers: old_mods,
+                ..
+            },
+            ViewNode::Slider {
+                value: new_val,
+                modifiers: new_mods,
+                ..
+            },
         ) => {
             if old_val != new_val || old_mods != new_mods {
                 mutations.push(Mutation::Replace {
@@ -679,11 +732,13 @@ pub fn tree_node_count(node: &ViewNode) -> usize {
         ViewNode::Container { children, .. } => {
             1 + children.iter().map(tree_node_count).sum::<usize>()
         }
-        ViewNode::List { items, .. } => {
-            1 + items.iter().map(tree_node_count).sum::<usize>()
-        }
+        ViewNode::List { items, .. } => 1 + items.iter().map(tree_node_count).sum::<usize>(),
         ViewNode::Conditional { child, condition } => {
-            if *condition { 1 + tree_node_count(child) } else { 1 }
+            if *condition {
+                1 + tree_node_count(child)
+            } else {
+                1
+            }
         }
         _ => 1,
     }
@@ -734,7 +789,10 @@ mod tests {
     fn test_diff_identical_trees() {
         let tree = text("hello");
         let mutations = diff(&tree, &tree);
-        assert!(mutations.is_empty(), "identical trees should produce no mutations");
+        assert!(
+            mutations.is_empty(),
+            "identical trees should produce no mutations"
+        );
     }
 
     #[test]
@@ -860,8 +918,14 @@ mod tests {
         };
         let mutations = diff(&old, &new);
         // Should have Move mutations
-        let moves: Vec<_> = mutations.iter().filter(|m| matches!(m, Mutation::Move { .. })).collect();
-        assert!(!moves.is_empty(), "keyed reorder should produce Move mutations");
+        let moves: Vec<_> = mutations
+            .iter()
+            .filter(|m| matches!(m, Mutation::Move { .. }))
+            .collect();
+        assert!(
+            !moves.is_empty(),
+            "keyed reorder should produce Move mutations"
+        );
     }
 
     #[test]
@@ -882,8 +946,14 @@ mod tests {
             modifiers: Default::default(),
         };
         let mutations = diff(&old, &new);
-        let inserts: Vec<_> = mutations.iter().filter(|m| matches!(m, Mutation::Insert { .. })).collect();
-        assert!(!inserts.is_empty(), "keyed insert should produce Insert mutations");
+        let inserts: Vec<_> = mutations
+            .iter()
+            .filter(|m| matches!(m, Mutation::Insert { .. }))
+            .collect();
+        assert!(
+            !inserts.is_empty(),
+            "keyed insert should produce Insert mutations"
+        );
     }
 
     #[test]
@@ -926,9 +996,7 @@ mod tests {
     #[test]
     fn test_diff_large_tree_performance() {
         // Build a 1000-node tree
-        let items: Vec<ViewNode> = (0..1000)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..1000).map(|i| text(&format!("item {}", i))).collect();
         let old = column(items);
 
         let items_new: Vec<ViewNode> = (0..1000)
@@ -954,20 +1022,16 @@ mod tests {
 
     #[test]
     fn test_diff_nested_containers() {
-        let old = column(vec![
-            ViewNode::Container {
-                kind: ContainerKind::Row,
-                children: vec![text("a"), text("b")],
-                modifiers: Default::default(),
-            },
-        ]);
-        let new = column(vec![
-            ViewNode::Container {
-                kind: ContainerKind::Row,
-                children: vec![text("a"), text("c")],
-                modifiers: Default::default(),
-            },
-        ]);
+        let old = column(vec![ViewNode::Container {
+            kind: ContainerKind::Row,
+            children: vec![text("a"), text("b")],
+            modifiers: Default::default(),
+        }]);
+        let new = column(vec![ViewNode::Container {
+            kind: ContainerKind::Row,
+            children: vec![text("a"), text("c")],
+            modifiers: Default::default(),
+        }]);
         let mutations = diff(&old, &new);
         assert_eq!(mutations.len(), 1);
         match &mutations[0] {

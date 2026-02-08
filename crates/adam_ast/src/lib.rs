@@ -5,9 +5,9 @@
 //! Every other compiler crate depends on this one.
 
 pub mod common;
-pub mod item;
 pub mod expr;
-pub mod stmt;
-pub mod types;
+pub mod item;
 pub mod pattern;
 pub mod pretty;
+pub mod stmt;
+pub mod types;

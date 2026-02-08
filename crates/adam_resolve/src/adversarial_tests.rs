@@ -3,8 +3,8 @@
 #[cfg(test)]
 mod tests {
     use crate::resolver::resolve;
-    use adam_parser::Parser;
     use adam_lexer::Lexer;
+    use adam_parser::Parser;
 
     fn resolve_source(source: &str) -> crate::resolver::ResolveResult {
         let tokens = Lexer::new(source).tokenize().tokens;
@@ -144,7 +144,9 @@ struct Foo {}
 
     #[test]
     fn test_many_variables_in_function() {
-        let vars: Vec<String> = (0..500).map(|i| format!("    let v{} = {}", i, i)).collect();
+        let vars: Vec<String> = (0..500)
+            .map(|i| format!("    let v{} = {}", i, i))
+            .collect();
         let source = format!("fn main() {{\n{}\n}}", vars.join("\n"));
         let result = resolve_source(&source);
         let _ = result;

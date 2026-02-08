@@ -47,7 +47,10 @@ impl CompileOpts {
                     "ir" => EmitStage::Ir,
                     "llvm" => EmitStage::Llvm,
                     _ => {
-                        eprintln!("error: unknown emit stage '{}' (expected: tokens, ast, ir, llvm)", stage);
+                        eprintln!(
+                            "error: unknown emit stage '{}' (expected: tokens, ast, ir, llvm)",
+                            stage
+                        );
                         return Err(1);
                     }
                 });
@@ -167,7 +170,9 @@ fn load_modules(
 fn lex_source(source: &str) -> Result<Vec<adam_lexer::Token>, String> {
     let lex_result = adam_lexer::Lexer::new(source).tokenize();
     if !lex_result.errors.is_empty() {
-        return Err(lex_result.errors.iter()
+        return Err(lex_result
+            .errors
+            .iter()
             .map(|e| format!("lex error [{}:{}]: {}", e.line, e.column, e.message))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -179,7 +184,9 @@ fn lex_source(source: &str) -> Result<Vec<adam_lexer::Token>, String> {
 fn parse_tokens(tokens: Vec<adam_lexer::Token>) -> Result<adam_ast::item::SourceFile, String> {
     let parse_result = adam_parser::Parser::new(tokens).parse();
     if !parse_result.errors.is_empty() {
-        return Err(parse_result.errors.iter()
+        return Err(parse_result
+            .errors
+            .iter()
             .map(|e| format!("parse error: {}", e.message))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -191,7 +198,9 @@ fn parse_tokens(tokens: Vec<adam_lexer::Token>) -> Result<adam_ast::item::Source
 fn resolve_ast(ast: &adam_ast::item::SourceFile) -> Result<adam_resolve::ResolveResult, String> {
     let result = adam_resolve::resolve(ast);
     if !result.errors.is_empty() {
-        return Err(result.errors.iter()
+        return Err(result
+            .errors
+            .iter()
             .map(|e| format!("resolve error: {}", e))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -203,7 +212,9 @@ fn resolve_ast(ast: &adam_ast::item::SourceFile) -> Result<adam_resolve::Resolve
 fn typecheck_ast(ast: &adam_ast::item::SourceFile) -> Result<adam_types::TypeCheckResult, String> {
     let result = adam_types::TypeChecker::new().check(ast);
     if !result.errors.is_empty() {
-        return Err(result.errors.iter()
+        return Err(result
+            .errors
+            .iter()
             .map(|e| format!("type error: {}", e.message))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -219,7 +230,9 @@ fn borrowcheck_ast(
 ) -> Result<(), String> {
     let result = adam_borrow::BorrowChecker::new().check(ast, resolve, types);
     if !result.errors.is_empty() {
-        return Err(result.errors.iter()
+        return Err(result
+            .errors
+            .iter()
             .map(|e| format!("borrow error: {}", e.message))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -268,12 +281,17 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
         resolve_ast(&ast)?
     } else {
         if opts.verbose {
-            println!("  loaded {} module(s): {}", modules.len(),
-                modules.keys().cloned().collect::<Vec<_>>().join(", "));
+            println!(
+                "  loaded {} module(s): {}",
+                modules.len(),
+                modules.keys().cloned().collect::<Vec<_>>().join(", ")
+            );
         }
         let result = adam_resolve::resolve_multi(&ast, &modules);
         if !result.errors.is_empty() {
-            return Err(result.errors.iter()
+            return Err(result
+                .errors
+                .iter()
                 .map(|e| format!("resolve error: {}", e))
                 .collect::<Vec<_>>()
                 .join("\n"));
@@ -309,7 +327,8 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
         println!("[7/7] Generating code");
     }
     let context = inkwell::context::Context::create();
-    let module_name = source_path.file_stem()
+    let module_name = source_path
+        .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "main".to_string());
 
@@ -319,9 +338,15 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
             .ok_or_else(|| format!("unknown target '{}' (expected: ios, ios-simulator, android, android-emulator, macos, linux)", target))?;
         Some(match platform {
             adam_codegen::targets::Platform::IOS => adam_codegen::targets::ios::ios_device_target(),
-            adam_codegen::targets::Platform::IOSSimulator => adam_codegen::targets::ios::ios_simulator_target(),
-            adam_codegen::targets::Platform::Android => adam_codegen::targets::android::android_device_target(),
-            adam_codegen::targets::Platform::AndroidEmulator => adam_codegen::targets::android::android_emulator_target(),
+            adam_codegen::targets::Platform::IOSSimulator => {
+                adam_codegen::targets::ios::ios_simulator_target()
+            }
+            adam_codegen::targets::Platform::Android => {
+                adam_codegen::targets::android::android_device_target()
+            }
+            adam_codegen::targets::Platform::AndroidEmulator => {
+                adam_codegen::targets::android::android_emulator_target()
+            }
             adam_codegen::targets::Platform::MacOS | adam_codegen::targets::Platform::Linux => {
                 adam_codegen::TargetConfig::host()
             }
@@ -345,16 +370,15 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
 
     // Emit object file.
     let build_dir = PathBuf::from("build");
-    fs::create_dir_all(&build_dir)
-        .map_err(|e| format!("failed to create build dir: {}", e))?;
+    fs::create_dir_all(&build_dir).map_err(|e| format!("failed to create build dir: {}", e))?;
 
     let object_path = build_dir.join(format!("{}.o", module_name));
-    codegen.emit_object_file(&object_path)
+    codegen
+        .emit_object_file(&object_path)
         .map_err(|e| format!("failed to emit object file: {}", e))?;
 
     // Link.
-    let runtime_lib = adam_codegen::find_runtime_library(None)
-        .map_err(|e| format!("{}", e))?;
+    let runtime_lib = adam_codegen::find_runtime_library(None).map_err(|e| format!("{}", e))?;
 
     if let Some(ref config) = target_config {
         // Cross-compilation: use target-specific output name and linker.
@@ -363,7 +387,11 @@ pub fn build(opts: &CompileOpts) -> Result<(), String> {
         adam_codegen::link_with_target_config(&object_path, &runtime_lib, &output_path, config)
             .map_err(|e| format!("link error: {}", e))?;
         if opts.verbose {
-            println!("Built: {} (target: {})", output_path.display(), config.platform);
+            println!(
+                "Built: {} (target: {})",
+                output_path.display(),
+                config.platform
+            );
         } else {
             println!("{}", output_path.display());
         }
@@ -387,7 +415,8 @@ pub fn run(opts: &CompileOpts) -> Result<(), String> {
     build(opts)?;
 
     let source_path = find_source(opts)?;
-    let module_name = source_path.file_stem()
+    let module_name = source_path
+        .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "main".to_string());
     let exe_path = PathBuf::from("build").join(&module_name);
@@ -525,8 +554,14 @@ mod tests {
         let ir = pipeline_to_ir(
             "fn fib(n i32) -> i32 {\n    if n <= 1 {\n        n\n    } else {\n        fib(n - 1) + fib(n - 2)\n    }\n}\nfn main() {\n    result := fib(10)\n    print(\"done\")\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "fib"), "IR should contain 'fib'");
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "fib"),
+            "IR should contain 'fib'"
+        );
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     #[test]
@@ -534,7 +569,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n    b := id(\"hello\")\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     #[test]
@@ -542,7 +580,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "struct Point {\n    x i32\n    y i32\n}\nimpl Point {\n    fn sum(self) -> i32 {\n        self.x + self.y\n    }\n}\nfn main() {\n    p := Point { x: 3, y: 4 }\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     #[test]
@@ -550,7 +591,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "enum Color {\n    Red\n    Green\n    Blue\n}\nfn describe(c Color) -> i32 {\n    match c {\n        Color.Red => 0\n        Color.Green => 1\n        Color.Blue => 2\n    }\n}\nfn main() {\n    c := Red\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "describe"), "IR should contain 'describe'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "describe"),
+            "IR should contain 'describe'"
+        );
     }
 
     #[test]
@@ -559,7 +603,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "fn consume(own s String) {\n    print(s)\n}\nfn main() {\n    s := \"hello\"\n    consume(s)\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     #[test]
@@ -567,7 +614,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "trait Greet {\n    fn greet(self) -> String\n}\nstruct Bot {\n    name String\n}\nimpl Greet for Bot {\n    fn greet(self) -> String {\n        self.name\n    }\n}\nfn main() {\n    b := Bot { name: \"Ada\" }\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     #[test]
@@ -575,7 +625,10 @@ mod tests {
         let ir = pipeline_to_ir(
             "fn apply(f fn(i32) -> i32, x i32) -> i32 {\n    f(x)\n}\nfn main() {\n    double := |x i32| x * 2\n    result := apply(double, 21)\n}"
         );
-        assert!(ir.functions.iter().any(|f| f.name == "main"), "IR should contain 'main'");
+        assert!(
+            ir.functions.iter().any(|f| f.name == "main"),
+            "IR should contain 'main'"
+        );
     }
 
     // ============================================================

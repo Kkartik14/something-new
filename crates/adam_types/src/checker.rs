@@ -32,7 +32,11 @@ impl TypeError {
 
 impl std::fmt::Display for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}..{}] {}", self.span.start, self.span.end, self.message)
+        write!(
+            f,
+            "[{}..{}] {}",
+            self.span.start, self.span.end, self.message
+        )
     }
 }
 
@@ -179,8 +183,12 @@ impl TypeChecker {
         let b: Vec<char> = b.chars().collect();
         let (m, n) = (a.len(), b.len());
         let mut dp = vec![vec![0usize; n + 1]; m + 1];
-        for i in 0..=m { dp[i][0] = i; }
-        for j in 0..=n { dp[0][j] = j; }
+        for i in 0..=m {
+            dp[i][0] = i;
+        }
+        for j in 0..=n {
+            dp[0][j] = j;
+        }
         for i in 1..=m {
             for j in 1..=n {
                 let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
@@ -383,7 +391,9 @@ impl TypeChecker {
                 let inner = self.unify(*a_inner, *b_inner, span);
                 self.ctx.intern(Ty::Channel(inner))
             }
-            (Ty::Function(a_sig), Ty::Function(b_sig)) if a_sig.params.len() == b_sig.params.len() => {
+            (Ty::Function(a_sig), Ty::Function(b_sig))
+                if a_sig.params.len() == b_sig.params.len() =>
+            {
                 let params: Vec<_> = a_sig
                     .params
                     .iter()
@@ -430,52 +440,102 @@ impl TypeChecker {
             }
             Ty::Array(elem, size) => {
                 let new_elem = self.substitute_type(elem, subs);
-                if new_elem == elem { ty_id } else { self.ctx.intern(Ty::Array(new_elem, size)) }
+                if new_elem == elem {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Array(new_elem, size))
+                }
             }
             Ty::Tuple(elems) => {
-                let new_elems: Vec<_> = elems.iter().map(|&e| self.substitute_type(e, subs)).collect();
-                if new_elems == elems { ty_id } else { self.ctx.intern(Ty::Tuple(new_elems)) }
+                let new_elems: Vec<_> = elems
+                    .iter()
+                    .map(|&e| self.substitute_type(e, subs))
+                    .collect();
+                if new_elems == elems {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Tuple(new_elems))
+                }
             }
             Ty::Optional(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Optional(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Optional(new_inner))
+                }
             }
             Ty::Result(ok, err) => {
                 let new_ok = self.substitute_type(ok, subs);
                 let new_err = self.substitute_type(err, subs);
-                if new_ok == ok && new_err == err { ty_id } else { self.ctx.intern(Ty::Result(new_ok, new_err)) }
+                if new_ok == ok && new_err == err {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Result(new_ok, new_err))
+                }
             }
             Ty::Ref(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Ref(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Ref(new_inner))
+                }
             }
             Ty::MutRef(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::MutRef(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::MutRef(new_inner))
+                }
             }
             Ty::Box(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Box(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Box(new_inner))
+                }
             }
             Ty::Rc(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Rc(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Rc(new_inner))
+                }
             }
             Ty::Arc(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Arc(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Arc(new_inner))
+                }
             }
             Ty::Channel(inner) => {
                 let new_inner = self.substitute_type(inner, subs);
-                if new_inner == inner { ty_id } else { self.ctx.intern(Ty::Channel(new_inner)) }
+                if new_inner == inner {
+                    ty_id
+                } else {
+                    self.ctx.intern(Ty::Channel(new_inner))
+                }
             }
             Ty::Function(sig) => {
-                let new_params: Vec<_> = sig.params.iter().map(|&p| self.substitute_type(p, subs)).collect();
+                let new_params: Vec<_> = sig
+                    .params
+                    .iter()
+                    .map(|&p| self.substitute_type(p, subs))
+                    .collect();
                 let new_ret = self.substitute_type(sig.return_type, subs);
                 if new_params == sig.params && new_ret == sig.return_type {
                     ty_id
                 } else {
-                    self.ctx.intern(Ty::Function(FnSig { params: new_params, return_type: new_ret }))
+                    self.ctx.intern(Ty::Function(FnSig {
+                        params: new_params,
+                        return_type: new_ret,
+                    }))
                 }
             }
             // Primitives, structs, enums, Generic, Error, Never — no TypeVars inside.
@@ -495,9 +555,19 @@ impl TypeChecker {
                 sub_map.insert(*old_var, fresh);
                 fresh_tvars.push(fresh);
             }
-            let params: Vec<_> = sig.params.iter().map(|&p| self.substitute_type(p, &sub_map)).collect();
+            let params: Vec<_> = sig
+                .params
+                .iter()
+                .map(|&p| self.substitute_type(p, &sub_map))
+                .collect();
             let return_type = self.substitute_type(sig.return_type, &sub_map);
-            (FnSig { params, return_type }, fresh_tvars)
+            (
+                FnSig {
+                    params,
+                    return_type,
+                },
+                fresh_tvars,
+            )
         } else {
             (sig.clone(), vec![])
         }
@@ -536,7 +606,10 @@ impl TypeChecker {
     /// Check if a concrete type has a trait impl registered.
     fn type_implements_trait(&self, type_id: TypeId, trait_name: &str) -> bool {
         if let Some(&trait_id) = self.trait_ids.get(trait_name) {
-            self.ctx.trait_impls.iter().any(|imp| imp.trait_id == trait_id && imp.target_type == type_id)
+            self.ctx
+                .trait_impls
+                .iter()
+                .any(|imp| imp.trait_id == trait_id && imp.target_type == type_id)
         } else {
             false
         }
@@ -587,11 +660,7 @@ impl TypeChecker {
                     .iter()
                     .map(|v| VariantInfo {
                         name: v.name.name.clone(),
-                        fields: v
-                            .fields
-                            .iter()
-                            .map(|f| self.resolve_ast_type(f))
-                            .collect(),
+                        fields: v.fields.iter().map(|f| self.resolve_ast_type(f)).collect(),
                     })
                     .collect();
                 let enum_id = self.ctx.add_enum(EnumInfo {
@@ -600,8 +669,7 @@ impl TypeChecker {
                     generic_params: vec![],
                 });
                 let ty_id = self.ctx.intern(Ty::Enum(enum_id));
-                self.enum_ids
-                    .insert(e.name.name.clone(), (enum_id, ty_id));
+                self.enum_ids.insert(e.name.name.clone(), (enum_id, ty_id));
                 // Register variants.
                 for (i, variant) in e.variants.iter().enumerate() {
                     self.variant_ids
@@ -632,8 +700,10 @@ impl TypeChecker {
 
                 for method in &imp.methods {
                     let sig = self.build_fn_sig(&method.node);
-                    self.method_sigs
-                        .insert((type_name.clone(), method.node.name.name.clone()), sig.clone());
+                    self.method_sigs.insert(
+                        (type_name.clone(), method.node.name.name.clone()),
+                        sig.clone(),
+                    );
                     // Also register as a plain function for Type.method() calls
                     let qualified = format!("{}.{}", type_name, method.node.name.name);
                     self.fn_sigs.insert(qualified, sig);
@@ -644,22 +714,25 @@ impl TypeChecker {
                         let methods: Vec<_> = imp
                             .methods
                             .iter()
-                            .map(|m| {
-                                (m.node.name.name.clone(), self.build_fn_sig(&m.node))
-                            })
+                            .map(|m| (m.node.name.name.clone(), self.build_fn_sig(&m.node)))
                             .collect();
 
                         // Validate impl method signatures against trait declarations.
                         let trait_info = self.ctx.traits[trait_id as usize].clone();
                         for (impl_name, impl_sig) in &methods {
-                            if let Some(trait_method) = trait_info.methods.iter().find(|m| m.name == *impl_name) {
+                            if let Some(trait_method) =
+                                trait_info.methods.iter().find(|m| m.name == *impl_name)
+                            {
                                 // Check return type matches.
-                                if self.apply_subs(impl_sig.return_type) != self.apply_subs(trait_method.sig.return_type)
+                                if self.apply_subs(impl_sig.return_type)
+                                    != self.apply_subs(trait_method.sig.return_type)
                                     && trait_method.sig.return_type != self.ctx.error()
                                     && impl_sig.return_type != self.ctx.error()
                                 {
                                     // Find the span of this method in the impl block.
-                                    let method_span = imp.methods.iter()
+                                    let method_span = imp
+                                        .methods
+                                        .iter()
                                         .find(|m| m.node.name.name == *impl_name)
                                         .map(|m| m.node.name.span)
                                         .unwrap_or(imp.target_type.span);
@@ -675,10 +748,20 @@ impl TypeChecker {
                                     );
                                 }
                                 // Check param count matches (excluding self).
-                                let impl_non_self = if impl_sig.params.is_empty() { 0 } else { impl_sig.params.len() - 1 };
-                                let trait_non_self = if trait_method.sig.params.is_empty() { 0 } else { trait_method.sig.params.len() - 1 };
+                                let impl_non_self = if impl_sig.params.is_empty() {
+                                    0
+                                } else {
+                                    impl_sig.params.len() - 1
+                                };
+                                let trait_non_self = if trait_method.sig.params.is_empty() {
+                                    0
+                                } else {
+                                    trait_method.sig.params.len() - 1
+                                };
                                 if impl_non_self != trait_non_self {
-                                    let method_span = imp.methods.iter()
+                                    let method_span = imp
+                                        .methods
+                                        .iter()
                                         .find(|m| m.node.name.name == *impl_name)
                                         .map(|m| m.node.name.span)
                                         .unwrap_or(imp.target_type.span);
@@ -761,8 +844,7 @@ impl TypeChecker {
             self.fn_generic_params
                 .insert(f.name.name.clone(), generic_tvars);
             if bounds.iter().any(|b| !b.is_empty()) {
-                self.fn_generic_bounds
-                    .insert(f.name.name.clone(), bounds);
+                self.fn_generic_bounds.insert(f.name.name.clone(), bounds);
             }
         }
 
@@ -1004,7 +1086,10 @@ impl TypeChecker {
                 } else {
                     let suggestion = self.suggest_similar_name(&ident.name);
                     let msg = if let Some(similar) = suggestion {
-                        format!("undefined variable `{}`; did you mean `{}`?", ident.name, similar)
+                        format!(
+                            "undefined variable `{}`; did you mean `{}`?",
+                            ident.name, similar
+                        )
                     } else {
                         format!("undefined variable `{}`", ident.name)
                     };
@@ -1038,7 +1123,11 @@ impl TypeChecker {
                 let right_ty = self.infer_expr(&bin.right);
 
                 match bin.op {
-                    BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
+                    BinaryOp::Add
+                    | BinaryOp::Sub
+                    | BinaryOp::Mul
+                    | BinaryOp::Div
+                    | BinaryOp::Mod => {
                         let result = self.unify(left_ty, right_ty, span);
                         let resolved = self.apply_subs(result);
                         if resolved != self.ctx.error() && !self.ctx.is_numeric(resolved) {
@@ -1101,9 +1190,7 @@ impl TypeChecker {
                         self.unify(self.ctx.bool(), operand_ty, unary.operand.span);
                         self.ctx.bool()
                     }
-                    UnaryOp::Ref => {
-                        self.ctx.intern(Ty::Ref(operand_ty))
-                    }
+                    UnaryOp::Ref => self.ctx.intern(Ty::Ref(operand_ty)),
                 }
             }
 
@@ -1139,7 +1226,9 @@ impl TypeChecker {
                                 span,
                             );
                         } else {
-                            for (i, (&param, &arg)) in sig.params.iter().zip(arg_types.iter()).enumerate() {
+                            for (i, (&param, &arg)) in
+                                sig.params.iter().zip(arg_types.iter()).enumerate()
+                            {
                                 self.unify(param, arg, call.args[i].span);
                             }
                         }
@@ -1160,7 +1249,8 @@ impl TypeChecker {
                             if let Some(&(enum_id, variant_idx, enum_ty)) =
                                 self.variant_ids.get(&ident.name)
                             {
-                                let variant = &self.ctx.enums[enum_id as usize].variants[variant_idx].clone();
+                                let variant =
+                                    &self.ctx.enums[enum_id as usize].variants[variant_idx].clone();
                                 if arg_types.len() != variant.fields.len() {
                                     self.err(
                                         format!(
@@ -1270,7 +1360,9 @@ impl TypeChecker {
                 match self.ctx.ty(resolved).clone() {
                     Ty::Struct(sid) => {
                         let struct_info = self.ctx.structs[sid as usize].clone();
-                        if let Some(field) = struct_info.fields.iter().find(|f| f.name == fa.field.name) {
+                        if let Some(field) =
+                            struct_info.fields.iter().find(|f| f.name == fa.field.name)
+                        {
                             field.ty
                         } else {
                             self.err(
@@ -1290,7 +1382,11 @@ impl TypeChecker {
                                 elems[idx]
                             } else {
                                 self.err(
-                                    format!("tuple index {} out of bounds (len {})", idx, elems.len()),
+                                    format!(
+                                        "tuple index {} out of bounds (len {})",
+                                        idx,
+                                        elems.len()
+                                    ),
                                     fa.field.span,
                                 );
                                 self.ctx.error()
@@ -1339,11 +1435,14 @@ impl TypeChecker {
             Expr::StructLiteral(sl) => {
                 if let Some(&(struct_id, ty_id)) = self.struct_ids.get(&sl.name.name) {
                     let struct_info = self.ctx.structs[struct_id as usize].clone();
-                    let provided_names: Vec<&str> = sl.fields.iter().map(|(n, _)| n.name.as_str()).collect();
+                    let provided_names: Vec<&str> =
+                        sl.fields.iter().map(|(n, _)| n.name.as_str()).collect();
                     for (field_name, field_value) in &sl.fields {
                         let value_ty = self.infer_expr(field_value);
-                        if let Some(field_info) =
-                            struct_info.fields.iter().find(|f| f.name == field_name.name)
+                        if let Some(field_info) = struct_info
+                            .fields
+                            .iter()
+                            .find(|f| f.name == field_name.name)
                         {
                             self.unify(field_info.ty, value_ty, field_value.span);
                         } else {
@@ -1414,11 +1513,10 @@ impl TypeChecker {
                     .params
                     .iter()
                     .map(|p| {
-                        let ty = p
-                            .ty
-                            .as_ref()
-                            .map(|t| self.resolve_ast_type(t))
-                            .unwrap_or_else(|| self.ctx.fresh_type_var());
+                        let ty =
+                            p.ty.as_ref()
+                                .map(|t| self.resolve_ast_type(t))
+                                .unwrap_or_else(|| self.ctx.fresh_type_var());
                         self.define(&p.name.name, ty);
                         ty
                     })
@@ -1635,12 +1733,18 @@ impl TypeChecker {
             match self.ctx.ty(resolved).clone() {
                 Ty::Enum(_) => {
                     self.err(
-                        format!("non-exhaustive match: missing variant(s): {}", missing.join(", ")),
+                        format!(
+                            "non-exhaustive match: missing variant(s): {}",
+                            missing.join(", ")
+                        ),
                         span,
                     );
                 }
                 Ty::Bool => {
-                    self.err("non-exhaustive match on bool: add a wildcard `_` pattern", span);
+                    self.err(
+                        "non-exhaustive match on bool: add a wildcard `_` pattern",
+                        span,
+                    );
                 }
                 _ => {
                     self.err(
@@ -1671,7 +1775,10 @@ impl TypeChecker {
         }
 
         // If any pattern is wildcard or binding, everything is covered.
-        if flat.iter().any(|p| matches!(p, Pattern::Wildcard | Pattern::Binding(_))) {
+        if flat
+            .iter()
+            .any(|p| matches!(p, Pattern::Wildcard | Pattern::Binding(_)))
+        {
             return vec![];
         }
 
@@ -1683,23 +1790,26 @@ impl TypeChecker {
 
                 for variant in &enum_info.variants {
                     // Collect sub-pattern lists from arms matching this variant.
-                    let sub_pattern_sets: Vec<Vec<&Pattern>> = flat.iter().filter_map(|&p| {
-                        if let Pattern::Variant(vp) = p {
-                            let name = &vp.name.name;
-                            let variant_name = if let Some(dot_pos) = name.find('.') {
-                                &name[dot_pos + 1..]
-                            } else {
-                                name.as_str()
-                            };
-                            if variant_name == variant.name {
-                                Some(vp.fields.iter().map(|f| &f.node).collect())
+                    let sub_pattern_sets: Vec<Vec<&Pattern>> = flat
+                        .iter()
+                        .filter_map(|&p| {
+                            if let Pattern::Variant(vp) = p {
+                                let name = &vp.name.name;
+                                let variant_name = if let Some(dot_pos) = name.find('.') {
+                                    &name[dot_pos + 1..]
+                                } else {
+                                    name.as_str()
+                                };
+                                if variant_name == variant.name {
+                                    Some(vp.fields.iter().map(|f| &f.node).collect())
+                                } else {
+                                    None
+                                }
                             } else {
                                 None
                             }
-                        } else {
-                            None
-                        }
-                    }).collect();
+                        })
+                        .collect();
 
                     if sub_pattern_sets.is_empty() {
                         // No arm matches this variant at all.
@@ -1714,7 +1824,8 @@ impl TypeChecker {
 
                     // Check each field position recursively.
                     for (field_idx, field_ty) in variant.fields.iter().enumerate() {
-                        let field_pats: Vec<&Pattern> = sub_pattern_sets.iter()
+                        let field_pats: Vec<&Pattern> = sub_pattern_sets
+                            .iter()
                             .filter_map(|sp| sp.get(field_idx).copied())
                             .collect();
                         let sub_missing = self.find_missing_patterns(&field_pats, *field_ty);
@@ -1734,8 +1845,12 @@ impl TypeChecker {
                     matches!(p, Pattern::Literal(lit) if matches!(lit.node, Expr::BoolLiteral(false)))
                 });
                 let mut missing = Vec::new();
-                if !has_true { missing.push("true".to_string()); }
-                if !has_false { missing.push("false".to_string()); }
+                if !has_true {
+                    missing.push("true".to_string());
+                }
+                if !has_false {
+                    missing.push("false".to_string());
+                }
                 missing
             }
             _ => {

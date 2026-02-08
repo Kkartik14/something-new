@@ -218,10 +218,16 @@ mod tests {
 
     #[test]
     fn parse_then_symbol_round_trip() {
-        let tokens = ["+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "[]"];
+        let tokens = [
+            "+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "[]",
+        ];
         for tok in tokens {
             let op = parse_op(tok).unwrap_or_else(|| panic!("failed to parse '{}'", tok));
-            assert_eq!(op.symbol(), tok, "symbol() should return the original token");
+            assert_eq!(
+                op.symbol(),
+                tok,
+                "symbol() should return the original token"
+            );
         }
     }
 }

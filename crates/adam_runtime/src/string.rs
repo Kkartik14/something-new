@@ -167,22 +167,14 @@ unsafe fn str_from_raw(ptr: *const u8, len: u64) -> &'static str {
 // 1. __adam_string_len
 /// Return the byte length of an Adam string.
 #[no_mangle]
-pub extern "C" fn __adam_string_len(
-    _ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> u64 {
+pub extern "C" fn __adam_string_len(_ptr: *const u8, len: u64, _cap: u64) -> u64 {
     len
 }
 
 // 2. __adam_string_is_empty
 /// Return true if the string has zero length.
 #[no_mangle]
-pub extern "C" fn __adam_string_is_empty(
-    _ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> bool {
+pub extern "C" fn __adam_string_is_empty(_ptr: *const u8, len: u64, _cap: u64) -> bool {
     len == 0
 }
 
@@ -325,10 +317,8 @@ pub extern "C" fn __adam_string_split(
 
         // Allocate array of AdamString structs.
         let array_size = count * std::mem::size_of::<AdamString>();
-        let layout = Layout::from_size_align_unchecked(
-            array_size,
-            std::mem::align_of::<AdamString>(),
-        );
+        let layout =
+            Layout::from_size_align_unchecked(array_size, std::mem::align_of::<AdamString>());
         let arr_ptr = alloc(layout) as *mut AdamString;
         if arr_ptr.is_null() {
             std::process::abort();
@@ -347,11 +337,7 @@ pub extern "C" fn __adam_string_split(
 // 9. __adam_string_trim
 /// Trim leading and trailing whitespace, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_trim(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_trim(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let trimmed = s.trim();
@@ -362,11 +348,7 @@ pub extern "C" fn __adam_string_trim(
 // 10. __adam_string_trim_start
 /// Trim leading whitespace, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_trim_start(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_trim_start(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let trimmed = s.trim_start();
@@ -377,11 +359,7 @@ pub extern "C" fn __adam_string_trim_start(
 // 11. __adam_string_trim_end
 /// Trim trailing whitespace, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_trim_end(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_trim_end(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let trimmed = s.trim_end();
@@ -392,11 +370,7 @@ pub extern "C" fn __adam_string_trim_end(
 // 12. __adam_string_to_upper
 /// Convert to uppercase, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_to_upper(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_to_upper(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let upper = s.to_uppercase();
@@ -407,11 +381,7 @@ pub extern "C" fn __adam_string_to_upper(
 // 13. __adam_string_to_lower
 /// Convert to lowercase, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_to_lower(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_to_lower(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let lower = s.to_lowercase();
@@ -445,12 +415,7 @@ pub extern "C" fn __adam_string_replace(
 // 15. __adam_string_repeat
 /// Repeat the string `n` times, returning a new string.
 #[no_mangle]
-pub extern "C" fn __adam_string_repeat(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-    n: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_repeat(ptr: *const u8, len: u64, _cap: u64, n: u64) -> AdamString {
     unsafe {
         let s = str_from_raw(ptr, len);
         let result = s.repeat(n as usize);
@@ -476,20 +441,16 @@ pub extern "C" fn __adam_string_slice(
         if start > s.len() || end > s.len() || start > end {
             panic!(
                 "string slice out of range: start={}, end={}, len={}",
-                start, end, s.len()
+                start,
+                end,
+                s.len()
             );
         }
         if !s.is_char_boundary(start) {
-            panic!(
-                "string slice start {} is not on a char boundary",
-                start
-            );
+            panic!("string slice start {} is not on a char boundary", start);
         }
         if !s.is_char_boundary(end) {
-            panic!(
-                "string slice end {} is not on a char boundary",
-                end
-            );
+            panic!("string slice end {} is not on a char boundary", end);
         }
         let sliced = &s[start..end];
         AdamString::from_bytes(sliced.as_bytes())
@@ -534,8 +495,7 @@ pub extern "C" fn __adam_string_push(
                 p
             } else {
                 // Realloc existing buffer.
-                let old_layout =
-                    Layout::from_size_align_unchecked(cur_cap as usize, 1);
+                let old_layout = Layout::from_size_align_unchecked(cur_cap as usize, 1);
                 let p = std::alloc::realloc(cur_ptr, old_layout, new_cap as usize);
                 if p.is_null() {
                     std::process::abort();
@@ -633,11 +593,7 @@ pub extern "C" fn __adam_string_cmp(
 // 21. __adam_string_hash
 /// FNV-1a hash of the string bytes. Returns u64.
 #[no_mangle]
-pub extern "C" fn __adam_string_hash(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> u64 {
+pub extern "C" fn __adam_string_hash(ptr: *const u8, len: u64, _cap: u64) -> u64 {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x00000100000001B3;
 
@@ -655,11 +611,7 @@ pub extern "C" fn __adam_string_hash(
 // 22. __adam_string_clone
 /// Deep copy of an Adam string.
 #[no_mangle]
-pub extern "C" fn __adam_string_clone(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-) -> AdamString {
+pub extern "C" fn __adam_string_clone(ptr: *const u8, len: u64, _cap: u64) -> AdamString {
     unsafe {
         let bytes = slice_from_raw(ptr, len);
         AdamString::from_bytes(bytes)
@@ -671,12 +623,7 @@ pub extern "C" fn __adam_string_clone(
 /// Panics if the index is out of bounds or not on a char boundary.
 /// Returns the char as a u32.
 #[no_mangle]
-pub extern "C" fn __adam_string_char_at(
-    ptr: *const u8,
-    len: u64,
-    _cap: u64,
-    idx: u64,
-) -> u32 {
+pub extern "C" fn __adam_string_char_at(ptr: *const u8, len: u64, _cap: u64, idx: u64) -> u32 {
     unsafe {
         let s = str_from_raw(ptr, len);
         let idx = idx as usize;
@@ -688,10 +635,7 @@ pub extern "C" fn __adam_string_char_at(
             );
         }
         if !s.is_char_boundary(idx) {
-            panic!(
-                "char_at index {} is not on a char boundary",
-                idx
-            );
+            panic!("char_at index {} is not on a char boundary", idx);
         }
         let ch = s[idx..].chars().next().unwrap();
         ch as u32
@@ -770,8 +714,7 @@ mod tests {
         let s = make_string("hello world");
         let sub = make_string("lo wo");
         assert!(__adam_string_contains(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap,
         ));
         drop_string(s);
         drop_string(sub);
@@ -782,8 +725,7 @@ mod tests {
         let s = make_string("hello world");
         let sub = make_string("xyz");
         assert!(!__adam_string_contains(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap,
         ));
         drop_string(s);
         drop_string(sub);
@@ -795,8 +737,7 @@ mod tests {
         let sub = AdamString::empty();
         // Empty needle is always contained.
         assert!(__adam_string_contains(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap,
         ));
         drop_string(s);
     }
@@ -806,8 +747,7 @@ mod tests {
         let s = AdamString::empty();
         let sub = AdamString::empty();
         assert!(__adam_string_contains(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap,
         ));
     }
 
@@ -816,8 +756,7 @@ mod tests {
         let s = make_string("hello world");
         let prefix = make_string("hello");
         assert!(__adam_string_starts_with(
-            s.ptr, s.len, s.cap,
-            prefix.ptr, prefix.len, prefix.cap,
+            s.ptr, s.len, s.cap, prefix.ptr, prefix.len, prefix.cap,
         ));
         drop_string(s);
         drop_string(prefix);
@@ -828,8 +767,7 @@ mod tests {
         let s = make_string("hello");
         let prefix = AdamString::empty();
         assert!(__adam_string_starts_with(
-            s.ptr, s.len, s.cap,
-            prefix.ptr, prefix.len, prefix.cap,
+            s.ptr, s.len, s.cap, prefix.ptr, prefix.len, prefix.cap,
         ));
         drop_string(s);
     }
@@ -839,8 +777,7 @@ mod tests {
         let s = make_string("hello world");
         let suffix = make_string("world");
         assert!(__adam_string_ends_with(
-            s.ptr, s.len, s.cap,
-            suffix.ptr, suffix.len, suffix.cap,
+            s.ptr, s.len, s.cap, suffix.ptr, suffix.len, suffix.cap,
         ));
         drop_string(s);
         drop_string(suffix);
@@ -851,8 +788,7 @@ mod tests {
         let s = make_string("hello");
         let suffix = AdamString::empty();
         assert!(__adam_string_ends_with(
-            s.ptr, s.len, s.cap,
-            suffix.ptr, suffix.len, suffix.cap,
+            s.ptr, s.len, s.cap, suffix.ptr, suffix.len, suffix.cap,
         ));
         drop_string(s);
     }
@@ -865,9 +801,7 @@ mod tests {
         let sub = make_string("bc");
         let mut idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 1); // first occurrence at byte index 1
         drop_string(s);
@@ -880,9 +814,7 @@ mod tests {
         let sub = make_string("xyz");
         let mut idx: u64 = 999;
         assert!(!__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         // idx should be unchanged.
         assert_eq!(idx, 999);
@@ -896,9 +828,7 @@ mod tests {
         let sub = make_string("bc");
         let mut idx: u64 = 0;
         assert!(__adam_string_rfind(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 4); // last occurrence at byte index 4
         drop_string(s);
@@ -911,9 +841,7 @@ mod tests {
         let sub = make_string("xyz");
         let mut idx: u64 = 999;
         assert!(!__adam_string_rfind(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 999);
         drop_string(s);
@@ -930,9 +858,7 @@ mod tests {
         let mut count: u64 = 0;
 
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
 
         assert_eq!(count, 3);
@@ -964,9 +890,7 @@ mod tests {
         let mut count: u64 = 0;
 
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
 
         assert_eq!(count, 1);
@@ -992,9 +916,7 @@ mod tests {
         let mut count: u64 = 0;
 
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
 
         // Splitting "" by "," yields [""]
@@ -1020,9 +942,7 @@ mod tests {
         let mut count: u64 = 0;
 
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
 
         assert_eq!(count, 3);
@@ -1141,9 +1061,7 @@ mod tests {
         let from = make_string("world");
         let to = make_string("rust");
         let result = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            s.ptr, s.len, s.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
         unsafe {
             assert_eq!(read_string(&result), "hello rust");
@@ -1160,9 +1078,7 @@ mod tests {
         let from = make_string("a");
         let to = make_string("x");
         let result = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            s.ptr, s.len, s.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
         unsafe {
             assert_eq!(read_string(&result), "xxbxx");
@@ -1230,8 +1146,7 @@ mod tests {
         let mut s = make_string("hello");
         let suffix = make_string(" world");
         __adam_string_push(
-            &mut s.ptr, &mut s.len, &mut s.cap,
-            suffix.ptr, suffix.len, suffix.cap,
+            &mut s.ptr, &mut s.len, &mut s.cap, suffix.ptr, suffix.len, suffix.cap,
         );
         unsafe {
             assert_eq!(read_string(&s), "hello world");
@@ -1247,10 +1162,7 @@ mod tests {
 
         for i in 0..100u64 {
             let ch = make_string("x");
-            __adam_string_push(
-                &mut s.ptr, &mut s.len, &mut s.cap,
-                ch.ptr, ch.len, ch.cap,
-            );
+            __adam_string_push(&mut s.ptr, &mut s.len, &mut s.cap, ch.ptr, ch.len, ch.cap);
             drop_string(ch);
             assert_eq!(s.len, i + 1);
         }
@@ -1267,10 +1179,7 @@ mod tests {
     #[test]
     fn test_push_char_ascii() {
         let mut s = make_string("hello");
-        __adam_string_push_char(
-            &mut s.ptr, &mut s.len, &mut s.cap,
-            '!' as u32,
-        );
+        __adam_string_push_char(&mut s.ptr, &mut s.len, &mut s.cap, '!' as u32);
         unsafe {
             assert_eq!(read_string(&s), "hello!");
         }
@@ -1281,10 +1190,7 @@ mod tests {
     fn test_push_char_unicode() {
         let mut s = make_string("hi");
         // Push emoji U+1F600
-        __adam_string_push_char(
-            &mut s.ptr, &mut s.len, &mut s.cap,
-            0x1F600,
-        );
+        __adam_string_push_char(&mut s.ptr, &mut s.len, &mut s.cap, 0x1F600);
         unsafe {
             assert_eq!(read_string(&s), "hi\u{1F600}");
         }
@@ -1296,8 +1202,7 @@ mod tests {
         let mut s = make_string("hello");
         let empty = AdamString::empty();
         __adam_string_push(
-            &mut s.ptr, &mut s.len, &mut s.cap,
-            empty.ptr, empty.len, empty.cap,
+            &mut s.ptr, &mut s.len, &mut s.cap, empty.ptr, empty.len, empty.cap,
         );
         unsafe {
             assert_eq!(read_string(&s), "hello");
@@ -1311,10 +1216,7 @@ mod tests {
     fn test_eq_same() {
         let a = make_string("hello");
         let b = make_string("hello");
-        assert!(__adam_string_eq(
-            a.ptr, a.len, a.cap,
-            b.ptr, b.len, b.cap,
-        ));
+        assert!(__adam_string_eq(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,));
         drop_string(a);
         drop_string(b);
     }
@@ -1323,10 +1225,7 @@ mod tests {
     fn test_eq_different() {
         let a = make_string("hello");
         let b = make_string("world");
-        assert!(!__adam_string_eq(
-            a.ptr, a.len, a.cap,
-            b.ptr, b.len, b.cap,
-        ));
+        assert!(!__adam_string_eq(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,));
         drop_string(a);
         drop_string(b);
     }
@@ -1335,20 +1234,14 @@ mod tests {
     fn test_eq_empty() {
         let a = AdamString::empty();
         let b = AdamString::empty();
-        assert!(__adam_string_eq(
-            a.ptr, a.len, a.cap,
-            b.ptr, b.len, b.cap,
-        ));
+        assert!(__adam_string_eq(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,));
     }
 
     #[test]
     fn test_eq_different_lengths() {
         let a = make_string("hi");
         let b = make_string("hello");
-        assert!(!__adam_string_eq(
-            a.ptr, a.len, a.cap,
-            b.ptr, b.len, b.cap,
-        ));
+        assert!(!__adam_string_eq(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,));
         drop_string(a);
         drop_string(b);
     }
@@ -1358,10 +1251,7 @@ mod tests {
         let a = make_string("hello");
         let b = make_string("hello");
         assert_eq!(
-            __adam_string_cmp(
-                a.ptr, a.len, a.cap,
-                b.ptr, b.len, b.cap,
-            ),
+            __adam_string_cmp(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,),
             0,
         );
         drop_string(a);
@@ -1373,10 +1263,7 @@ mod tests {
         let a = make_string("abc");
         let b = make_string("abd");
         assert_eq!(
-            __adam_string_cmp(
-                a.ptr, a.len, a.cap,
-                b.ptr, b.len, b.cap,
-            ),
+            __adam_string_cmp(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,),
             -1,
         );
         drop_string(a);
@@ -1388,10 +1275,7 @@ mod tests {
         let a = make_string("abd");
         let b = make_string("abc");
         assert_eq!(
-            __adam_string_cmp(
-                a.ptr, a.len, a.cap,
-                b.ptr, b.len, b.cap,
-            ),
+            __adam_string_cmp(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,),
             1,
         );
         drop_string(a);
@@ -1404,10 +1288,7 @@ mod tests {
         let a = make_string("ab");
         let b = make_string("abc");
         assert_eq!(
-            __adam_string_cmp(
-                a.ptr, a.len, a.cap,
-                b.ptr, b.len, b.cap,
-            ),
+            __adam_string_cmp(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,),
             -1,
         );
         drop_string(a);
@@ -1510,8 +1391,7 @@ mod tests {
         let s = make_string("hello\u{4e16}\u{754c}");
         let sub = make_string("\u{4e16}\u{754c}");
         assert!(__adam_string_contains(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap,
         ));
         drop_string(s);
         drop_string(sub);
@@ -1536,9 +1416,7 @@ mod tests {
         let sub = make_string("\u{1F600}c");
         let mut idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         // 'a'=1, first emoji=4, 'b'=1 => second emoji starts at byte 6
         assert_eq!(idx, 6);
@@ -1585,16 +1463,25 @@ mod tests {
     #[test]
     fn test_unicode_mixed_scripts() {
         // Latin + CJK + Arabic + Emoji combined in one string.
-        let s = make_string("Hello\u{4e16}\u{754c}\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}\u{1F30D}");
+        let s =
+            make_string("Hello\u{4e16}\u{754c}\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}\u{1F30D}");
         // Verify contains for each script segment.
         let latin = make_string("Hello");
         let cjk = make_string("\u{4e16}\u{754c}");
         let arabic = make_string("\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}");
         let emoji = make_string("\u{1F30D}");
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, latin.ptr, latin.len, latin.cap));
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, cjk.ptr, cjk.len, cjk.cap));
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, arabic.ptr, arabic.len, arabic.cap));
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, emoji.ptr, emoji.len, emoji.cap));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, latin.ptr, latin.len, latin.cap
+        ));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, cjk.ptr, cjk.len, cjk.cap
+        ));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, arabic.ptr, arabic.len, arabic.cap
+        ));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, emoji.ptr, emoji.len, emoji.cap
+        ));
         drop_string(s);
         drop_string(latin);
         drop_string(cjk);
@@ -1632,7 +1519,9 @@ mod tests {
         }
         // starts_with BOM
         let bom = make_string("\u{FEFF}");
-        assert!(__adam_string_starts_with(s.ptr, s.len, s.cap, bom.ptr, bom.len, bom.cap));
+        assert!(__adam_string_starts_with(
+            s.ptr, s.len, s.cap, bom.ptr, bom.len, bom.cap
+        ));
         drop_string(s);
         drop_string(trimmed);
         drop_string(bom);
@@ -1645,7 +1534,9 @@ mod tests {
         // contains("", "") should be true.
         let s = AdamString::empty();
         let sub = AdamString::empty();
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap
+        ));
     }
 
     #[test]
@@ -1654,9 +1545,7 @@ mod tests {
         let sub = make_string("x");
         let mut idx: u64 = 999;
         assert!(!__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 999); // unchanged
         drop_string(sub);
@@ -1669,9 +1558,7 @@ mod tests {
         let sub = AdamString::empty();
         let mut idx: u64 = 999;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 0);
     }
@@ -1684,9 +1571,7 @@ mod tests {
         let mut arr: *mut AdamString = ptr::null_mut();
         let mut count: u64 = 0;
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
         // Rust's "ab".split("") yields ["", "a", "b", ""]
         assert_eq!(count, 4);
@@ -1707,9 +1592,7 @@ mod tests {
         let from = AdamString::empty();
         let to = make_string("-");
         let result = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            s.ptr, s.len, s.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
         unsafe {
             // Rust: "ab".replace("", "-") => "-a-b-"
@@ -1742,14 +1625,14 @@ mod tests {
 
         // contains at the very end
         let needle = make_string("ghij");
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, needle.ptr, needle.len, needle.cap));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, needle.ptr, needle.len, needle.cap
+        ));
 
         // find should locate first occurrence at byte 6
         let mut idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            needle.ptr, needle.len, needle.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, needle.ptr, needle.len, needle.cap, &mut idx,
         ));
         assert_eq!(idx, 6);
 
@@ -1757,13 +1640,22 @@ mod tests {
         let from_ch = make_string("a");
         let to_ch = make_string("A");
         let replaced = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from_ch.ptr, from_ch.len, from_ch.cap,
-            to_ch.ptr, to_ch.len, to_ch.cap,
+            s.ptr,
+            s.len,
+            s.cap,
+            from_ch.ptr,
+            from_ch.len,
+            from_ch.cap,
+            to_ch.ptr,
+            to_ch.len,
+            to_ch.cap,
         );
         assert_eq!(replaced.len, 100_000);
         // The first byte should now be 'A'
-        assert_eq!(__adam_string_char_at(replaced.ptr, replaced.len, replaced.cap, 0), 'A' as u32);
+        assert_eq!(
+            __adam_string_char_at(replaced.ptr, replaced.len, replaced.cap, 0),
+            'A' as u32
+        );
 
         drop_string(s);
         drop_string(needle);
@@ -1798,9 +1690,7 @@ mod tests {
         let mut arr: *mut AdamString = ptr::null_mut();
         let mut count: u64 = 0;
         __adam_string_split(
-            s.ptr, s.len, s.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            s.ptr, s.len, s.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
         assert_eq!(count, 1001);
         unsafe {
@@ -1843,9 +1733,7 @@ mod tests {
         let sub = make_string("hel");
         let mut idx: u64 = 999;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 0);
         drop_string(s);
@@ -1858,9 +1746,7 @@ mod tests {
         let sub = make_string("llo");
         let mut idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
-            &mut idx,
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap, &mut idx,
         ));
         assert_eq!(idx, 2);
         drop_string(s);
@@ -1874,16 +1760,24 @@ mod tests {
         let mut find_idx: u64 = 0;
         let mut rfind_idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr,
+            s.len,
+            s.cap,
+            sub.ptr,
+            sub.len,
+            sub.cap,
             &mut find_idx,
         ));
         assert!(__adam_string_rfind(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr,
+            s.len,
+            s.cap,
+            sub.ptr,
+            sub.len,
+            sub.cap,
             &mut rfind_idx,
         ));
-        assert_eq!(find_idx, 2);  // first X
+        assert_eq!(find_idx, 2); // first X
         assert_eq!(rfind_idx, 8); // last X
         assert!(rfind_idx > find_idx);
         drop_string(s);
@@ -1894,7 +1788,9 @@ mod tests {
     fn test_contains_needle_equals_haystack() {
         let s = make_string("hello");
         let sub = make_string("hello");
-        assert!(__adam_string_contains(s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap));
+        assert!(__adam_string_contains(
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap
+        ));
         drop_string(s);
         drop_string(sub);
     }
@@ -1903,7 +1799,9 @@ mod tests {
     fn test_contains_needle_longer_than_haystack() {
         let s = make_string("hi");
         let sub = make_string("hello world");
-        assert!(!__adam_string_contains(s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap));
+        assert!(!__adam_string_contains(
+            s.ptr, s.len, s.cap, sub.ptr, sub.len, sub.cap
+        ));
         drop_string(s);
         drop_string(sub);
     }
@@ -1974,16 +1872,24 @@ mod tests {
         // "" < "a"
         assert_eq!(
             __adam_string_cmp(
-                empty.ptr, empty.len, empty.cap,
-                nonempty.ptr, nonempty.len, nonempty.cap,
+                empty.ptr,
+                empty.len,
+                empty.cap,
+                nonempty.ptr,
+                nonempty.len,
+                nonempty.cap,
             ),
             -1,
         );
         // "a" > ""
         assert_eq!(
             __adam_string_cmp(
-                nonempty.ptr, nonempty.len, nonempty.cap,
-                empty.ptr, empty.len, empty.cap,
+                nonempty.ptr,
+                nonempty.len,
+                nonempty.cap,
+                empty.ptr,
+                empty.len,
+                empty.cap,
             ),
             1,
         );
@@ -1995,17 +1901,11 @@ mod tests {
         let a = make_string("hellx");
         let b = make_string("helly");
         assert_eq!(
-            __adam_string_cmp(
-                a.ptr, a.len, a.cap,
-                b.ptr, b.len, b.cap,
-            ),
+            __adam_string_cmp(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap,),
             -1,
         );
         assert_eq!(
-            __adam_string_cmp(
-                b.ptr, b.len, b.cap,
-                a.ptr, a.len, a.cap,
-            ),
+            __adam_string_cmp(b.ptr, b.len, b.cap, a.ptr, a.len, a.cap,),
             1,
         );
         drop_string(a);
@@ -2019,8 +1919,7 @@ mod tests {
         let mut a = make_string("hel");
         let suffix = make_string("lo");
         __adam_string_push(
-            &mut a.ptr, &mut a.len, &mut a.cap,
-            suffix.ptr, suffix.len, suffix.cap,
+            &mut a.ptr, &mut a.len, &mut a.cap, suffix.ptr, suffix.len, suffix.cap,
         );
         // String b: exact allocation.
         let b = make_string("hello");
@@ -2054,15 +1953,23 @@ mod tests {
         let mut orig_cap = original.cap;
         let extra = make_string(" world!!!");
         __adam_string_push(
-            &mut orig_ptr, &mut orig_len, &mut orig_cap,
-            extra.ptr, extra.len, extra.cap,
+            &mut orig_ptr,
+            &mut orig_len,
+            &mut orig_cap,
+            extra.ptr,
+            extra.len,
+            extra.cap,
         );
 
         unsafe {
             // Clone should still be "hello", unaffected.
             assert_eq!(read_string(&cloned), "hello");
             // Original (now via raw fields) should be "hello world!!!".
-            let orig_adam = AdamString { ptr: orig_ptr, len: orig_len, cap: orig_cap };
+            let orig_adam = AdamString {
+                ptr: orig_ptr,
+                len: orig_len,
+                cap: orig_cap,
+            };
             assert_eq!(read_string(&orig_adam), "hello world!!!");
             __adam_string_drop(orig_adam.ptr, orig_adam.len, orig_adam.cap);
         }
@@ -2082,7 +1989,11 @@ mod tests {
 
         unsafe {
             assert_eq!(read_string(&cloned), "abc");
-            let orig_adam = AdamString { ptr: orig_ptr, len: orig_len, cap: orig_cap };
+            let orig_adam = AdamString {
+                ptr: orig_ptr,
+                len: orig_len,
+                cap: orig_cap,
+            };
             assert_eq!(read_string(&orig_adam), "abcZ");
             __adam_string_drop(orig_adam.ptr, orig_adam.len, orig_adam.cap);
         }
@@ -2097,9 +2008,7 @@ mod tests {
         let from = make_string("xyz");
         let to = make_string("!");
         let result = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            s.ptr, s.len, s.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
         unsafe {
             assert_eq!(read_string(&result), "hello");
@@ -2117,9 +2026,7 @@ mod tests {
         let from = make_string("X");
         let to = AdamString::empty();
         let result = __adam_string_replace(
-            s.ptr, s.len, s.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            s.ptr, s.len, s.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
         unsafe {
             assert_eq!(read_string(&result), "abc");
@@ -2197,13 +2104,21 @@ mod tests {
         let mut find_idx: u64 = 0;
         let mut rfind_idx: u64 = 0;
         assert!(__adam_string_find(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr,
+            s.len,
+            s.cap,
+            sub.ptr,
+            sub.len,
+            sub.cap,
             &mut find_idx,
         ));
         assert!(__adam_string_rfind(
-            s.ptr, s.len, s.cap,
-            sub.ptr, sub.len, sub.cap,
+            s.ptr,
+            s.len,
+            s.cap,
+            sub.ptr,
+            sub.len,
+            sub.cap,
             &mut rfind_idx,
         ));
         assert_eq!(find_idx, rfind_idx);

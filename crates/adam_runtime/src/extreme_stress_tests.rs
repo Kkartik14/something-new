@@ -9,20 +9,20 @@
 mod extreme {
     use crate::channel::TypedChannel;
     use crate::map::{
-        __adam_map_contains_key, __adam_map_drop, __adam_map_get, __adam_map_insert,
-        __adam_map_len, __adam_map_new, __adam_map_remove, AdamMap,
+        AdamMap, __adam_map_contains_key, __adam_map_drop, __adam_map_get, __adam_map_insert,
+        __adam_map_len, __adam_map_new, __adam_map_remove,
     };
     use crate::set::{
         __adam_set_contains, __adam_set_drop, __adam_set_insert, __adam_set_len, __adam_set_new,
         __adam_set_remove,
     };
     use crate::string::{
-        __adam_string_clone, __adam_string_drop, __adam_string_eq, __adam_string_hash,
-        __adam_string_len, __adam_string_push, AdamString, __str_concat,
+        AdamString, __adam_string_clone, __adam_string_drop, __adam_string_eq, __adam_string_hash,
+        __adam_string_len, __adam_string_push, __str_concat,
     };
     use crate::vec::{
-        __adam_vec_clone, __adam_vec_drop, __adam_vec_get, __adam_vec_len, __adam_vec_new,
-        __adam_vec_pop, __adam_vec_push, __adam_vec_reverse, __adam_vec_sort, AdamVec,
+        AdamVec, __adam_vec_clone, __adam_vec_drop, __adam_vec_get, __adam_vec_len, __adam_vec_new,
+        __adam_vec_pop, __adam_vec_push, __adam_vec_reverse, __adam_vec_sort,
     };
 
     // ===================================================================
@@ -247,8 +247,7 @@ mod extreme {
 
         for _ in 0..50_000 {
             __adam_string_push(
-                &mut s.ptr, &mut s.len, &mut s.cap,
-                chunk.ptr, chunk.len, chunk.cap,
+                &mut s.ptr, &mut s.len, &mut s.cap, chunk.ptr, chunk.len, chunk.cap,
             );
         }
 
@@ -304,9 +303,7 @@ mod extreme {
         // = 10000 * 10000 * 28 + 8 * 49995000
         // = 2_800_000_000 + 399_960_000 = 3_199_960_000
         let expected: i64 = (0..8i64)
-            .map(|p| {
-                (0..10_000i64).map(|i| p * 10_000 + i).sum::<i64>()
-            })
+            .map(|p| (0..10_000i64).map(|i| p * 10_000 + i).sum::<i64>())
             .sum();
         assert_eq!(sum, expected);
     }
@@ -494,8 +491,12 @@ mod extreme {
             let chunk = AdamString::from_bytes(b"XY");
             for _ in 0..10 {
                 __adam_string_push(
-                    &mut str_val.ptr, &mut str_val.len, &mut str_val.cap,
-                    chunk.ptr, chunk.len, chunk.cap,
+                    &mut str_val.ptr,
+                    &mut str_val.len,
+                    &mut str_val.cap,
+                    chunk.ptr,
+                    chunk.len,
+                    chunk.cap,
                 );
             }
             assert_eq!(__adam_string_len(str_val.ptr, str_val.len, str_val.cap), 20);
@@ -609,8 +610,7 @@ mod extreme {
         // Modify original by pushing
         let extra = AdamString::from_bytes(b" EXTRA DATA APPENDED!!!");
         __adam_string_push(
-            &mut s.ptr, &mut s.len, &mut s.cap,
-            extra.ptr, extra.len, extra.cap,
+            &mut s.ptr, &mut s.len, &mut s.cap, extra.ptr, extra.len, extra.cap,
         );
 
         unsafe {
@@ -687,8 +687,7 @@ mod extreme {
         let cloned = __adam_string_clone(s.ptr, s.len, s.cap);
         assert_eq!(cloned.len, 7);
         assert!(__adam_string_eq(
-            s.ptr, s.len, s.cap,
-            cloned.ptr, cloned.len, cloned.cap,
+            s.ptr, s.len, s.cap, cloned.ptr, cloned.len, cloned.cap,
         ));
 
         // Hash should be deterministic for binary data
@@ -709,7 +708,10 @@ mod extreme {
         // Mix of null bytes and valid UTF-8 sequences, treated as raw bytes
         let raw_mix: &[u8] = b"Hello\x00World\x00\xFF\xFE\x00END";
         let ms = AdamString::from_bytes(raw_mix);
-        assert_eq!(__adam_string_len(ms.ptr, ms.len, ms.cap), raw_mix.len() as u64);
+        assert_eq!(
+            __adam_string_len(ms.ptr, ms.len, ms.cap),
+            raw_mix.len() as u64
+        );
 
         // Push more binary data
         let extra: &[u8] = &[0xDE, 0xAD, 0xBE, 0xEF];
@@ -718,8 +720,12 @@ mod extreme {
         let mut ms_len = ms.len;
         let mut ms_cap = ms.cap;
         __adam_string_push(
-            &mut ms_ptr, &mut ms_len, &mut ms_cap,
-            extra_s.ptr, extra_s.len, extra_s.cap,
+            &mut ms_ptr,
+            &mut ms_len,
+            &mut ms_cap,
+            extra_s.ptr,
+            extra_s.len,
+            extra_s.cap,
         );
         assert_eq!(ms_len, (raw_mix.len() + 4) as u64);
 
@@ -780,12 +786,7 @@ mod extreme {
         for i in 0..n {
             let hash = u64::from_ne_bytes(keys[i][..8].try_into().unwrap());
             let mut out = vec![0u8; val_size as usize];
-            let found = __adam_map_get(
-                &m,
-                keys[i].as_ptr(),
-                hash,
-                out.as_mut_ptr(),
-            );
+            let found = __adam_map_get(&m, keys[i].as_ptr(), hash, out.as_mut_ptr());
             assert!(found, "key {} not found", i);
             assert_eq!(out, vals[i], "value mismatch for key {}", i);
         }
@@ -794,12 +795,7 @@ mod extreme {
         for i in (0..n).step_by(2) {
             let hash = u64::from_ne_bytes(keys[i][..8].try_into().unwrap());
             let mut out = vec![0u8; val_size as usize];
-            let removed = __adam_map_remove(
-                &mut m,
-                keys[i].as_ptr(),
-                hash,
-                out.as_mut_ptr(),
-            );
+            let removed = __adam_map_remove(&mut m, keys[i].as_ptr(), hash, out.as_mut_ptr());
             assert!(removed, "failed to remove key {}", i);
             assert_eq!(out, vals[i]);
         }
@@ -827,11 +823,7 @@ mod extreme {
 
         // Fill to capacity
         for i in 0..capacity as i64 {
-            assert!(
-                ch.try_send(i),
-                "try_send should succeed for item {}",
-                i
-            );
+            assert!(ch.try_send(i), "try_send should succeed for item {}", i);
         }
 
         // Next try_send should fail (buffer full)
@@ -839,10 +831,7 @@ mod extreme {
             !ch.try_send(999),
             "try_send should fail when buffer is full"
         );
-        assert!(
-            !ch.try_send(1000),
-            "try_send should still fail"
-        );
+        assert!(!ch.try_send(1000), "try_send should still fail");
 
         // Drain half
         for i in 0..50i64 {
@@ -928,8 +917,7 @@ mod extreme {
         for _i in 0..10_000u64 {
             let chunk = AdamString::from_bytes(b"XY");
             let new_result = __str_concat(
-                result.ptr, result.len, result.cap,
-                chunk.ptr, chunk.len, chunk.cap,
+                result.ptr, result.len, result.cap, chunk.ptr, chunk.len, chunk.cap,
             );
             __adam_string_drop(result.ptr, result.len, result.cap);
             __adam_string_drop(chunk.ptr, chunk.len, chunk.cap);
@@ -965,7 +953,11 @@ mod extreme {
 
         // Re-insert should return false (already present)
         for i in 0..n {
-            assert!(!set_insert_i64(&mut s, i), "re-insert {} should return false", i);
+            assert!(
+                !set_insert_i64(&mut s, i),
+                "re-insert {} should return false",
+                i
+            );
         }
         assert_eq!(__adam_set_len(&s), n as u64);
 
@@ -1047,7 +1039,11 @@ mod extreme {
             assert_eq!(sum, expected_sum, "cycle {} sum mismatch", cycle);
 
             // Buffer should be empty
-            assert!(ch.try_recv().is_none(), "cycle {} buffer should be empty", cycle);
+            assert!(
+                ch.try_recv().is_none(),
+                "cycle {} buffer should be empty",
+                cycle
+            );
         }
     }
 
@@ -1090,12 +1086,7 @@ mod extreme {
 
         // Verify all
         for i in -10_000..10_000i64 {
-            assert_eq!(
-                map_get_i64(&m, i),
-                Some(i * i),
-                "key {} mismatch",
-                i
-            );
+            assert_eq!(map_get_i64(&m, i), Some(i * i), "key {} mismatch", i);
         }
 
         // Remove all negative keys
@@ -1203,7 +1194,11 @@ mod extreme {
 
         // Verify
         for i in 0..n {
-            assert!(set_contains_i64(&s, i), "reinserted {} should be present", i);
+            assert!(
+                set_contains_i64(&s, i),
+                "reinserted {} should be present",
+                i
+            );
         }
 
         __adam_set_drop(&mut s);
@@ -1284,20 +1279,27 @@ mod extreme {
 
         for _ in 0..5_000 {
             __adam_string_push(
-                &mut s1.ptr, &mut s1.len, &mut s1.cap,
-                chunk.ptr, chunk.len, chunk.cap,
+                &mut s1.ptr,
+                &mut s1.len,
+                &mut s1.cap,
+                chunk.ptr,
+                chunk.len,
+                chunk.cap,
             );
             __adam_string_push(
-                &mut s2.ptr, &mut s2.len, &mut s2.cap,
-                chunk.ptr, chunk.len, chunk.cap,
+                &mut s2.ptr,
+                &mut s2.len,
+                &mut s2.cap,
+                chunk.ptr,
+                chunk.len,
+                chunk.cap,
             );
         }
 
         assert_eq!(s1.len, s2.len);
         assert!(s1.len > 0);
         assert!(__adam_string_eq(
-            s1.ptr, s1.len, s1.cap,
-            s2.ptr, s2.len, s2.cap,
+            s1.ptr, s1.len, s1.cap, s2.ptr, s2.len, s2.cap,
         ));
 
         // Different pointers

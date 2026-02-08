@@ -53,7 +53,8 @@ impl OwnershipTracker {
 
     /// Mark a variable as moved at the given span.
     pub fn mark_moved(&mut self, name: &str, span: Span) {
-        self.vars.insert(name.to_string(), VarState::Moved { moved_at: span });
+        self.vars
+            .insert(name.to_string(), VarState::Moved { moved_at: span });
     }
 
     /// Add a shared borrow to the variable.
@@ -86,7 +87,8 @@ impl OwnershipTracker {
 
     /// Mutably borrow the variable.
     pub fn mark_mut_borrowed(&mut self, name: &str, span: Span) {
-        self.vars.insert(name.to_string(), VarState::MutBorrowed { span });
+        self.vars
+            .insert(name.to_string(), VarState::MutBorrowed { span });
     }
 
     /// Release a mutable borrow.
@@ -151,10 +153,17 @@ impl OwnershipTracker {
     pub fn is_copy_type(type_name: &str) -> bool {
         matches!(
             type_name,
-            "i8" | "i16" | "i32" | "i64"
-                | "u8" | "u16" | "u32" | "u64"
-                | "f32" | "f64"
-                | "bool" | "char"
+            "i8" | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "f32"
+                | "f64"
+                | "bool"
+                | "char"
         )
     }
 
@@ -184,8 +193,12 @@ impl OwnershipTracker {
                 // Both branches agree — keep that state.
                 (a, b) if a == b => a.clone(),
                 // If either branch moved it, it is considered moved.
-                (VarState::Moved { moved_at }, _) => VarState::Moved { moved_at: *moved_at },
-                (_, VarState::Moved { moved_at }) => VarState::Moved { moved_at: *moved_at },
+                (VarState::Moved { moved_at }, _) => VarState::Moved {
+                    moved_at: *moved_at,
+                },
+                (_, VarState::Moved { moved_at }) => VarState::Moved {
+                    moved_at: *moved_at,
+                },
                 // Partially moved in either branch.
                 (VarState::PartiallyMoved, _) | (_, VarState::PartiallyMoved) => {
                     VarState::PartiallyMoved

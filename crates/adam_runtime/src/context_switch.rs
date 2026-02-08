@@ -242,10 +242,7 @@ mod tests {
 
                 let thread_self = &mut *(thread_self_ptr as *mut GreenThread);
                 let main_ptr = TEST_MAIN_CTX.load(Ordering::SeqCst) as *const CpuContext;
-                super::adam_context_switch(
-                    &mut thread_self.context as *mut CpuContext,
-                    main_ptr,
-                );
+                super::adam_context_switch(&mut thread_self.context as *mut CpuContext, main_ptr);
             }
         });
 
@@ -260,7 +257,11 @@ mod tests {
         }
 
         // We're back. Check if the thread ran.
-        assert_eq!(TEST_COUNTER.load(Ordering::SeqCst), 1, "green thread should have run");
+        assert_eq!(
+            TEST_COUNTER.load(Ordering::SeqCst),
+            1,
+            "green thread should have run"
+        );
     }
 
     #[test]

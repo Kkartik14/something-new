@@ -163,61 +163,119 @@ pub struct TraitMethod {
 pub fn core_trait_methods(t: CoreTrait) -> &'static [TraitMethod] {
     match t {
         CoreTrait::Eq => &[
-            TraitMethod { name: "eq", params: &["Self"], return_type: "bool" },
-            TraitMethod { name: "ne", params: &["Self"], return_type: "bool" },
+            TraitMethod {
+                name: "eq",
+                params: &["Self"],
+                return_type: "bool",
+            },
+            TraitMethod {
+                name: "ne",
+                params: &["Self"],
+                return_type: "bool",
+            },
         ],
         CoreTrait::Comparable => &[
-            TraitMethod { name: "cmp", params: &["Self"], return_type: "Ordering" },
-            TraitMethod { name: "lt", params: &["Self"], return_type: "bool" },
-            TraitMethod { name: "le", params: &["Self"], return_type: "bool" },
-            TraitMethod { name: "gt", params: &["Self"], return_type: "bool" },
-            TraitMethod { name: "ge", params: &["Self"], return_type: "bool" },
+            TraitMethod {
+                name: "cmp",
+                params: &["Self"],
+                return_type: "Ordering",
+            },
+            TraitMethod {
+                name: "lt",
+                params: &["Self"],
+                return_type: "bool",
+            },
+            TraitMethod {
+                name: "le",
+                params: &["Self"],
+                return_type: "bool",
+            },
+            TraitMethod {
+                name: "gt",
+                params: &["Self"],
+                return_type: "bool",
+            },
+            TraitMethod {
+                name: "ge",
+                params: &["Self"],
+                return_type: "bool",
+            },
         ],
-        CoreTrait::Display => &[
-            TraitMethod { name: "to_string", params: &[], return_type: "String" },
-        ],
-        CoreTrait::Debug => &[
-            TraitMethod { name: "debug_string", params: &[], return_type: "String" },
-        ],
-        CoreTrait::Hash => &[
-            TraitMethod { name: "hash", params: &[], return_type: "u64" },
-        ],
-        CoreTrait::Clone => &[
-            TraitMethod { name: "clone", params: &[], return_type: "Self" },
-        ],
-        CoreTrait::Default => &[
-            TraitMethod { name: "default", params: &[], return_type: "Self" },
-        ],
-        CoreTrait::Drop => &[
-            TraitMethod { name: "drop", params: &[], return_type: "()" },
-        ],
-        CoreTrait::Iterable => &[
-            TraitMethod { name: "iter", params: &[], return_type: "Iterator" },
-        ],
-        CoreTrait::Iterator => &[
-            TraitMethod { name: "next", params: &[], return_type: "?Self::Item" },
-        ],
-        CoreTrait::Index => &[
-            TraitMethod { name: "index", params: &["Self::Index"], return_type: "Self::Output" },
-        ],
-        CoreTrait::Add => &[
-            TraitMethod { name: "add", params: &["Self"], return_type: "Self" },
-        ],
-        CoreTrait::Sub => &[
-            TraitMethod { name: "sub", params: &["Self"], return_type: "Self" },
-        ],
-        CoreTrait::Mul => &[
-            TraitMethod { name: "mul", params: &["Self"], return_type: "Self" },
-        ],
-        CoreTrait::Div => &[
-            TraitMethod { name: "div", params: &["Self"], return_type: "Self" },
-        ],
-        CoreTrait::Mod => &[
-            TraitMethod { name: "mod_", params: &["Self"], return_type: "Self" },
-        ],
-        CoreTrait::Neg => &[
-            TraitMethod { name: "neg", params: &[], return_type: "Self" },
-        ],
+        CoreTrait::Display => &[TraitMethod {
+            name: "to_string",
+            params: &[],
+            return_type: "String",
+        }],
+        CoreTrait::Debug => &[TraitMethod {
+            name: "debug_string",
+            params: &[],
+            return_type: "String",
+        }],
+        CoreTrait::Hash => &[TraitMethod {
+            name: "hash",
+            params: &[],
+            return_type: "u64",
+        }],
+        CoreTrait::Clone => &[TraitMethod {
+            name: "clone",
+            params: &[],
+            return_type: "Self",
+        }],
+        CoreTrait::Default => &[TraitMethod {
+            name: "default",
+            params: &[],
+            return_type: "Self",
+        }],
+        CoreTrait::Drop => &[TraitMethod {
+            name: "drop",
+            params: &[],
+            return_type: "()",
+        }],
+        CoreTrait::Iterable => &[TraitMethod {
+            name: "iter",
+            params: &[],
+            return_type: "Iterator",
+        }],
+        CoreTrait::Iterator => &[TraitMethod {
+            name: "next",
+            params: &[],
+            return_type: "?Self::Item",
+        }],
+        CoreTrait::Index => &[TraitMethod {
+            name: "index",
+            params: &["Self::Index"],
+            return_type: "Self::Output",
+        }],
+        CoreTrait::Add => &[TraitMethod {
+            name: "add",
+            params: &["Self"],
+            return_type: "Self",
+        }],
+        CoreTrait::Sub => &[TraitMethod {
+            name: "sub",
+            params: &["Self"],
+            return_type: "Self",
+        }],
+        CoreTrait::Mul => &[TraitMethod {
+            name: "mul",
+            params: &["Self"],
+            return_type: "Self",
+        }],
+        CoreTrait::Div => &[TraitMethod {
+            name: "div",
+            params: &["Self"],
+            return_type: "Self",
+        }],
+        CoreTrait::Mod => &[TraitMethod {
+            name: "mod_",
+            params: &["Self"],
+            return_type: "Self",
+        }],
+        CoreTrait::Neg => &[TraitMethod {
+            name: "neg",
+            params: &[],
+            return_type: "Self",
+        }],
         // Marker traits — no methods required
         CoreTrait::Copy => &[],
         CoreTrait::Send => &[],
@@ -299,7 +357,11 @@ mod tests {
     fn neg_trait_is_unary() {
         let methods = core_trait_methods(CoreTrait::Neg);
         assert_eq!(methods.len(), 1);
-        assert_eq!(methods[0].params.len(), 0, "Neg takes no extra params (unary)");
+        assert_eq!(
+            methods[0].params.len(),
+            0,
+            "Neg takes no extra params (unary)"
+        );
     }
 
     #[test]

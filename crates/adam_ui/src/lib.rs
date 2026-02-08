@@ -23,26 +23,26 @@
 //! - **animation** — Spring, tween, keyframe animations
 //! - **components** — Built-in UI components (Text, Button, List, etc.)
 
-pub mod state;
-pub mod vtree;
-pub mod view;
-pub mod layout;
-pub mod render;
-pub mod input;
 pub mod animation;
 pub mod components;
+pub mod input;
+pub mod layout;
+pub mod render;
 pub mod skia_backend;
+pub mod state;
+pub mod view;
+pub mod vtree;
 
 // Re-exports for convenience
-pub use state::{ReactiveCell, ViewId, CellId, Binding, SubscriptionRegistry};
-pub use view::{View, ViewContext};
-pub use vtree::{ViewNode, ContainerKind, Modifiers, Color, EdgeInsets, Key, ActionId, BindingId};
-pub use layout::{LayoutRect, LayoutNode, Constraints, TextMeasure, EstimatedTextMeasure};
-pub use render::{RenderBackend, RenderCommand, TestRenderBackend};
-pub use skia_backend::SkiaRenderBackend;
-pub use input::{InputEvent, UIEvent, EventProcessor, HitTestResult};
 pub use animation::{Animation, AnimationManager, Easing, SpringParams};
 pub use components::ViewModifiers;
+pub use input::{EventProcessor, HitTestResult, InputEvent, UIEvent};
+pub use layout::{Constraints, EstimatedTextMeasure, LayoutNode, LayoutRect, TextMeasure};
+pub use render::{RenderBackend, RenderCommand, TestRenderBackend};
+pub use skia_backend::SkiaRenderBackend;
+pub use state::{Binding, CellId, ReactiveCell, SubscriptionRegistry, ViewId};
+pub use view::{View, ViewContext};
+pub use vtree::{ActionId, BindingId, Color, ContainerKind, EdgeInsets, Key, Modifiers, ViewNode};
 
 // ---------------------------------------------------------------------------
 // Integration tests
@@ -50,15 +50,15 @@ pub use components::ViewModifiers;
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::state::*;
-    use crate::view::*;
-    use crate::vtree::*;
+    use crate::animation::*;
+    use crate::components::*;
+    use crate::input::*;
     use crate::layout;
     use crate::layout::*;
     use crate::render::*;
-    use crate::input::*;
-    use crate::animation::*;
-    use crate::components::*;
+    use crate::state::*;
+    use crate::view::*;
+    use crate::vtree::*;
 
     // -- Counter view for tests --
 
@@ -79,17 +79,16 @@ mod integration_tests {
     impl View for CounterView {
         fn body(&self) -> ViewNode {
             let count = self.count.get();
-            column_spaced(12.0, vec![
-                styled_text(
-                    &format!("Count: {}", count),
-                    24.0,
-                    Color::BLACK,
-                ),
-                row_spaced(8.0, vec![
-                    button("-", ActionId(1)),
-                    button("+", ActionId(2)),
-                ]),
-            ])
+            column_spaced(
+                12.0,
+                vec![
+                    styled_text(&format!("Count: {}", count), 24.0, Color::BLACK),
+                    row_spaced(
+                        8.0,
+                        vec![button("-", ActionId(1)), button("+", ActionId(2))],
+                    ),
+                ],
+            )
         }
 
         fn view_id(&self) -> ViewId {
@@ -106,12 +105,10 @@ mod integration_tests {
 
         let tree1 = ctx.evaluate_body(&counter);
         match &tree1 {
-            ViewNode::Container { children, .. } => {
-                match &children[0] {
-                    ViewNode::Text { content, .. } => assert_eq!(content, "Count: 0"),
-                    _ => panic!("expected text"),
-                }
-            }
+            ViewNode::Container { children, .. } => match &children[0] {
+                ViewNode::Text { content, .. } => assert_eq!(content, "Count: 0"),
+                _ => panic!("expected text"),
+            },
             _ => panic!("expected column"),
         }
 
@@ -122,12 +119,10 @@ mod integration_tests {
 
         let tree2 = ctx.evaluate_body(&counter);
         match &tree2 {
-            ViewNode::Container { children, .. } => {
-                match &children[0] {
-                    ViewNode::Text { content, .. } => assert_eq!(content, "Count: 5"),
-                    _ => panic!("expected text"),
-                }
-            }
+            ViewNode::Container { children, .. } => match &children[0] {
+                ViewNode::Text { content, .. } => assert_eq!(content, "Count: 5"),
+                _ => panic!("expected text"),
+            },
             _ => panic!("expected column"),
         }
     }
@@ -140,7 +135,9 @@ mod integration_tests {
         let new = text("world");
         let mutations = diff(&old, &new);
         assert_eq!(mutations.len(), 1);
-        assert!(matches!(&mutations[0], Mutation::UpdateText { new_content, .. } if new_content == "world"));
+        assert!(
+            matches!(&mutations[0], Mutation::UpdateText { new_content, .. } if new_content == "world")
+        );
     }
 
     // -- Test: diff add child --
@@ -193,8 +190,7 @@ mod integration_tests {
 
     #[test]
     fn test_layout_padding() {
-        let tree = text("padded")
-            .padding(EdgeInsets::all(20.0));
+        let tree = text("padded").padding(EdgeInsets::all(20.0));
         let tm = EstimatedTextMeasure::default();
         let result = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);
 
@@ -206,10 +202,7 @@ mod integration_tests {
 
     #[test]
     fn test_layout_nested() {
-        let tree = column(vec![
-            row(vec![text("a"), text("b")]),
-            text("c"),
-        ]);
+        let tree = column(vec![row(vec![text("a"), text("b")]), text("c")]);
         let tm = EstimatedTextMeasure::default();
         let result = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);
 
@@ -226,7 +219,8 @@ mod integration_tests {
         let layout_node = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);
         let commands = generate_render_commands(&tree, &layout_node);
 
-        let text_cmds: Vec<_> = commands.iter()
+        let text_cmds: Vec<_> = commands
+            .iter()
             .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
             .collect();
         assert_eq!(text_cmds.len(), 1);
@@ -241,8 +235,14 @@ mod integration_tests {
         let layout_node = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);
         let commands = generate_render_commands(&tree, &layout_node);
 
-        let fills = commands.iter().filter(|c| matches!(c, RenderCommand::FillRect { .. })).count();
-        let texts = commands.iter().filter(|c| matches!(c, RenderCommand::DrawText { .. })).count();
+        let fills = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::FillRect { .. }))
+            .count();
+        let texts = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
+            .count();
         assert!(fills > 0);
         assert!(texts > 0);
     }
@@ -276,9 +276,7 @@ mod integration_tests {
 
     #[test]
     fn test_scroll_view() {
-        let items: Vec<ViewNode> = (0..50)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..50).map(|i| text(&format!("item {}", i))).collect();
         let tree = scroll(items);
         let tm = EstimatedTextMeasure::default();
         let result = layout::layout(&tree, Constraints::loose(400.0, 200.0), &tm);
@@ -306,15 +304,14 @@ mod integration_tests {
 
     #[test]
     fn test_list_rendering() {
-        let items: Vec<ViewNode> = (0..100)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..100).map(|i| text(&format!("item {}", i))).collect();
         let tree = list(items);
         let tm = EstimatedTextMeasure::default();
         let layout_node = layout::layout(&tree, Constraints::loose(400.0, 10000.0), &tm);
         let commands = generate_render_commands(&tree, &layout_node);
 
-        let text_count = commands.iter()
+        let text_count = commands
+            .iter()
             .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
             .count();
         assert_eq!(text_count, 100);
@@ -335,8 +332,12 @@ mod integration_tests {
         render_to_backend(&tree, &layout_node, &mut backend, 400.0, 800.0);
 
         assert_eq!(backend.frames.len(), 1);
-        let text_count = backend.count_in_last_frame(|c| matches!(c, RenderCommand::DrawText { .. }));
-        assert!(text_count >= 3, "counter app should have at least 3 text draws");
+        let text_count =
+            backend.count_in_last_frame(|c| matches!(c, RenderCommand::DrawText { .. }));
+        assert!(
+            text_count >= 3,
+            "counter app should have at least 3 text draws"
+        );
 
         // Simulate increment
         counter.count.set(1);
@@ -356,28 +357,45 @@ mod integration_tests {
     #[test]
     fn test_todo_app() {
         let todos = vec!["Buy groceries", "Walk the dog", "Write code"];
-        let items: Vec<ViewNode> = todos.iter().enumerate().map(|(i, todo)| {
-            row_spaced(8.0, vec![
-                toggle(false, BindingId(i as u64)),
-                text(*todo),
-                spacer(),
-                button("X", ActionId(100 + i as u64)),
-            ])
-        }).collect();
+        let items: Vec<ViewNode> = todos
+            .iter()
+            .enumerate()
+            .map(|(i, todo)| {
+                row_spaced(
+                    8.0,
+                    vec![
+                        toggle(false, BindingId(i as u64)),
+                        text(*todo),
+                        spacer(),
+                        button("X", ActionId(100 + i as u64)),
+                    ],
+                )
+            })
+            .collect();
 
-        let tree = column_spaced(8.0, vec![
-            styled_text("Todo List", 28.0, Color::BLACK),
-            text_input("", "Add a todo...", BindingId(99)),
-            list(items),
-        ]);
+        let tree = column_spaced(
+            8.0,
+            vec![
+                styled_text("Todo List", 28.0, Color::BLACK),
+                text_input("", "Add a todo...", BindingId(99)),
+                list(items),
+            ],
+        );
 
         let tm = EstimatedTextMeasure::default();
         let layout_node = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);
         let commands = generate_render_commands(&tree, &layout_node);
 
         // Should have multiple text draws and button draws
-        let text_count = commands.iter().filter(|c| matches!(c, RenderCommand::DrawText { .. })).count();
-        assert!(text_count >= 5, "todo app should render text nodes: {}", text_count);
+        let text_count = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
+            .count();
+        assert!(
+            text_count >= 5,
+            "todo app should render text nodes: {}",
+            text_count
+        );
     }
 
     // -- Test: event processor tap fires action --
@@ -390,12 +408,24 @@ mod integration_tests {
         let mut processor = EventProcessor::new();
 
         processor.process(
-            &InputEvent::PointerDown { x: 5.0, y: 5.0, pointer_id: 0 },
-            &tree, &layout_node, 0,
+            &InputEvent::PointerDown {
+                x: 5.0,
+                y: 5.0,
+                pointer_id: 0,
+            },
+            &tree,
+            &layout_node,
+            0,
         );
         let events = processor.process(
-            &InputEvent::PointerUp { x: 5.0, y: 5.0, pointer_id: 0 },
-            &tree, &layout_node, 100,
+            &InputEvent::PointerUp {
+                x: 5.0,
+                y: 5.0,
+                pointer_id: 0,
+            },
+            &tree,
+            &layout_node,
+            100,
         );
 
         assert_eq!(events.len(), 1);
@@ -433,7 +463,10 @@ mod integration_tests {
         let commands = generate_render_commands(&tree, &layout_node);
 
         // Should have background fill
-        let fills = commands.iter().filter(|c| matches!(c, RenderCommand::FillRect { .. })).count();
+        let fills = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::FillRect { .. }))
+            .count();
         assert!(fills > 0, "styled text should have fill rect");
     }
 
@@ -461,14 +494,8 @@ mod integration_tests {
 
     #[test]
     fn test_keyed_list_diff() {
-        let old = keyed_list(vec![
-            (Key::Int(1), text("a")),
-            (Key::Int(2), text("b")),
-        ]);
-        let new = keyed_list(vec![
-            (Key::Int(2), text("b")),
-            (Key::Int(1), text("a")),
-        ]);
+        let old = keyed_list(vec![(Key::Int(1), text("a")), (Key::Int(2), text("b"))]);
+        let new = keyed_list(vec![(Key::Int(2), text("b")), (Key::Int(1), text("a"))]);
         let mutations = diff(&old, &new);
         // Should have move mutations
         assert!(!mutations.is_empty());
@@ -500,9 +527,15 @@ mod integration_tests {
     #[test]
     fn test_1000_node_diff_performance() {
         let old_items: Vec<ViewNode> = (0..1000).map(|i| text(&format!("item {}", i))).collect();
-        let new_items: Vec<ViewNode> = (0..1000).map(|i| {
-            if i == 500 { text("changed") } else { text(&format!("item {}", i)) }
-        }).collect();
+        let new_items: Vec<ViewNode> = (0..1000)
+            .map(|i| {
+                if i == 500 {
+                    text("changed")
+                } else {
+                    text(&format!("item {}", i))
+                }
+            })
+            .collect();
 
         let old = column(old_items);
         let new = column(new_items);
@@ -535,12 +568,15 @@ mod integration_tests {
 
     #[test]
     fn test_full_render_pipeline() {
-        let tree = column_spaced(8.0, vec![
-            text("Title").background(Color::rgb(240, 240, 240)),
-            button("Action", ActionId(1)),
-            progress(0.5),
-            toggle(true, BindingId(1)),
-        ]);
+        let tree = column_spaced(
+            8.0,
+            vec![
+                text("Title").background(Color::rgb(240, 240, 240)),
+                button("Action", ActionId(1)),
+                progress(0.5),
+                toggle(true, BindingId(1)),
+            ],
+        );
 
         let tm = EstimatedTextMeasure::default();
         let layout_node = layout::layout(&tree, Constraints::loose(400.0, 800.0), &tm);

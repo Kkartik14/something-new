@@ -12,14 +12,22 @@ use crate::scope::{DeclKind, ScopeKind};
 fn resolve_ok(src: &str) -> crate::resolver::ResolveResult {
     let lexer = Lexer::new(src);
     let lex_result = lexer.tokenize();
-    assert!(lex_result.errors.is_empty(), "lex errors: {:?}", lex_result.errors);
+    assert!(
+        lex_result.errors.is_empty(),
+        "lex errors: {:?}",
+        lex_result.errors
+    );
     let parse = Parser::new(lex_result.tokens).parse();
     assert!(parse.errors.is_empty(), "parse errors: {:?}", parse.errors);
     let result = resolve(&parse.ast);
     if !result.errors.is_empty() {
         panic!(
             "expected no resolve errors, got: {:?}",
-            result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+            result
+                .errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
         );
     }
     result
@@ -28,7 +36,11 @@ fn resolve_ok(src: &str) -> crate::resolver::ResolveResult {
 fn resolve_with_errors(src: &str) -> crate::resolver::ResolveResult {
     let lexer = Lexer::new(src);
     let lex_result = lexer.tokenize();
-    assert!(lex_result.errors.is_empty(), "lex errors: {:?}", lex_result.errors);
+    assert!(
+        lex_result.errors.is_empty(),
+        "lex errors: {:?}",
+        lex_result.errors
+    );
     let parse = Parser::new(lex_result.tokens).parse();
     assert!(parse.errors.is_empty(), "parse errors: {:?}", parse.errors);
     resolve(&parse.ast)
@@ -81,7 +93,11 @@ fn test_scope_lookup_walks_parents() {
             }
         }",
     );
-    assert!(has_decl(&result, "x", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "x",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 // ---- P4.S2: Basic declarations ----
@@ -93,7 +109,11 @@ fn test_simple_variable() {
             x := 5
         }",
     );
-    assert!(has_decl(&result, "x", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "x",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -103,7 +123,11 @@ fn test_mutable_variable() {
             mut count := 0
         }",
     );
-    assert!(has_decl(&result, "count", &DeclKind::Variable { mutable: true }));
+    assert!(has_decl(
+        &result,
+        "count",
+        &DeclKind::Variable { mutable: true }
+    ));
 }
 
 #[test]
@@ -113,7 +137,11 @@ fn test_typed_variable() {
             name: String = \"adam\"
         }",
     );
-    assert!(has_decl(&result, "name", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "name",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -257,7 +285,11 @@ fn test_for_loop_binding() {
             }
         }",
     );
-    assert!(has_decl(&result, "item", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "item",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -270,7 +302,11 @@ fn test_while_loop() {
             }
         }",
     );
-    assert!(has_decl(&result, "x", &DeclKind::Variable { mutable: true }));
+    assert!(has_decl(
+        &result,
+        "x",
+        &DeclKind::Variable { mutable: true }
+    ));
 }
 
 #[test]
@@ -301,9 +337,21 @@ fn test_match_arm_binding() {
             }
         }",
     );
-    assert!(has_decl(&result, "r", &DeclKind::Variable { mutable: false }));
-    assert!(has_decl(&result, "w", &DeclKind::Variable { mutable: false }));
-    assert!(has_decl(&result, "h", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "r",
+        &DeclKind::Variable { mutable: false }
+    ));
+    assert!(has_decl(
+        &result,
+        "w",
+        &DeclKind::Variable { mutable: false }
+    ));
+    assert!(has_decl(
+        &result,
+        "h",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -769,7 +817,11 @@ fn test_struct_with_impl_and_usage() {
     assert!(has_decl(&result, "Point", &DeclKind::Struct));
     assert!(has_decl(&result, "new", &DeclKind::Method));
     assert!(has_decl(&result, "distance", &DeclKind::Method));
-    assert!(has_decl(&result, "p", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "p",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -789,7 +841,11 @@ fn test_enum_match_integration() {
     assert!(has_decl(&result, "Option", &DeclKind::Enum));
     assert!(has_decl(&result, "Some", &DeclKind::EnumVariant));
     assert!(has_decl(&result, "None", &DeclKind::EnumVariant));
-    assert!(has_decl(&result, "val", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "val",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -823,8 +879,16 @@ fn test_select_expression() {
             }
         }",
     );
-    assert!(has_decl(&result, "ch", &DeclKind::Variable { mutable: false }));
-    assert!(has_decl(&result, "val", &DeclKind::Variable { mutable: false }));
+    assert!(has_decl(
+        &result,
+        "ch",
+        &DeclKind::Variable { mutable: false }
+    ));
+    assert!(has_decl(
+        &result,
+        "val",
+        &DeclKind::Variable { mutable: false }
+    ));
 }
 
 #[test]
@@ -967,7 +1031,11 @@ fn test_self_type_in_impl() {
 fn parse_ast(src: &str) -> adam_ast::item::SourceFile {
     let lexer = Lexer::new(src);
     let lex_result = lexer.tokenize();
-    assert!(lex_result.errors.is_empty(), "lex errors: {:?}", lex_result.errors);
+    assert!(
+        lex_result.errors.is_empty(),
+        "lex errors: {:?}",
+        lex_result.errors
+    );
     let parse = Parser::new(lex_result.tokens).parse();
     assert!(parse.errors.is_empty(), "parse errors: {:?}", parse.errors);
     parse.ast
@@ -975,8 +1043,8 @@ fn parse_ast(src: &str) -> adam_ast::item::SourceFile {
 
 #[test]
 fn test_multi_file_import_single() {
-    use std::collections::HashMap;
     use crate::resolver::resolve_multi;
+    use std::collections::HashMap;
 
     let main_src = "use utils.greet\nfn main() {\n    greet()\n}";
     let utils_src = "pub fn greet() {}";
@@ -991,14 +1059,18 @@ fn test_multi_file_import_single() {
     assert!(
         result.errors.is_empty(),
         "expected no errors, got: {:?}",
-        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        result
+            .errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
     );
 }
 
 #[test]
 fn test_multi_file_import_multiple() {
-    use std::collections::HashMap;
     use crate::resolver::resolve_multi;
+    use std::collections::HashMap;
 
     let main_src = "use math.{add, sub}\nfn main() {\n    add()\n    sub()\n}";
     let math_src = "pub fn add() {}\npub fn sub() {}";
@@ -1013,14 +1085,18 @@ fn test_multi_file_import_multiple() {
     assert!(
         result.errors.is_empty(),
         "expected no errors, got: {:?}",
-        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        result
+            .errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
     );
 }
 
 #[test]
 fn test_multi_file_import_wildcard() {
-    use std::collections::HashMap;
     use crate::resolver::resolve_multi;
+    use std::collections::HashMap;
 
     let main_src = "use helpers.*\nfn main() {\n    foo()\n    bar()\n}";
     let helpers_src = "pub fn foo() {}\npub fn bar() {}\nfn private_fn() {}";
@@ -1035,14 +1111,18 @@ fn test_multi_file_import_wildcard() {
     assert!(
         result.errors.is_empty(),
         "expected no errors, got: {:?}",
-        result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+        result
+            .errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
     );
 }
 
 #[test]
 fn test_multi_file_private_not_exported() {
-    use std::collections::HashMap;
     use crate::resolver::resolve_multi;
+    use std::collections::HashMap;
 
     let main_src = "use helpers.*\nfn main() {\n    secret()\n}";
     let helpers_src = "fn secret() {}"; // private

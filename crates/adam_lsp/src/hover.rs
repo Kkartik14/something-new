@@ -18,12 +18,16 @@ pub fn hover_at(
 
     // Check for keywords.
     if let Some(doc) = keyword_doc(&word) {
-        return Some(HoverResult { contents: doc.to_string() });
+        return Some(HoverResult {
+            contents: doc.to_string(),
+        });
     }
 
     // Check for builtin types.
     if let Some(doc) = builtin_type_doc(&word) {
-        return Some(HoverResult { contents: doc.to_string() });
+        return Some(HoverResult {
+            contents: doc.to_string(),
+        });
     }
 
     // Check for declared identifiers.
@@ -65,12 +69,17 @@ fn get_word_at(source: &str, position: Position) -> Option<String> {
     let before = &line[..col];
     let after = &line[col..];
 
-    let start: String = before.chars().rev()
+    let start: String = before
+        .chars()
+        .rev()
         .take_while(|c| c.is_alphanumeric() || *c == '_')
         .collect::<String>()
-        .chars().rev().collect();
+        .chars()
+        .rev()
+        .collect();
 
-    let end: String = after.chars()
+    let end: String = after
+        .chars()
         .take_while(|c| c.is_alphanumeric() || *c == '_')
         .collect();
 
@@ -199,16 +208,19 @@ mod tests {
     #[test]
     fn test_keyword_doc_coverage() {
         // Ensure all documented keywords return Some.
-        for kw in &["fn", "let", "mut", "struct", "enum", "trait", "impl", "match",
-                     "spawn", "select", "view", "for", "while", "return", "use"] {
+        for kw in &[
+            "fn", "let", "mut", "struct", "enum", "trait", "impl", "match", "spawn", "select",
+            "view", "for", "while", "return", "use",
+        ] {
             assert!(keyword_doc(kw).is_some(), "missing doc for: {}", kw);
         }
     }
 
     #[test]
     fn test_builtin_type_doc_coverage() {
-        for ty in &["Int", "Float", "Bool", "String", "Vec", "Map", "Set",
-                     "Option", "Result", "Channel"] {
+        for ty in &[
+            "Int", "Float", "Bool", "String", "Vec", "Map", "Set", "Option", "Result", "Channel",
+        ] {
             assert!(builtin_type_doc(ty).is_some(), "missing doc for: {}", ty);
         }
     }

@@ -1,13 +1,13 @@
 //! Parser test suite — comprehensive tests for every AST node type.
 
-use adam_lexer::Lexer;
+use crate::parser::Parser;
 use adam_ast::common::*;
 use adam_ast::expr::*;
 use adam_ast::item::*;
+use adam_ast::pattern::*;
 use adam_ast::stmt::*;
 use adam_ast::types::*;
-use adam_ast::pattern::*;
-use crate::parser::Parser;
+use adam_lexer::Lexer;
 
 /// Helper: lex and parse source code, assert no errors.
 fn parse_ok(src: &str) -> SourceFile {
@@ -285,7 +285,8 @@ fn test_parse_trait_basic() {
 
 #[test]
 fn test_parse_trait_with_default() {
-    let ast = parse_ok("trait Greet {\n    fn hello(self) -> String {\n        \"hello\"\n    }\n}");
+    let ast =
+        parse_ok("trait Greet {\n    fn hello(self) -> String {\n        \"hello\"\n    }\n}");
     if let Item::Trait(t) = first_item(&ast) {
         assert!(t.methods[0].node.body.is_some());
     } else {
@@ -299,7 +300,9 @@ fn test_parse_trait_with_default() {
 
 #[test]
 fn test_parse_impl_inherent() {
-    let ast = parse_ok("impl Point {\n    fn new(x f64, y f64) -> Point {\n        Point { x, y }\n    }\n}");
+    let ast = parse_ok(
+        "impl Point {\n    fn new(x f64, y f64) -> Point {\n        Point { x, y }\n    }\n}",
+    );
     if let Item::Impl(imp) = first_item(&ast) {
         assert!(imp.trait_name.is_none());
         assert_eq!(imp.methods.len(), 1);
@@ -311,7 +314,9 @@ fn test_parse_impl_inherent() {
 
 #[test]
 fn test_parse_impl_trait() {
-    let ast = parse_ok("impl Display for Point {\n    fn to_string(self) -> String {\n        \"point\"\n    }\n}");
+    let ast = parse_ok(
+        "impl Display for Point {\n    fn to_string(self) -> String {\n        \"point\"\n    }\n}",
+    );
     if let Item::Impl(imp) = first_item(&ast) {
         assert_eq!(imp.trait_name.as_ref().unwrap().name, "Display");
     } else {
@@ -417,7 +422,10 @@ fn test_parse_let_colon_assign() {
         assert_eq!(l.mutability, Mutability::Immutable);
         assert!(l.is_colon_assign);
         assert!(l.ty.is_none());
-        if let Expr::IntLiteral(5) = &l.value.node {} else { panic!("expected 5"); }
+        if let Expr::IntLiteral(5) = &l.value.node {
+        } else {
+            panic!("expected 5");
+        }
     } else {
         panic!("expected let");
     }
@@ -743,7 +751,10 @@ fn test_parse_index() {
     let ast = parse_ok("fn f() { arr[0] }");
     let expr = as_expr_stmt(first_stmt_of_fn(first_item(&ast)));
     if let Expr::Index(idx) = expr {
-        if let Expr::IntLiteral(0) = &idx.index.node {} else { panic!("expected 0"); }
+        if let Expr::IntLiteral(0) = &idx.index.node {
+        } else {
+            panic!("expected 0");
+        }
     } else {
         panic!("expected index");
     }
@@ -938,8 +949,7 @@ fn test_parse_match_basic() {
 
 #[test]
 fn test_parse_match_with_guard() {
-    let src =
-        "fn f() {\n    match x {\n        n if n > 0 => true\n        _ => false\n    }\n}";
+    let src = "fn f() {\n    match x {\n        n if n > 0 => true\n        _ => false\n    }\n}";
     let ast = parse_ok(src);
     let expr = as_expr_stmt(first_stmt_of_fn(first_item(&ast)));
     if let Expr::Match(m) = expr {
@@ -952,7 +962,8 @@ fn test_parse_match_with_guard() {
 
 #[test]
 fn test_parse_match_variant_pattern() {
-    let src = "fn f() {\n    match shape {\n        Circle(r) => r\n        Rect(w, h) => w\n    }\n}";
+    let src =
+        "fn f() {\n    match shape {\n        Circle(r) => r\n        Rect(w, h) => w\n    }\n}";
     let ast = parse_ok(src);
     let expr = as_expr_stmt(first_stmt_of_fn(first_item(&ast)));
     if let Expr::Match(m) = expr {
@@ -1449,10 +1460,12 @@ fn test_parse_match_with_block_body() {
 
 #[test]
 fn parse_trait_with_associated_type() {
-    let ast = parse_ok(r#"trait Iterator {
+    let ast = parse_ok(
+        r#"trait Iterator {
     type Item
     fn next(self) -> i32
-}"#);
+}"#,
+    );
     if let Item::Trait(t) = &ast.items[0].node {
         assert_eq!(t.name.name, "Iterator");
         assert_eq!(t.associated_types.len(), 1);
@@ -1465,14 +1478,19 @@ fn parse_trait_with_associated_type() {
 
 #[test]
 fn parse_impl_with_associated_type_binding() {
-    let ast = parse_ok(r#"impl Iterator for Vec {
+    let ast = parse_ok(
+        r#"impl Iterator for Vec {
     type Item = i32
     fn next(self) -> i32 { 0 }
-}"#);
+}"#,
+    );
     if let Item::Impl(imp) = &ast.items[0].node {
         assert_eq!(imp.associated_type_bindings.len(), 1);
         assert_eq!(imp.associated_type_bindings[0].0.name, "Item");
-        assert!(matches!(imp.associated_type_bindings[0].1.node, Type::Named(_)));
+        assert!(matches!(
+            imp.associated_type_bindings[0].1.node,
+            Type::Named(_)
+        ));
         assert_eq!(imp.methods.len(), 1);
     } else {
         panic!("expected impl");
@@ -1481,11 +1499,13 @@ fn parse_impl_with_associated_type_binding() {
 
 #[test]
 fn parse_trait_multiple_associated_types() {
-    let ast = parse_ok(r#"trait Map {
+    let ast = parse_ok(
+        r#"trait Map {
     type Key
     type Value
     fn get(self, k i32) -> i32
-}"#);
+}"#,
+    );
     if let Item::Trait(t) = &ast.items[0].node {
         assert_eq!(t.associated_types.len(), 2);
         assert_eq!(t.associated_types[0].name.name, "Key");

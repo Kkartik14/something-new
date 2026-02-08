@@ -4,9 +4,17 @@
 #[cfg(test)]
 mod stress_tests {
     use crate::channel::TypedChannel;
-    use crate::vec::{__adam_vec_new, __adam_vec_push, __adam_vec_pop, __adam_vec_get, __adam_vec_len, __adam_vec_drop, __adam_vec_sort, __adam_vec_reverse, __adam_vec_clone, AdamVec};
-    use crate::map::{__adam_map_new, __adam_map_insert, __adam_map_get, __adam_map_remove, __adam_map_len, __adam_map_drop, AdamMap};
-    use crate::string::{AdamString, __adam_string_drop, __adam_string_len, __adam_string_push, __adam_string_clone};
+    use crate::map::{
+        AdamMap, __adam_map_drop, __adam_map_get, __adam_map_insert, __adam_map_len,
+        __adam_map_new, __adam_map_remove,
+    };
+    use crate::string::{
+        AdamString, __adam_string_clone, __adam_string_drop, __adam_string_len, __adam_string_push,
+    };
+    use crate::vec::{
+        AdamVec, __adam_vec_clone, __adam_vec_drop, __adam_vec_get, __adam_vec_len, __adam_vec_new,
+        __adam_vec_pop, __adam_vec_push, __adam_vec_reverse, __adam_vec_sort,
+    };
 
     // -----------------------------------------------------------------------
     // Vec stress: grow/shrink cycles
@@ -214,7 +222,9 @@ mod stress_tests {
         let mut s = AdamString::from_bytes(b"");
         for _ in 0..10_000 {
             let chunk = AdamString::from_bytes(b"hello");
-            __adam_string_push(&mut s.ptr, &mut s.len, &mut s.cap, chunk.ptr, chunk.len, chunk.cap);
+            __adam_string_push(
+                &mut s.ptr, &mut s.len, &mut s.cap, chunk.ptr, chunk.len, chunk.cap,
+            );
             __adam_string_drop(chunk.ptr, chunk.len, chunk.cap);
         }
         assert_eq!(__adam_string_len(s.ptr, s.len, s.cap), 50_000);
@@ -227,7 +237,9 @@ mod stress_tests {
         let cloned = __adam_string_clone(s.ptr, s.len, s.cap);
 
         let suffix = AdamString::from_bytes(b" world");
-        __adam_string_push(&mut s.ptr, &mut s.len, &mut s.cap, suffix.ptr, suffix.len, suffix.cap);
+        __adam_string_push(
+            &mut s.ptr, &mut s.len, &mut s.cap, suffix.ptr, suffix.len, suffix.cap,
+        );
 
         assert_eq!(__adam_string_len(s.ptr, s.len, s.cap), 11);
         assert_eq!(__adam_string_len(cloned.ptr, cloned.len, cloned.cap), 5);
@@ -289,7 +301,10 @@ mod stress_tests {
         // Test that try_recv returns None on a closed empty channel.
         let ch = TypedChannel::<i64>::new(10);
         ch.close();
-        assert!(ch.try_recv().is_none(), "try_recv on closed empty channel should return None");
+        assert!(
+            ch.try_recv().is_none(),
+            "try_recv on closed empty channel should return None"
+        );
     }
 
     #[test]

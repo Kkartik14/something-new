@@ -19,7 +19,11 @@ impl std::fmt::Display for ResolveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.kind {
             ResolveErrorKind::UndefinedName { name, suggestion } => {
-                write!(f, "[{}..{}] undefined name `{}`", self.span.start, self.span.end, name)?;
+                write!(
+                    f,
+                    "[{}..{}] undefined name `{}`",
+                    self.span.start, self.span.end, name
+                )?;
                 if let Some(sug) = suggestion {
                     write!(f, ". Did you mean `{}`?", sug)?;
                 }
@@ -32,11 +36,7 @@ impl std::fmt::Display for ResolveError {
                 write!(
                     f,
                     "[{}..{}] duplicate definition of `{}`, previously defined at [{}..{}]",
-                    self.span.start,
-                    self.span.end,
-                    name,
-                    previous_span.start,
-                    previous_span.end,
+                    self.span.start, self.span.end, name, previous_span.start, previous_span.end,
                 )
             }
             ResolveErrorKind::UndefinedType { name, suggestion } => {
@@ -92,10 +92,7 @@ pub enum ResolveErrorKind {
     },
 
     /// Same name declared twice in the same scope.
-    DuplicateDefinition {
-        name: String,
-        previous_span: Span,
-    },
+    DuplicateDefinition { name: String, previous_span: Span },
 
     /// Type name not found.
     UndefinedType {
@@ -104,25 +101,16 @@ pub enum ResolveErrorKind {
     },
 
     /// Trait name not found.
-    UndefinedTrait {
-        name: String,
-    },
+    UndefinedTrait { name: String },
 
     /// Enum variant not found.
-    UndefinedVariant {
-        variant: String,
-        enum_name: String,
-    },
+    UndefinedVariant { variant: String, enum_name: String },
 
     /// Import path not found.
-    ImportNotFound {
-        path: String,
-    },
+    ImportNotFound { path: String },
 
     /// Circular import detected.
-    CircularImport {
-        path: String,
-    },
+    CircularImport { path: String },
 }
 
 /// Compute Levenshtein distance between two strings.
@@ -144,9 +132,7 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
         curr[0] = i + 1;
         for (j, cb) in b.chars().enumerate() {
             let cost = if ca == cb { 0 } else { 1 };
-            curr[j + 1] = (prev[j] + cost)
-                .min(prev[j + 1] + 1)
-                .min(curr[j] + 1);
+            curr[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(curr[j] + 1);
         }
         std::mem::swap(&mut prev, &mut curr);
     }

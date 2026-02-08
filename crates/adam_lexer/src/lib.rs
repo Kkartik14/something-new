@@ -7,13 +7,13 @@
 //! - Significant newlines (Go-style)
 //! - Comments (line and nested block)
 
-pub mod token;
 pub mod lexer;
+pub mod token;
 
-#[cfg(test)]
-mod tests;
 #[cfg(test)]
 mod adversarial_tests;
+#[cfg(test)]
+mod tests;
 
-pub use token::*;
 pub use lexer::Lexer;
+pub use token::*;

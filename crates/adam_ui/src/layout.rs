@@ -21,12 +21,14 @@ pub struct LayoutRect {
 
 impl LayoutRect {
     pub const ZERO: LayoutRect = LayoutRect {
-        x: 0.0, y: 0.0, width: 0.0, height: 0.0,
+        x: 0.0,
+        y: 0.0,
+        width: 0.0,
+        height: 0.0,
     };
 
     pub fn contains_point(&self, px: f32, py: f32) -> bool {
-        px >= self.x && px < self.x + self.width
-            && py >= self.y && py < self.y + self.height
+        px >= self.x && px < self.x + self.width && py >= self.y && py < self.y + self.height
     }
 }
 
@@ -91,7 +93,10 @@ pub struct LayoutNode {
 
 impl LayoutNode {
     pub fn leaf(rect: LayoutRect) -> Self {
-        Self { rect, children: Vec::new() }
+        Self {
+            rect,
+            children: Vec::new(),
+        }
     }
 
     pub fn with_children(rect: LayoutRect, children: Vec<LayoutNode>) -> Self {
@@ -148,10 +153,19 @@ impl TextMeasure for EstimatedTextMeasure {
 // ---------------------------------------------------------------------------
 
 /// Perform layout on a view tree within given constraints.
-pub fn layout(node: &ViewNode, constraints: Constraints, text_measure: &dyn TextMeasure) -> LayoutNode {
+pub fn layout(
+    node: &ViewNode,
+    constraints: Constraints,
+    text_measure: &dyn TextMeasure,
+) -> LayoutNode {
     let (width, height, children) = measure_and_layout(node, constraints, text_measure);
     LayoutNode {
-        rect: LayoutRect { x: 0.0, y: 0.0, width, height },
+        rect: LayoutRect {
+            x: 0.0,
+            y: 0.0,
+            width,
+            height,
+        },
         children,
     }
 }
@@ -172,8 +186,12 @@ fn measure_and_layout(
             apply_size_override(w, h, modifiers, constraints)
         }
 
-        ViewNode::Button { label, modifiers, .. } => {
-            let pad = modifiers.padding.unwrap_or(EdgeInsets::symmetric(16.0, 8.0));
+        ViewNode::Button {
+            label, modifiers, ..
+        } => {
+            let pad = modifiers
+                .padding
+                .unwrap_or(EdgeInsets::symmetric(16.0, 8.0));
             let font = modifiers.font.clone().unwrap_or_default();
             let inner_max_w = (constraints.max_width - pad.left - pad.right).max(0.0);
             let (tw, th) = tm.measure_text(label, &font, inner_max_w);
@@ -182,8 +200,14 @@ fn measure_and_layout(
             apply_size_override(w, h, modifiers, constraints)
         }
 
-        ViewNode::TextInput { placeholder, modifiers, .. } => {
-            let pad = modifiers.padding.unwrap_or(EdgeInsets::symmetric(12.0, 8.0));
+        ViewNode::TextInput {
+            placeholder,
+            modifiers,
+            ..
+        } => {
+            let pad = modifiers
+                .padding
+                .unwrap_or(EdgeInsets::symmetric(12.0, 8.0));
             let font = modifiers.font.clone().unwrap_or_default();
             let (tw, th) = tm.measure_text(placeholder, &font, constraints.max_width);
             let w = constraints.constrain_width((tw + pad.left + pad.right).max(200.0));
@@ -230,9 +254,11 @@ fn measure_and_layout(
             apply_size_override(w, h, modifiers, constraints)
         }
 
-        ViewNode::Container { kind, children, modifiers } => {
-            layout_container(*kind, children, modifiers, constraints, tm)
-        }
+        ViewNode::Container {
+            kind,
+            children,
+            modifiers,
+        } => layout_container(*kind, children, modifiers, constraints, tm),
 
         ViewNode::List { items, modifiers } => {
             // List is like a Column with scrolling
@@ -283,7 +309,11 @@ fn apply_size_override(
 
     // Apply margin
     let margin = modifiers.margin.unwrap_or(EdgeInsets::ZERO);
-    (w + margin.left + margin.right, h + margin.top + margin.bottom, Vec::new())
+    (
+        w + margin.left + margin.right,
+        h + margin.top + margin.bottom,
+        Vec::new(),
+    )
 }
 
 fn layout_container(
@@ -297,22 +327,53 @@ fn layout_container(
     let spacing = modifiers.spacing.unwrap_or(0.0);
     let margin = modifiers.margin.unwrap_or(EdgeInsets::ZERO);
 
-    let inner_max_w = (constraints.max_width - pad.left - pad.right - margin.left - margin.right).max(0.0);
-    let inner_max_h = (constraints.max_height - pad.top - pad.bottom - margin.top - margin.bottom).max(0.0);
+    let inner_max_w =
+        (constraints.max_width - pad.left - pad.right - margin.left - margin.right).max(0.0);
+    let inner_max_h =
+        (constraints.max_height - pad.top - pad.bottom - margin.top - margin.bottom).max(0.0);
 
     match kind {
-        ContainerKind::Column => {
-            layout_column(children, inner_max_w, inner_max_h, spacing, pad, margin, constraints, tm)
-        }
-        ContainerKind::Row => {
-            layout_row(children, inner_max_w, inner_max_h, spacing, pad, margin, constraints, tm)
-        }
-        ContainerKind::Stack => {
-            layout_stack(children, inner_max_w, inner_max_h, pad, margin, constraints, tm)
-        }
+        ContainerKind::Column => layout_column(
+            children,
+            inner_max_w,
+            inner_max_h,
+            spacing,
+            pad,
+            margin,
+            constraints,
+            tm,
+        ),
+        ContainerKind::Row => layout_row(
+            children,
+            inner_max_w,
+            inner_max_h,
+            spacing,
+            pad,
+            margin,
+            constraints,
+            tm,
+        ),
+        ContainerKind::Stack => layout_stack(
+            children,
+            inner_max_w,
+            inner_max_h,
+            pad,
+            margin,
+            constraints,
+            tm,
+        ),
         ContainerKind::Scroll => {
             // Scroll: measure children without height constraint
-            layout_column(children, inner_max_w, f32::INFINITY, spacing, pad, margin, constraints, tm)
+            layout_column(
+                children,
+                inner_max_w,
+                f32::INFINITY,
+                spacing,
+                pad,
+                margin,
+                constraints,
+                tm,
+            )
         }
     }
 }
@@ -411,17 +472,22 @@ fn layout_column(
     let total_h = y_offset - spacing + pad.bottom + margin.bottom;
     let total_w = max_child_width + pad.left + pad.right + margin.left + margin.right;
 
-    let final_w = if let Some(size) = &modifiers_of_children_parent(children).and_then(|m| m.size.as_ref()) {
-        match size.width {
-            Dimension::Fill => constraints.max_width.min(f32::MAX),
-            Dimension::Fixed(v) => v,
-            _ => constraints.constrain_width(total_w),
-        }
-    } else {
-        constraints.constrain_width(total_w)
-    };
+    let final_w =
+        if let Some(size) = &modifiers_of_children_parent(children).and_then(|m| m.size.as_ref()) {
+            match size.width {
+                Dimension::Fill => constraints.max_width.min(f32::MAX),
+                Dimension::Fixed(v) => v,
+                _ => constraints.constrain_width(total_w),
+            }
+        } else {
+            constraints.constrain_width(total_w)
+        };
 
-    (final_w, constraints.constrain_height(total_h.max(0.0)), layout_children)
+    (
+        final_w,
+        constraints.constrain_height(total_h.max(0.0)),
+        layout_children,
+    )
 }
 
 fn layout_row(
@@ -515,7 +581,11 @@ fn layout_row(
     let total_w = x_offset - spacing + pad.right + margin.right;
     let total_h = max_child_height + pad.top + pad.bottom + margin.top + margin.bottom;
 
-    (constraints.constrain_width(total_w.max(0.0)), constraints.constrain_height(total_h), layout_children)
+    (
+        constraints.constrain_width(total_w.max(0.0)),
+        constraints.constrain_height(total_h),
+        layout_children,
+    )
 }
 
 fn layout_stack(
@@ -542,7 +612,12 @@ fn layout_stack(
         let y = pad.top + margin.top;
 
         layout_children.push(LayoutNode {
-            rect: LayoutRect { x, y, width: w, height: h },
+            rect: LayoutRect {
+                x,
+                y,
+                width: w,
+                height: h,
+            },
             children: sub,
         });
     }
@@ -550,7 +625,11 @@ fn layout_stack(
     let total_w = max_child_w + pad.left + pad.right + margin.left + margin.right;
     let total_h = max_child_h + pad.top + pad.bottom + margin.top + margin.bottom;
 
-    (constraints.constrain_width(total_w), constraints.constrain_height(total_h), layout_children)
+    (
+        constraints.constrain_width(total_w),
+        constraints.constrain_height(total_h),
+        layout_children,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -826,7 +905,9 @@ mod tests {
     fn test_layout_spacer() {
         let node = column(vec![
             text("top"),
-            ViewNode::Spacer { modifiers: Default::default() },
+            ViewNode::Spacer {
+                modifiers: Default::default(),
+            },
             text("bottom"),
         ]);
         let result = layout(&node, Constraints::tight(400.0, 800.0), &tm());
@@ -835,14 +916,15 @@ mod tests {
         let spacer_h = result.children[1].rect.height;
         let text_h = result.children[0].rect.height + result.children[2].rect.height;
         assert!(spacer_h > 0.0, "spacer should have height");
-        assert!((spacer_h + text_h - 800.0).abs() < 1.0, "total should fill 800px");
+        assert!(
+            (spacer_h + text_h - 800.0).abs() < 1.0,
+            "total should fill 800px"
+        );
     }
 
     #[test]
     fn test_layout_1000_nodes_performance() {
-        let items: Vec<ViewNode> = (0..1000)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..1000).map(|i| text(&format!("item {}", i))).collect();
         let tree = column(items);
 
         let start = std::time::Instant::now();
@@ -850,12 +932,21 @@ mod tests {
         let elapsed = start.elapsed();
 
         assert_eq!(result.children.len(), 1000);
-        assert!(elapsed.as_millis() < 50, "layout of 1000 nodes took {:?}", elapsed);
+        assert!(
+            elapsed.as_millis() < 50,
+            "layout of 1000 nodes took {:?}",
+            elapsed
+        );
     }
 
     #[test]
     fn test_layout_rect_contains_point() {
-        let rect = LayoutRect { x: 10.0, y: 20.0, width: 100.0, height: 50.0 };
+        let rect = LayoutRect {
+            x: 10.0,
+            y: 20.0,
+            width: 100.0,
+            height: 50.0,
+        };
         assert!(rect.contains_point(10.0, 20.0));
         assert!(rect.contains_point(50.0, 40.0));
         assert!(!rect.contains_point(9.0, 20.0));
@@ -884,14 +975,15 @@ mod tests {
         let node = text("a]bcdefghijklmnopqrstuvwxyz_abcdefghijklmnopqrstuvwxyz");
         let result = layout(&node, Constraints::loose(100.0, 800.0), &tm());
         // Should wrap because text is wider than 100px
-        assert!(result.rect.height > 20.0, "wrapped text should be taller than one line");
+        assert!(
+            result.rect.height > 20.0,
+            "wrapped text should be taller than one line"
+        );
     }
 
     #[test]
     fn test_scroll_layout_unbounded_height() {
-        let items: Vec<ViewNode> = (0..100)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..100).map(|i| text(&format!("item {}", i))).collect();
         let node = ViewNode::Container {
             kind: ContainerKind::Scroll,
             children: items,
@@ -901,7 +993,10 @@ mod tests {
         let result = layout(&node, Constraints::loose(400.0, 200.0), &tm());
         // Scroll container: children laid out without height constraint
         // Content height = 100 * 20 = 2000, but container constrained to 200
-        assert!(result.rect.height <= 200.0, "scroll container should be constrained");
+        assert!(
+            result.rect.height <= 200.0,
+            "scroll container should be constrained"
+        );
         assert_eq!(result.children.len(), 100);
     }
 }

@@ -122,14 +122,18 @@ pub fn read_message(reader: &mut impl BufRead) -> io::Result<Option<String>> {
 
 /// Write an LSP message to stdout.
 pub fn write_message(writer: &mut impl Write, content: &str) -> io::Result<()> {
-    write!(writer, "Content-Length: {}\r\n\r\n{}", content.len(), content)?;
+    write!(
+        writer,
+        "Content-Length: {}\r\n\r\n{}",
+        content.len(),
+        content
+    )?;
     writer.flush()
 }
 
 /// Parse a JSON-RPC message.
 pub fn parse_message(json: &str) -> Result<Request, String> {
-    serde_json::from_str(json)
-        .map_err(|e| format!("failed to parse JSON-RPC message: {}", e))
+    serde_json::from_str(json).map_err(|e| format!("failed to parse JSON-RPC message: {}", e))
 }
 
 /// Serialize a response to JSON.
@@ -184,10 +188,7 @@ mod tests {
 
     #[test]
     fn test_response_success() {
-        let resp = Response::success(
-            serde_json::json!(1),
-            serde_json::json!({"result": true}),
-        );
+        let resp = Response::success(serde_json::json!(1), serde_json::json!({"result": true}));
         assert_eq!(resp.jsonrpc, "2.0");
         assert!(resp.result.is_some());
         assert!(resp.error.is_none());

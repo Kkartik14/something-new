@@ -3,7 +3,7 @@
 //! The `View` trait is the core protocol for Adam UI. Every view declaration
 //! in Adam source code compiles to a struct that implements `View`.
 
-use crate::state::{ViewId, SubscriptionRegistry, begin_tracking, end_tracking};
+use crate::state::{begin_tracking, end_tracking, SubscriptionRegistry, ViewId};
 use crate::vtree::ViewNode;
 
 // ---------------------------------------------------------------------------

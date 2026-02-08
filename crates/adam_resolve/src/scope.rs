@@ -26,9 +26,7 @@ impl ScopeTree {
             declarations: HashMap::new(),
             children: vec![],
         };
-        Self {
-            scopes: vec![root],
-        }
+        Self { scopes: vec![root] }
     }
 
     pub fn root(&self) -> ScopeId {
@@ -60,12 +58,7 @@ impl ScopeTree {
 
     /// Insert a declaration into a scope. Returns `Err` with the existing
     /// `DeclId` if the name is already declared in this scope.
-    pub fn declare(
-        &mut self,
-        scope: ScopeId,
-        name: String,
-        decl_id: DeclId,
-    ) -> Result<(), DeclId> {
+    pub fn declare(&mut self, scope: ScopeId, name: String, decl_id: DeclId) -> Result<(), DeclId> {
         let s = &mut self.scopes[scope as usize];
         if let Some(&existing) = s.declarations.get(&name) {
             Err(existing)

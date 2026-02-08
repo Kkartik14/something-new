@@ -112,8 +112,8 @@ fn discover_test_files() -> Result<Vec<PathBuf>, String> {
 }
 
 fn collect_test_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
     for entry in entries {
         let path = entry.map_err(|e| format!("{}", e))?.path();
         if path.is_file() && path.extension().map(|e| e == "adam").unwrap_or(false) {
@@ -125,9 +125,13 @@ fn collect_test_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String
     Ok(())
 }
 
-fn collect_test_files_pattern(dir: &Path, pattern: &str, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
+fn collect_test_files_pattern(
+    dir: &Path,
+    pattern: &str,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
     for entry in entries {
         let path = entry.map_err(|e| format!("{}", e))?.path();
         if path.is_file() {
@@ -164,13 +168,14 @@ pub fn extract_test_names(source: &str) -> Vec<String> {
 /// Run a single test by name.
 fn run_single_test(file: &Path, _name: &str) -> Result<(), String> {
     // For now, compile the test file and check for errors.
-    let source = fs::read_to_string(file)
-        .map_err(|e| format!("failed to read: {}", e))?;
+    let source = fs::read_to_string(file).map_err(|e| format!("failed to read: {}", e))?;
 
     // Lex.
     let lex_result = adam_lexer::Lexer::new(&source).tokenize();
     if !lex_result.errors.is_empty() {
-        return Err(lex_result.errors.iter()
+        return Err(lex_result
+            .errors
+            .iter()
             .map(|e| format!("lex error [{}:{}]: {}", e.line, e.column, e.message))
             .collect::<Vec<_>>()
             .join("\n"));
@@ -179,7 +184,9 @@ fn run_single_test(file: &Path, _name: &str) -> Result<(), String> {
     // Parse.
     let parse_result = adam_parser::Parser::new(lex_result.tokens).parse();
     if !parse_result.errors.is_empty() {
-        return Err(parse_result.errors.iter()
+        return Err(parse_result
+            .errors
+            .iter()
             .map(|e| format!("parse error: {}", e.message))
             .collect::<Vec<_>>()
             .join("\n"));

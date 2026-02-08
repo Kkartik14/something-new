@@ -18,13 +18,13 @@
 //! - `own` — takes ownership (move).
 //! - `mut` — mutable borrow.
 
-pub mod ownership;
 pub mod checker;
+pub mod ownership;
 
-#[cfg(test)]
-mod tests;
 #[cfg(test)]
 mod adversarial_tests;
+#[cfg(test)]
+mod tests;
 
-pub use checker::{BorrowChecker, BorrowCheckResult, BorrowError};
+pub use checker::{BorrowCheckResult, BorrowChecker, BorrowError};
 pub use ownership::{OwnershipTracker, VarState};

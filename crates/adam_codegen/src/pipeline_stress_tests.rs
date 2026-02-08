@@ -14,12 +14,12 @@
 //!   - Mutable bindings: `mut x := expr`
 //!   - Return type: `-> Type`
 
+use adam_borrow::BorrowChecker;
+use adam_ir::lower_module;
 use adam_lexer::Lexer;
 use adam_parser::Parser;
 use adam_resolve::resolve;
 use adam_types::TypeChecker;
-use adam_borrow::BorrowChecker;
-use adam_ir::lower_module;
 
 // ================================================================
 // Pipeline helper
@@ -68,7 +68,11 @@ impl PipelineResult {
         let mut all = Vec::new();
         all.extend(self.lex_errors.iter().map(|e| format!("[lex] {}", e)));
         all.extend(self.parse_errors.iter().map(|e| format!("[parse] {}", e)));
-        all.extend(self.resolve_errors.iter().map(|e| format!("[resolve] {}", e)));
+        all.extend(
+            self.resolve_errors
+                .iter()
+                .map(|e| format!("[resolve] {}", e)),
+        );
         all.extend(self.type_errors.iter().map(|e| format!("[type] {}", e)));
         all.extend(self.borrow_errors.iter().map(|e| format!("[borrow] {}", e)));
         all
@@ -87,18 +91,19 @@ fn run_pipeline(source: &str) -> PipelineResult {
 
     // Stage 3: Resolve
     let resolve_result = resolve(&parse_result.ast);
-    let resolve_errors: Vec<String> = resolve_result.errors.iter().map(|e| e.to_string()).collect();
+    let resolve_errors: Vec<String> = resolve_result
+        .errors
+        .iter()
+        .map(|e| e.to_string())
+        .collect();
 
     // Stage 4: Type check
     let type_result = TypeChecker::new().check(&parse_result.ast);
     let type_errors: Vec<String> = type_result.errors.iter().map(|e| e.to_string()).collect();
 
     // Stage 5: Borrow check
-    let borrow_result = BorrowChecker::new().check(
-        &parse_result.ast,
-        Some(&resolve_result),
-        Some(&type_result),
-    );
+    let borrow_result =
+        BorrowChecker::new().check(&parse_result.ast, Some(&resolve_result), Some(&type_result));
     let borrow_errors: Vec<String> = borrow_result.errors.iter().map(|e| e.to_string()).collect();
 
     // Stage 6: IR lowering (catch panics)
@@ -107,8 +112,11 @@ fn run_pipeline(source: &str) -> PipelineResult {
     }))
     .is_ok();
 
-    let total_errors =
-        lex_errors.len() + parse_errors.len() + resolve_errors.len() + type_errors.len() + borrow_errors.len();
+    let total_errors = lex_errors.len()
+        + parse_errors.len()
+        + resolve_errors.len()
+        + type_errors.len()
+        + borrow_errors.len();
 
     PipelineResult {
         lex_errors,
@@ -149,37 +157,27 @@ fn pipeline_empty_program() {
 
 #[test]
 fn pipeline_hello_world() {
-    assert_pipeline_clean(
-        "fn main() {\n    msg := \"Hello, world!\"\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    msg := \"Hello, world!\"\n}");
 }
 
 #[test]
 fn pipeline_simple_function() {
-    assert_pipeline_clean(
-        "fn add(x i32, y i32) -> i32 {\n    return x + y\n}",
-    );
+    assert_pipeline_clean("fn add(x i32, y i32) -> i32 {\n    return x + y\n}");
 }
 
 #[test]
 fn pipeline_function_with_borrow_param() {
-    assert_pipeline_clean(
-        "fn length(s String) -> i32 {\n    return 42\n}",
-    );
+    assert_pipeline_clean("fn length(s String) -> i32 {\n    return 42\n}");
 }
 
 #[test]
 fn pipeline_function_with_mut_param() {
-    assert_pipeline_clean(
-        "fn increment(mut x i32) -> i32 {\n    return x + 1\n}",
-    );
+    assert_pipeline_clean("fn increment(mut x i32) -> i32 {\n    return x + 1\n}");
 }
 
 #[test]
 fn pipeline_function_with_own_param() {
-    assert_pipeline_clean(
-        "fn consume(own s String) {\n    print(s)\n}",
-    );
+    assert_pipeline_clean("fn consume(own s String) {\n    print(s)\n}");
 }
 
 #[test]
@@ -191,9 +189,7 @@ fn pipeline_multiple_functions() {
 
 #[test]
 fn pipeline_struct_definition() {
-    assert_pipeline_clean(
-        "struct Point {\n    x i32\n    y i32\n}",
-    );
+    assert_pipeline_clean("struct Point {\n    x i32\n    y i32\n}");
 }
 
 #[test]
@@ -205,16 +201,12 @@ fn pipeline_struct_with_method() {
 
 #[test]
 fn pipeline_enum_basic() {
-    assert_pipeline_clean(
-        "enum Color {\n    Red\n    Green\n    Blue\n}",
-    );
+    assert_pipeline_clean("enum Color {\n    Red\n    Green\n    Blue\n}");
 }
 
 #[test]
 fn pipeline_enum_with_fields() {
-    assert_pipeline_clean(
-        "enum Shape {\n    Circle(f64)\n    Rectangle(f64, f64)\n}",
-    );
+    assert_pipeline_clean("enum Shape {\n    Circle(f64)\n    Rectangle(f64, f64)\n}");
 }
 
 #[test]
@@ -240,16 +232,12 @@ fn pipeline_while_loop() {
 
 #[test]
 fn pipeline_let_bindings() {
-    assert_pipeline_clean(
-        "fn main() {\n    x := 42\n    y := x + 1\n    z := y * 2\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    x := 42\n    y := x + 1\n    z := y * 2\n}");
 }
 
 #[test]
 fn pipeline_mutable_variable() {
-    assert_pipeline_clean(
-        "fn main() {\n    mut x := 0\n    x = 10\n    x = x + 5\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    mut x := 0\n    x = 10\n    x = x + 5\n}");
 }
 
 #[test]
@@ -261,30 +249,22 @@ fn pipeline_nested_if() {
 
 #[test]
 fn pipeline_boolean_expressions() {
-    assert_pipeline_clean(
-        "fn logic(a bool, b bool) -> bool {\n    return a && b || !a\n}",
-    );
+    assert_pipeline_clean("fn logic(a bool, b bool) -> bool {\n    return a && b || !a\n}");
 }
 
 #[test]
 fn pipeline_string_literal() {
-    assert_pipeline_clean(
-        "fn greet() {\n    name := \"Adam\"\n}",
-    );
+    assert_pipeline_clean("fn greet() {\n    name := \"Adam\"\n}");
 }
 
 #[test]
 fn pipeline_array_literal() {
-    assert_pipeline_clean(
-        "fn main() {\n    arr := [1, 2, 3]\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    arr := [1, 2, 3]\n}");
 }
 
 #[test]
 fn pipeline_tuple_literal() {
-    assert_pipeline_clean(
-        "fn main() {\n    t := (1, 2, 3)\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    t := (1, 2, 3)\n}");
 }
 
 #[test]
@@ -303,9 +283,7 @@ fn pipeline_mutual_recursion() {
 
 #[test]
 fn pipeline_trait_definition() {
-    assert_pipeline_clean(
-        "trait Printable {\n    fn to_string(self) -> String\n}",
-    );
+    assert_pipeline_clean("trait Printable {\n    fn to_string(self) -> String\n}");
 }
 
 #[test]
@@ -317,9 +295,7 @@ fn pipeline_trait_impl() {
 
 #[test]
 fn pipeline_closure() {
-    assert_pipeline_clean(
-        "fn main() {\n    add := |a i32, b i32| a + b\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    add := |a i32, b i32| a + b\n}");
 }
 
 #[test]
@@ -338,16 +314,12 @@ fn pipeline_nested_scopes() {
 
 #[test]
 fn pipeline_float_arithmetic() {
-    assert_pipeline_clean(
-        "fn main() {\n    a := 3.14\n    b := 2.71\n    c := a + b\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    a := 3.14\n    b := 2.71\n    c := a + b\n}");
 }
 
 #[test]
 fn pipeline_char_literal() {
-    assert_pipeline_clean(
-        "fn main() {\n    c := 'a'\n}",
-    );
+    assert_pipeline_clean("fn main() {\n    c := 'a'\n}");
 }
 
 #[test]
@@ -378,7 +350,10 @@ fn pipeline_syntax_error_missing_brace() {
         "Expected parse errors for missing closing brace, got: {:?}",
         result.all_errors()
     );
-    assert!(result.ir_ok, "IR lowering should not panic even with parse errors");
+    assert!(
+        result.ir_ok,
+        "IR lowering should not panic even with parse errors"
+    );
 }
 
 #[test]
@@ -493,7 +468,9 @@ fn pipeline_type_error_wrong_field_type() {
 
 #[test]
 fn pipeline_type_error_missing_struct_field() {
-    let result = run_pipeline("struct Point {\n    x i32\n    y i32\n}\n\nfn main() {\n    p := Point { x: 1 }\n}");
+    let result = run_pipeline(
+        "struct Point {\n    x i32\n    y i32\n}\n\nfn main() {\n    p := Point { x: 1 }\n}",
+    );
     assert!(
         result.has_type_errors(),
         "Expected type errors for missing struct field, got: {:?}",
@@ -643,7 +620,9 @@ fn pipeline_edge_negation() {
 
 #[test]
 fn pipeline_edge_complex_boolean() {
-    assert_no_panic("fn check(a bool, b bool, c bool) -> bool {\n    return (a && b) || (!a && c)\n}");
+    assert_no_panic(
+        "fn check(a bool, b bool, c bool) -> bool {\n    return (a && b) || (!a && c)\n}",
+    );
 }
 
 // ================================================================
@@ -668,8 +647,16 @@ fn pipeline_large_program_50_functions() {
 
     let result = run_pipeline(&source);
     assert!(result.ir_ok, "IR lowering should succeed for large program");
-    assert!(result.lex_errors.is_empty(), "Lex errors: {:?}", result.lex_errors);
-    assert!(result.parse_errors.is_empty(), "Parse errors: {:?}", result.parse_errors);
+    assert!(
+        result.lex_errors.is_empty(),
+        "Lex errors: {:?}",
+        result.lex_errors
+    );
+    assert!(
+        result.parse_errors.is_empty(),
+        "Parse errors: {:?}",
+        result.parse_errors
+    );
 }
 
 #[test]
@@ -708,13 +695,11 @@ fn pipeline_large_program_call_chain() {
         if i < 19 {
             source.push_str(&format!(
                 "fn f{}(x i32) -> i32 {{\n    return f{}(x + 1)\n}}\n\n",
-                i, i + 1
+                i,
+                i + 1
             ));
         } else {
-            source.push_str(&format!(
-                "fn f{}(x i32) -> i32 {{\n    return x\n}}\n\n",
-                i
-            ));
+            source.push_str(&format!("fn f{}(x i32) -> i32 {{\n    return x\n}}\n\n", i));
         }
     }
     source.push_str("fn main() {\n    result := f0(0)\n}\n");
@@ -747,9 +732,7 @@ fn pipeline_match_with_wildcard() {
 
 #[test]
 fn pipeline_match_with_binding() {
-    assert_pipeline_clean(
-        "fn echo(x i32) -> i32 {\n    match x {\n        n => n\n    }\n}",
-    );
+    assert_pipeline_clean("fn echo(x i32) -> i32 {\n    match x {\n        n => n\n    }\n}");
 }
 
 #[test]
@@ -863,26 +846,44 @@ fn pipeline_power_function() {
 fn pipeline_error_only_at_resolve_stage() {
     let result = run_pipeline("fn main() {\n    x := undefined_var\n}");
     // Lex and parse should be clean.
-    assert!(!result.has_lex_errors(), "Unexpected lex errors: {:?}", result.lex_errors);
-    assert!(!result.has_parse_errors(), "Unexpected parse errors: {:?}", result.parse_errors);
+    assert!(
+        !result.has_lex_errors(),
+        "Unexpected lex errors: {:?}",
+        result.lex_errors
+    );
+    assert!(
+        !result.has_parse_errors(),
+        "Unexpected parse errors: {:?}",
+        result.parse_errors
+    );
     // Resolve should catch the undefined variable.
-    assert!(result.has_resolve_errors(), "Expected resolve errors for undefined variable");
+    assert!(
+        result.has_resolve_errors(),
+        "Expected resolve errors for undefined variable"
+    );
     // IR should still work (on the malformed AST).
     assert!(result.ir_ok, "IR lowering should not panic");
 }
 
 #[test]
 fn pipeline_error_only_at_type_stage() {
-    let result = run_pipeline("fn add(a i32, b i32) -> i32 {\n    return a + b\n}\n\nfn main() {\n    x := add(1)\n}");
+    let result = run_pipeline(
+        "fn add(a i32, b i32) -> i32 {\n    return a + b\n}\n\nfn main() {\n    x := add(1)\n}",
+    );
     assert!(!result.has_lex_errors());
     assert!(!result.has_parse_errors());
     // Type checker should catch wrong number of arguments.
-    assert!(result.has_type_errors(), "Expected type errors for wrong arg count");
+    assert!(
+        result.has_type_errors(),
+        "Expected type errors for wrong arg count"
+    );
 }
 
 #[test]
 fn pipeline_error_only_at_borrow_stage() {
-    let result = run_pipeline("fn take(own s String) {}\n\nfn main() {\n    s := \"hello\"\n    take(s)\n    take(s)\n}");
+    let result = run_pipeline(
+        "fn take(own s String) {}\n\nfn main() {\n    s := \"hello\"\n    take(s)\n    take(s)\n}",
+    );
     assert!(!result.has_lex_errors());
     assert!(!result.has_parse_errors());
     // Borrow checker should catch use-after-move.
@@ -1021,7 +1022,9 @@ fn pipeline_unterminated_block_comment() {
 
 #[test]
 fn pipeline_mixed_valid_and_invalid() {
-    let result = run_pipeline("fn good() -> i32 {\n    return 42\n}\n\nfn bad() -> i32 {\n    return undefined\n}");
+    let result = run_pipeline(
+        "fn good() -> i32 {\n    return 42\n}\n\nfn bad() -> i32 {\n    return undefined\n}",
+    );
     assert!(result.has_resolve_errors());
     assert!(result.ir_ok);
 }
@@ -1061,7 +1064,9 @@ fn pipeline_fibonacci_both_versions() {
 
 #[test]
 fn pipeline_multiple_errors_in_one_program() {
-    let result = run_pipeline("fn main() {\n    x := undefined1\n    y := undefined2\n    z := undefined3\n}");
+    let result = run_pipeline(
+        "fn main() {\n    x := undefined1\n    y := undefined2\n    z := undefined3\n}",
+    );
     assert!(
         result.resolve_errors.len() >= 3,
         "Expected at least 3 resolve errors, got {}: {:?}",
@@ -1087,9 +1092,15 @@ fn pipeline_stress_many_if_branches() {
     let mut source = String::from("fn classify(x i32) -> i32 {\n");
     for i in 0..20 {
         if i == 0 {
-            source.push_str(&format!("    if x == {} {{\n        return {}\n    }}", i, i));
+            source.push_str(&format!(
+                "    if x == {} {{\n        return {}\n    }}",
+                i, i
+            ));
         } else {
-            source.push_str(&format!(" else if x == {} {{\n        return {}\n    }}", i, i));
+            source.push_str(&format!(
+                " else if x == {} {{\n        return {}\n    }}",
+                i, i
+            ));
         }
     }
     source.push_str("\n    return -1\n}\n");

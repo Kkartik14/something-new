@@ -58,7 +58,10 @@ impl PlatformKind {
 
     /// Whether this platform has a safe area (notch, home indicator).
     pub fn has_safe_area(&self) -> bool {
-        matches!(self, PlatformKind::IOS | PlatformKind::IOSSimulator | PlatformKind::Android)
+        matches!(
+            self,
+            PlatformKind::IOS | PlatformKind::IOSSimulator | PlatformKind::Android
+        )
     }
 
     /// Whether this is a real device (not simulator/emulator/desktop).
@@ -103,11 +106,21 @@ pub struct EdgeInsets {
 
 impl EdgeInsets {
     pub fn zero() -> Self {
-        Self { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
+        Self {
+            top: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+            right: 0.0,
+        }
     }
 
     pub fn uniform(value: f64) -> Self {
-        Self { top: value, bottom: value, left: value, right: value }
+        Self {
+            top: value,
+            bottom: value,
+            left: value,
+            right: value,
+        }
     }
 
     pub fn horizontal(&self) -> f64 {
@@ -258,18 +271,27 @@ impl MockPlatformApi {
 }
 
 impl PlatformApi for MockPlatformApi {
-    fn screen_width(&self) -> f64 { self.width }
-    fn screen_height(&self) -> f64 { self.height }
-    fn screen_scale(&self) -> f64 { self.scale }
-    fn safe_area(&self) -> EdgeInsets { self.safe_area }
-    fn is_dark_mode(&self) -> bool { self.dark_mode }
+    fn screen_width(&self) -> f64 {
+        self.width
+    }
+    fn screen_height(&self) -> f64 {
+        self.height
+    }
+    fn screen_scale(&self) -> f64 {
+        self.scale
+    }
+    fn safe_area(&self) -> EdgeInsets {
+        self.safe_area
+    }
+    fn is_dark_mode(&self) -> bool {
+        self.dark_mode
+    }
 
     fn open_url(&self, _url: &str) -> bool {
         true
     }
 
-    fn share(&self, _text: &str) {
-    }
+    fn share(&self, _text: &str) {}
 
     fn store(&mut self, key: &str, value: &str) {
         self.storage.insert(key.to_string(), value.to_string());

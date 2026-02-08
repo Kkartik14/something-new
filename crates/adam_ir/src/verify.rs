@@ -30,7 +30,11 @@ pub struct VerifyError {
 impl std::fmt::Display for VerifyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.block {
-            Some(bb) => write!(f, "verify error in @{} bb{}: {}", self.function, bb, self.message),
+            Some(bb) => write!(
+                f,
+                "verify error in @{} bb{}: {}",
+                self.function, bb, self.message
+            ),
             None => write!(f, "verify error in @{}: {}", self.function, self.message),
         }
     }
@@ -103,13 +107,7 @@ fn verify_function(func: &IrFunction, module: &IrModule, errors: &mut Vec<Verify
         // 4a. Every block must have a terminator (i.e., not Unreachable
         // for reachable blocks, though we allow it for dead code).
         // We check that jump targets exist.
-        verify_terminator(
-            &block.terminator,
-            &block_ids,
-            func,
-            block.id,
-            errors,
-        );
+        verify_terminator(&block.terminator, &block_ids, func, block.id, errors);
 
         // 4b. Check instructions reference valid locals and functions.
         for instr in &block.instructions {
@@ -196,10 +194,7 @@ fn verify_terminator(
             for branch in branches {
                 if !block_ids.contains(&branch.target) {
                     errors.push(VerifyError {
-                        message: format!(
-                            "select branch target bb{} does not exist",
-                            branch.target
-                        ),
+                        message: format!("select branch target bb{} does not exist", branch.target),
                         function: func.name.clone(),
                         block: Some(block_id),
                     });

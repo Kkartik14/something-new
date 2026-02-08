@@ -4,7 +4,6 @@
 //! Each animation interpolates a value over time. When animation values change,
 //! the affected views are re-rendered.
 
-
 // ---------------------------------------------------------------------------
 // Animation types
 // ---------------------------------------------------------------------------
@@ -77,16 +76,12 @@ fn cubic_bezier_at(t: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
 fn bezier_component(t: f64, p1: f64, p2: f64) -> f64 {
     let t2 = t * t;
     let t3 = t2 * t;
-    3.0 * (1.0 - t) * (1.0 - t) * t * p1
-        + 3.0 * (1.0 - t) * t2 * p2
-        + t3
+    3.0 * (1.0 - t) * (1.0 - t) * t * p1 + 3.0 * (1.0 - t) * t2 * p2 + t3
 }
 
 fn bezier_derivative(t: f64, p1: f64, p2: f64) -> f64 {
     let t2 = t * t;
-    3.0 * (1.0 - t) * (1.0 - t) * p1
-        + 6.0 * (1.0 - t) * t * (p2 - p1)
-        + 3.0 * t2 * (1.0 - p2)
+    3.0 * (1.0 - t) * (1.0 - t) * p1 + 6.0 * (1.0 - t) * t * (p2 - p1) + 3.0 * t2 * (1.0 - p2)
 }
 
 // ---------------------------------------------------------------------------
@@ -116,15 +111,27 @@ impl Default for SpringParams {
 
 impl SpringParams {
     pub fn snappy() -> Self {
-        Self { stiffness: 300.0, damping: 0.8, mass: 1.0 }
+        Self {
+            stiffness: 300.0,
+            damping: 0.8,
+            mass: 1.0,
+        }
     }
 
     pub fn bouncy() -> Self {
-        Self { stiffness: 200.0, damping: 0.5, mass: 1.0 }
+        Self {
+            stiffness: 200.0,
+            damping: 0.5,
+            mass: 1.0,
+        }
     }
 
     pub fn gentle() -> Self {
-        Self { stiffness: 50.0, damping: 0.9, mass: 1.0 }
+        Self {
+            stiffness: 50.0,
+            damping: 0.9,
+            mass: 1.0,
+        }
     }
 }
 
@@ -235,7 +242,12 @@ impl Animation {
     pub fn new_tween(from: f64, to: f64, duration_secs: f64, easing: Easing) -> Self {
         Self {
             id: AnimationId::next(),
-            kind: AnimationKind::Tween { from, to, duration_secs, easing },
+            kind: AnimationKind::Tween {
+                from,
+                to,
+                duration_secs,
+                easing,
+            },
             elapsed_secs: 0.0,
             spring_state: None,
             completed: false,
@@ -255,7 +267,11 @@ impl Animation {
     pub fn new_keyframe(keyframes: Vec<KeyframePoint>, duration_secs: f64, easing: Easing) -> Self {
         Self {
             id: AnimationId::next(),
-            kind: AnimationKind::Keyframe { keyframes, duration_secs, easing },
+            kind: AnimationKind::Keyframe {
+                keyframes,
+                duration_secs,
+                easing,
+            },
             elapsed_secs: 0.0,
             spring_state: None,
             completed: false,
@@ -271,7 +287,12 @@ impl Animation {
         self.elapsed_secs += dt;
 
         match &mut self.kind {
-            AnimationKind::Tween { from, to, duration_secs, easing } => {
+            AnimationKind::Tween {
+                from,
+                to,
+                duration_secs,
+                easing,
+            } => {
                 let progress = (self.elapsed_secs / *duration_secs).clamp(0.0, 1.0);
                 let eased = easing.apply(progress);
                 if progress >= 1.0 {
@@ -294,7 +315,11 @@ impl Animation {
                 }
             }
 
-            AnimationKind::Keyframe { keyframes, duration_secs, easing } => {
+            AnimationKind::Keyframe {
+                keyframes,
+                duration_secs,
+                easing,
+            } => {
                 let progress = (self.elapsed_secs / *duration_secs).clamp(0.0, 1.0);
                 let eased = easing.apply(progress);
                 if progress >= 1.0 {
@@ -323,15 +348,26 @@ impl Animation {
         }
 
         match &self.kind {
-            AnimationKind::Tween { from, to, duration_secs, easing } => {
+            AnimationKind::Tween {
+                from,
+                to,
+                duration_secs,
+                easing,
+            } => {
                 let progress = (self.elapsed_secs / *duration_secs).clamp(0.0, 1.0);
                 let eased = easing.apply(progress);
                 *from + (*to - *from) * eased
             }
-            AnimationKind::Spring { .. } => {
-                self.spring_state.as_ref().map(|s| s.position).unwrap_or(0.0)
-            }
-            AnimationKind::Keyframe { keyframes, duration_secs, easing } => {
+            AnimationKind::Spring { .. } => self
+                .spring_state
+                .as_ref()
+                .map(|s| s.position)
+                .unwrap_or(0.0),
+            AnimationKind::Keyframe {
+                keyframes,
+                duration_secs,
+                easing,
+            } => {
                 let progress = (self.elapsed_secs / *duration_secs).clamp(0.0, 1.0);
                 let eased = easing.apply(progress);
                 interpolate_keyframes(keyframes, eased)
@@ -411,7 +447,8 @@ impl AnimationManager {
 
     /// Get the current value of an animation by ID.
     pub fn value(&self, id: AnimationId) -> Option<f64> {
-        self.animations.iter()
+        self.animations
+            .iter()
             .find(|a| a.id == id)
             .map(|a| a.current_value())
     }
@@ -514,7 +551,11 @@ mod tests {
         }
 
         // Should be close to target after 2 seconds
-        assert!((last_val - 100.0).abs() < 5.0, "spring after 2s: {}", last_val);
+        assert!(
+            (last_val - 100.0).abs() < 5.0,
+            "spring after 2s: {}",
+            last_val
+        );
     }
 
     #[test]
@@ -529,7 +570,11 @@ mod tests {
         }
 
         // Bouncy spring should overshoot past 100
-        assert!(max_val > 100.0, "bouncy spring should overshoot: max={}", max_val);
+        assert!(
+            max_val > 100.0,
+            "bouncy spring should overshoot: max={}",
+            max_val
+        );
     }
 
     #[test]
@@ -548,9 +593,18 @@ mod tests {
     #[test]
     fn test_keyframe_animation() {
         let keyframes = vec![
-            KeyframePoint { progress: 0.0, value: 0.0 },
-            KeyframePoint { progress: 0.5, value: 100.0 },
-            KeyframePoint { progress: 1.0, value: 50.0 },
+            KeyframePoint {
+                progress: 0.0,
+                value: 0.0,
+            },
+            KeyframePoint {
+                progress: 0.5,
+                value: 100.0,
+            },
+            KeyframePoint {
+                progress: 1.0,
+                value: 50.0,
+            },
         ];
         let mut anim = Animation::new_keyframe(keyframes, 2.0, Easing::Linear);
 

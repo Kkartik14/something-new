@@ -5,7 +5,7 @@ use adam_ast::expr::Expr;
 use adam_ast::pattern::*;
 use adam_lexer::TokenKind;
 
-use crate::parser::{span, Parser, ParseError};
+use crate::parser::{span, ParseError, Parser};
 
 impl Parser {
     /// Parse a pattern.
@@ -198,10 +198,7 @@ impl Parser {
                             self.skip_newlines();
                             self.parse_pattern()?
                         } else {
-                            Spanned::new(
-                                Pattern::Binding(field_name.clone()),
-                                field_name.span,
-                            )
+                            Spanned::new(Pattern::Binding(field_name.clone()), field_name.span)
                         };
 
                         fields.push((field_name, pattern));
@@ -283,10 +280,10 @@ impl Parser {
                 }
             }
 
-            _ => Err(self.error_at_current(&format!(
-                "expected pattern, found {}",
-                self.current().kind
-            ))),
+            _ => {
+                Err(self
+                    .error_at_current(&format!("expected pattern, found {}", self.current().kind)))
+            }
         }
     }
 

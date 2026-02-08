@@ -40,7 +40,11 @@ impl BorrowError {
 
 impl std::fmt::Display for BorrowError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}..{}] {}", self.span.start, self.span.end, self.message)
+        write!(
+            f,
+            "[{}..{}] {}",
+            self.span.start, self.span.end, self.message
+        )
     }
 }
 
@@ -227,7 +231,8 @@ impl BorrowChecker {
             if let Some(ty_name) = self.type_to_name(&param.ty.node) {
                 self.var_types.insert(param.name.name.clone(), ty_name);
             }
-            self.decl_mutability.insert(param.name.name.clone(), mutable);
+            self.decl_mutability
+                .insert(param.name.name.clone(), mutable);
 
             // Register as function parameter for borrow origin analysis.
             self.fn_params.push(param.name.name.clone());
@@ -282,7 +287,11 @@ impl BorrowChecker {
         let mut errors_to_add = Vec::new();
 
         for (ref_var, origin) in &self.borrow_origins {
-            if let BorrowOrigin::Local { name: src_name, scope_depth: src_depth } = origin {
+            if let BorrowOrigin::Local {
+                name: src_name,
+                scope_depth: src_depth,
+            } = origin
+            {
                 // The ref_var's own scope depth.
                 let ref_depth = self.var_scopes.get(ref_var).copied().unwrap_or(0);
 
@@ -299,13 +308,13 @@ impl BorrowChecker {
         }
 
         for msg in errors_to_add {
-            self.errors.push(BorrowError::new(msg, Span { start: 0, end: 0 }));
+            self.errors
+                .push(BorrowError::new(msg, Span { start: 0, end: 0 }));
         }
 
         // Clean up borrow origins for variables going out of scope.
-        self.borrow_origins.retain(|name, _| {
-            self.var_scopes.get(name).copied().unwrap_or(0) < dying_depth
-        });
+        self.borrow_origins
+            .retain(|name, _| self.var_scopes.get(name).copied().unwrap_or(0) < dying_depth);
         self.var_scopes.retain(|_, depth| *depth < dying_depth);
     }
 
@@ -354,11 +363,13 @@ impl BorrowChecker {
         }
 
         // Track scope depth for this variable.
-        self.var_scopes.insert(let_stmt.name.name.clone(), self.scope_depth);
+        self.var_scopes
+            .insert(let_stmt.name.name.clone(), self.scope_depth);
 
         // Track borrow origins: if RHS is &expr, record what it points to.
         if let Some(origin) = self.extract_borrow_origin(&let_stmt.value.node) {
-            self.borrow_origins.insert(let_stmt.name.name.clone(), origin);
+            self.borrow_origins
+                .insert(let_stmt.name.name.clone(), origin);
         }
     }
 
@@ -368,7 +379,8 @@ impl BorrowChecker {
         // The for-loop consumes the iterable — mark it as moved.
         if let Some(iterable_name) = Self::expr_var_name(&for_stmt.iterable.node) {
             if !self.is_copy_expr(&for_stmt.iterable.node) {
-                self.tracker.mark_moved(iterable_name, for_stmt.iterable.span);
+                self.tracker
+                    .mark_moved(iterable_name, for_stmt.iterable.span);
             }
         }
 
@@ -761,7 +773,8 @@ impl BorrowChecker {
                             }
                         }
                         ParamOwnership::SelfMutBorrow | ParamOwnership::MutBorrow => {
-                            self.tracker.mark_mut_borrowed(receiver_name, mc.receiver.span);
+                            self.tracker
+                                .mark_mut_borrowed(receiver_name, mc.receiver.span);
                         }
                         _ => {
                             self.tracker.mark_borrowed(receiver_name);
@@ -829,7 +842,12 @@ impl BorrowChecker {
                 // Conservative merge: moved in any arm => moved.
                 for (name, state) in arm_state {
                     if let VarState::Moved { moved_at } = state {
-                        merged.insert(name.clone(), VarState::Moved { moved_at: *moved_at });
+                        merged.insert(
+                            name.clone(),
+                            VarState::Moved {
+                                moved_at: *moved_at,
+                            },
+                        );
                     }
                 }
             }
@@ -840,7 +858,8 @@ impl BorrowChecker {
     /// Check a closure — captures are validated.
     fn check_closure(&mut self, closure: &ClosureExpr) {
         // Collect free variables used inside the closure body.
-        let captured_vars = self.collect_expr_free_vars(&closure.body.node, closure.body.span, closure);
+        let captured_vars =
+            self.collect_expr_free_vars(&closure.body.node, closure.body.span, closure);
 
         // Non-Copy captured variables are moved into the closure.
         for (name, var_span) in &captured_vars {
@@ -874,7 +893,11 @@ impl BorrowChecker {
         span: Span,
         closure: &ClosureExpr,
     ) -> Vec<(String, Span)> {
-        let param_names: Vec<&str> = closure.params.iter().map(|p| p.name.name.as_str()).collect();
+        let param_names: Vec<&str> = closure
+            .params
+            .iter()
+            .map(|p| p.name.name.as_str())
+            .collect();
         let mut vars = Vec::new();
         self.collect_expr_vars(expr, span, &mut vars);
         // Filter out closure parameters — those aren't captures.
@@ -890,10 +913,17 @@ impl BorrowChecker {
         // Check that the target is mutable.
         match &assign.target.node {
             Expr::Identifier(ident) => {
-                let is_mut = self.decl_mutability.get(&ident.name).copied().unwrap_or(false);
+                let is_mut = self
+                    .decl_mutability
+                    .get(&ident.name)
+                    .copied()
+                    .unwrap_or(false);
                 if !is_mut {
                     self.error(
-                        format!("cannot assign to '{}': variable is not declared as mutable", ident.name),
+                        format!(
+                            "cannot assign to '{}': variable is not declared as mutable",
+                            ident.name
+                        ),
                         span,
                     );
                 }
@@ -916,7 +946,11 @@ impl BorrowChecker {
             Expr::FieldAccess(fa) => {
                 // Check the root object is mutable.
                 if let Some(root_name) = Self::extract_root_var(&assign.target.node) {
-                    let is_mut = self.decl_mutability.get(root_name).copied().unwrap_or(false);
+                    let is_mut = self
+                        .decl_mutability
+                        .get(root_name)
+                        .copied()
+                        .unwrap_or(false);
                     if !is_mut {
                         self.error(
                             format!(
@@ -931,7 +965,11 @@ impl BorrowChecker {
             Expr::Index(_) => {
                 // Check the root object is mutable.
                 if let Some(root_name) = Self::extract_root_var(&assign.target.node) {
-                    let is_mut = self.decl_mutability.get(root_name).copied().unwrap_or(false);
+                    let is_mut = self
+                        .decl_mutability
+                        .get(root_name)
+                        .copied()
+                        .unwrap_or(false);
                     if !is_mut {
                         self.error(
                             format!(
@@ -974,7 +1012,10 @@ impl BorrowChecker {
                         format!(
                             "cannot capture '{}' in spawn: type '{}' does not implement Send",
                             name,
-                            self.var_types.get(name).cloned().unwrap_or_else(|| "unknown".into())
+                            self.var_types
+                                .get(name)
+                                .cloned()
+                                .unwrap_or_else(|| "unknown".into())
                         ),
                         *var_span,
                     );
@@ -1068,13 +1109,9 @@ impl BorrowChecker {
                 }
             }
             // &x.field — field of a local
-            Expr::FieldAccess(fa) => {
-                self.expr_references_local_target(&fa.object.node)
-            }
+            Expr::FieldAccess(fa) => self.expr_references_local_target(&fa.object.node),
             // &arr[0] — index into a local
-            Expr::Index(idx) => {
-                self.expr_references_local_target(&idx.object.node)
-            }
+            Expr::Index(idx) => self.expr_references_local_target(&idx.object.node),
             _ => None,
         }
     }
@@ -1097,7 +1134,10 @@ impl BorrowChecker {
                         return Some(BorrowOrigin::Param { name });
                     }
                     let depth = self.var_scopes.get(&name).copied().unwrap_or(0);
-                    return Some(BorrowOrigin::Local { name, scope_depth: depth });
+                    return Some(BorrowOrigin::Local {
+                        name,
+                        scope_depth: depth,
+                    });
                 }
             }
         }

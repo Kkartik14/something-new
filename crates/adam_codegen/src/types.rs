@@ -78,20 +78,12 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Build an LLVM function type from Adam IR param/return types.
-    pub fn llvm_fn_type(
-        &self,
-        params: &[IrType],
-        ret: &IrType,
-    ) -> FunctionType<'ctx> {
-        let param_types: Vec<BasicMetadataTypeEnum<'ctx>> = params
-            .iter()
-            .map(|p| self.llvm_type(p).into())
-            .collect();
+    pub fn llvm_fn_type(&self, params: &[IrType], ret: &IrType) -> FunctionType<'ctx> {
+        let param_types: Vec<BasicMetadataTypeEnum<'ctx>> =
+            params.iter().map(|p| self.llvm_type(p).into()).collect();
 
         match ret {
-            IrType::Void | IrType::Unit => {
-                self.context.void_type().fn_type(&param_types, false)
-            }
+            IrType::Void | IrType::Unit => self.context.void_type().fn_type(&param_types, false),
             _ => {
                 let ret_type = self.llvm_type(ret);
                 ret_type.fn_type(&param_types, false)

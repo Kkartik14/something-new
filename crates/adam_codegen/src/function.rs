@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use inkwell::types::{BasicType, BasicTypeEnum};
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, FloatValue};
-use inkwell::IntPredicate;
-use inkwell::FloatPredicate;
+use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue};
 use inkwell::AddressSpace;
+use inkwell::FloatPredicate;
+use inkwell::IntPredicate;
 
 use adam_ir::ir::*;
 
@@ -32,7 +32,9 @@ impl<'ctx> CodeGen<'ctx> {
             values.push(i8_type.const_zero()); // null terminator
 
             let const_str = i8_type.const_array(&values);
-            let global = self.module.add_global(arr_type, None, &format!(".str.{}", idx));
+            let global = self
+                .module
+                .add_global(arr_type, None, &format!(".str.{}", idx));
             global.set_initializer(&const_str);
             global.set_constant(true);
             global.set_unnamed_addr(true);
@@ -42,7 +44,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         // 2. Define named struct types from the module's struct definitions.
         for struct_def in &module.struct_defs {
-            let field_types: Vec<BasicTypeEnum<'ctx>> = struct_def.fields
+            let field_types: Vec<BasicTypeEnum<'ctx>> = struct_def
+                .fields
                 .iter()
                 .map(|f| self.llvm_type(&f.ty))
                 .collect();
@@ -53,15 +56,16 @@ impl<'ctx> CodeGen<'ctx> {
 
         // 3. Forward-declare all functions so calls can resolve.
         for func in &module.functions {
-            let fn_type = if func.name == "main" && matches!(func.return_type, IrType::Unit | IrType::Void) {
-                // main must return i32 for the OS.
-                self.context.i32_type().fn_type(&[], false)
-            } else {
-                self.llvm_fn_type(
-                    &func.params.iter().map(|p| p.ty.clone()).collect::<Vec<_>>(),
-                    &func.return_type,
-                )
-            };
+            let fn_type =
+                if func.name == "main" && matches!(func.return_type, IrType::Unit | IrType::Void) {
+                    // main must return i32 for the OS.
+                    self.context.i32_type().fn_type(&[], false)
+                } else {
+                    self.llvm_fn_type(
+                        &func.params.iter().map(|p| p.ty.clone()).collect::<Vec<_>>(),
+                        &func.return_type,
+                    )
+                };
             let llvm_fn = self.module.add_function(&func.name, fn_type, None);
             self.functions.insert(func.id, llvm_fn);
         }
@@ -85,15 +89,14 @@ impl<'ctx> CodeGen<'ctx> {
         self.var_value_types.clear();
 
         // Build a type lookup for locals.
-        let local_types: HashMap<VarId, IrType> = func
-            .locals
-            .iter()
-            .map(|l| (l.id, l.ty.clone()))
-            .collect();
+        let local_types: HashMap<VarId, IrType> =
+            func.locals.iter().map(|l| (l.id, l.ty.clone())).collect();
 
         // Create all LLVM basic blocks first (forward references for branches).
         for block in &func.blocks {
-            let bb = self.context.append_basic_block(llvm_fn, &format!("bb{}", block.id));
+            let bb = self
+                .context
+                .append_basic_block(llvm_fn, &format!("bb{}", block.id));
             self.blocks.insert(block.id, bb);
         }
 
@@ -103,7 +106,9 @@ impl<'ctx> CodeGen<'ctx> {
 
         for local in &func.locals {
             let ty = self.llvm_type(&local.ty);
-            let alloca = self.builder.build_alloca(ty, &local.name)
+            let alloca = self
+                .builder
+                .build_alloca(ty, &local.name)
                 .expect("failed to build alloca");
             self.variables.insert(local.id, alloca);
         }
@@ -111,20 +116,23 @@ impl<'ctx> CodeGen<'ctx> {
         // Store function parameters into their allocas and track their types.
         for (i, _param) in func.params.iter().enumerate() {
             let var_id = i as VarId;
-            let arg_val = llvm_fn.get_nth_param(i as u32)
+            let arg_val = llvm_fn
+                .get_nth_param(i as u32)
                 .expect("missing function parameter");
             let alloca = self.variables[&var_id];
-            self.builder.build_store(alloca, arg_val)
+            self.builder
+                .build_store(alloca, arg_val)
                 .expect("failed to store param");
             self.var_value_types.insert(var_id, arg_val.get_type());
         }
 
         // For main(), we override the return type to I32 so that the process returns 0.
-        let effective_return_type = if func.name == "main" && matches!(func.return_type, IrType::Unit | IrType::Void) {
-            IrType::I32
-        } else {
-            func.return_type.clone()
-        };
+        let effective_return_type =
+            if func.name == "main" && matches!(func.return_type, IrType::Unit | IrType::Void) {
+                IrType::I32
+            } else {
+                func.return_type.clone()
+            };
 
         // Generate each block.
         for block in &func.blocks {
@@ -216,7 +224,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let arg_vals = self.coerce_call_args(callee, arg_vals);
                 let args_meta: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> =
                     arg_vals.iter().map(|v| (*v).into()).collect();
-                let result = self.builder
+                let result = self
+                    .builder
                     .build_call(callee, &args_meta, "call")
                     .expect("failed to build call");
                 match result.try_as_basic_value() {
@@ -227,9 +236,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
 
-            RValue::CallNamed(name, args) => {
-                self.codegen_call_named(name, args, local_types)
-            }
+            RValue::CallNamed(name, args) => self.codegen_call_named(name, args, local_types),
 
             RValue::Aggregate(kind, fields) => {
                 let field_vals: Vec<BasicValueEnum<'ctx>> = fields
@@ -257,36 +264,47 @@ impl<'ctx> CodeGen<'ctx> {
                         let elem_llvm = self.llvm_type(elem_ty);
                         let arr = base_val;
                         // Alloca the array, GEP into it, load element
-                        let arr_alloca = self.builder.build_alloca(arr.get_type(), "arr_tmp")
+                        let arr_alloca = self
+                            .builder
+                            .build_alloca(arr.get_type(), "arr_tmp")
                             .expect("alloca");
                         self.builder.build_store(arr_alloca, arr).expect("store");
                         let zero = self.context.i64_type().const_zero();
                         let gep = unsafe {
-                            self.builder.build_gep(
-                                elem_llvm.array_type(0),
-                                arr_alloca,
-                                &[zero, idx_val.into_int_value().into()],
-                                "idx",
-                            ).expect("gep")
+                            self.builder
+                                .build_gep(
+                                    elem_llvm.array_type(0),
+                                    arr_alloca,
+                                    &[zero, idx_val.into_int_value().into()],
+                                    "idx",
+                                )
+                                .expect("gep")
                         };
-                        self.builder.build_load(elem_llvm, gep, "elem").expect("load")
+                        self.builder
+                            .build_load(elem_llvm, gep, "elem")
+                            .expect("load")
                     }
                     _ => {
                         // Dynamic array/slice: load ptr, GEP, load
                         // ptr is field 0 of the {ptr, len, cap} struct
-                        let ptr = self.builder
+                        let ptr = self
+                            .builder
                             .build_extract_value(base_val.into_struct_value(), 0, "arr_ptr")
                             .expect("extract ptr");
                         let elem_ty_llvm = self.context.i8_type(); // fallback
                         let gep = unsafe {
-                            self.builder.build_gep(
-                                elem_ty_llvm,
-                                ptr.into_pointer_value(),
-                                &[idx_val.into_int_value().into()],
-                                "idx",
-                            ).expect("gep")
+                            self.builder
+                                .build_gep(
+                                    elem_ty_llvm,
+                                    ptr.into_pointer_value(),
+                                    &[idx_val.into_int_value().into()],
+                                    "idx",
+                                )
+                                .expect("gep")
                         };
-                        self.builder.build_load(elem_ty_llvm, gep, "elem").expect("load")
+                        self.builder
+                            .build_load(elem_ty_llvm, gep, "elem")
+                            .expect("load")
                     }
                 }
             }
@@ -339,13 +357,9 @@ impl<'ctx> CodeGen<'ctx> {
                 )
             }
 
-            RValue::ChanSend(chan, val) => {
-                self.codegen_chan_send(chan, val, local_types)
-            }
+            RValue::ChanSend(chan, val) => self.codegen_chan_send(chan, val, local_types),
 
-            RValue::ChanRecv(chan) => {
-                self.codegen_chan_recv(chan, local_types)
-            }
+            RValue::ChanRecv(chan) => self.codegen_chan_recv(chan, local_types),
         }
     }
 
@@ -362,10 +376,13 @@ impl<'ctx> CodeGen<'ctx> {
             Operand::Var(var_id) => {
                 let ptr = self.variables[var_id];
                 // Prefer the actual stored type; fall back to declared type.
-                let llvm_ty = self.var_value_types.get(var_id)
+                let llvm_ty = self
+                    .var_value_types
+                    .get(var_id)
                     .copied()
                     .unwrap_or_else(|| self.llvm_type(&local_types[var_id]));
-                self.builder.build_load(llvm_ty, ptr, "load")
+                self.builder
+                    .build_load(llvm_ty, ptr, "load")
                     .expect("failed to load variable")
             }
             Operand::Constant(c) => self.codegen_constant(c),
@@ -374,36 +391,31 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn codegen_constant(&self, c: &Constant) -> BasicValueEnum<'ctx> {
         match c {
-            Constant::Int(val) => {
-                self.context.i64_type().const_int(*val as u64, true).into()
-            }
-            Constant::Float(val) => {
-                self.context.f64_type().const_float(*val).into()
-            }
-            Constant::Bool(val) => {
-                self.context.bool_type().const_int(*val as u64, false).into()
-            }
-            Constant::Char(val) => {
-                self.context.i32_type().const_int(*val as u64, false).into()
-            }
+            Constant::Int(val) => self.context.i64_type().const_int(*val as u64, true).into(),
+            Constant::Float(val) => self.context.f64_type().const_float(*val).into(),
+            Constant::Bool(val) => self
+                .context
+                .bool_type()
+                .const_int(*val as u64, false)
+                .into(),
+            Constant::Char(val) => self.context.i32_type().const_int(*val as u64, false).into(),
             Constant::String(idx) => {
                 // Return the global string pointer as a value.
                 if let Some(ptr) = self.strings.get(idx) {
                     (*ptr).into()
                 } else {
-                    self.context.ptr_type(AddressSpace::default())
+                    self.context
+                        .ptr_type(AddressSpace::default())
                         .const_null()
                         .into()
                 }
             }
-            Constant::Unit => {
-                self.context.struct_type(&[], false).const_zero().into()
-            }
-            Constant::Nil => {
-                self.context.ptr_type(AddressSpace::default())
-                    .const_null()
-                    .into()
-            }
+            Constant::Unit => self.context.struct_type(&[], false).const_zero().into(),
+            Constant::Nil => self
+                .context
+                .ptr_type(AddressSpace::default())
+                .const_null()
+                .into(),
         }
     }
 
@@ -433,15 +445,23 @@ impl<'ctx> CodeGen<'ctx> {
                 let signed = is_signed_type(lhs_ty);
                 if l_bits < r_bits {
                     l = if signed {
-                        self.builder.build_int_s_extend(l, wider, "sext").expect("sext")
+                        self.builder
+                            .build_int_s_extend(l, wider, "sext")
+                            .expect("sext")
                     } else {
-                        self.builder.build_int_z_extend(l, wider, "zext").expect("zext")
+                        self.builder
+                            .build_int_z_extend(l, wider, "zext")
+                            .expect("zext")
                     };
                 } else {
                     r = if signed {
-                        self.builder.build_int_s_extend(r, wider, "sext").expect("sext")
+                        self.builder
+                            .build_int_s_extend(r, wider, "sext")
+                            .expect("sext")
                     } else {
-                        self.builder.build_int_z_extend(r, wider, "zext").expect("zext")
+                        self.builder
+                            .build_int_z_extend(r, wider, "zext")
+                            .expect("zext")
                     };
                 }
             }
@@ -463,35 +483,83 @@ impl<'ctx> CodeGen<'ctx> {
             BinOp::Mul => self.builder.build_int_mul(l, r, "mul").expect("mul").into(),
             BinOp::Div => {
                 if signed {
-                    self.builder.build_int_signed_div(l, r, "sdiv").expect("sdiv").into()
+                    self.builder
+                        .build_int_signed_div(l, r, "sdiv")
+                        .expect("sdiv")
+                        .into()
                 } else {
-                    self.builder.build_int_unsigned_div(l, r, "udiv").expect("udiv").into()
+                    self.builder
+                        .build_int_unsigned_div(l, r, "udiv")
+                        .expect("udiv")
+                        .into()
                 }
             }
             BinOp::Mod => {
                 if signed {
-                    self.builder.build_int_signed_rem(l, r, "srem").expect("srem").into()
+                    self.builder
+                        .build_int_signed_rem(l, r, "srem")
+                        .expect("srem")
+                        .into()
                 } else {
-                    self.builder.build_int_unsigned_rem(l, r, "urem").expect("urem").into()
+                    self.builder
+                        .build_int_unsigned_rem(l, r, "urem")
+                        .expect("urem")
+                        .into()
                 }
             }
-            BinOp::Eq => self.builder.build_int_compare(IntPredicate::EQ, l, r, "eq").expect("eq").into(),
-            BinOp::NotEq => self.builder.build_int_compare(IntPredicate::NE, l, r, "ne").expect("ne").into(),
+            BinOp::Eq => self
+                .builder
+                .build_int_compare(IntPredicate::EQ, l, r, "eq")
+                .expect("eq")
+                .into(),
+            BinOp::NotEq => self
+                .builder
+                .build_int_compare(IntPredicate::NE, l, r, "ne")
+                .expect("ne")
+                .into(),
             BinOp::Lt => {
-                let pred = if signed { IntPredicate::SLT } else { IntPredicate::ULT };
-                self.builder.build_int_compare(pred, l, r, "lt").expect("lt").into()
+                let pred = if signed {
+                    IntPredicate::SLT
+                } else {
+                    IntPredicate::ULT
+                };
+                self.builder
+                    .build_int_compare(pred, l, r, "lt")
+                    .expect("lt")
+                    .into()
             }
             BinOp::Gt => {
-                let pred = if signed { IntPredicate::SGT } else { IntPredicate::UGT };
-                self.builder.build_int_compare(pred, l, r, "gt").expect("gt").into()
+                let pred = if signed {
+                    IntPredicate::SGT
+                } else {
+                    IntPredicate::UGT
+                };
+                self.builder
+                    .build_int_compare(pred, l, r, "gt")
+                    .expect("gt")
+                    .into()
             }
             BinOp::LtEq => {
-                let pred = if signed { IntPredicate::SLE } else { IntPredicate::ULE };
-                self.builder.build_int_compare(pred, l, r, "le").expect("le").into()
+                let pred = if signed {
+                    IntPredicate::SLE
+                } else {
+                    IntPredicate::ULE
+                };
+                self.builder
+                    .build_int_compare(pred, l, r, "le")
+                    .expect("le")
+                    .into()
             }
             BinOp::GtEq => {
-                let pred = if signed { IntPredicate::SGE } else { IntPredicate::UGE };
-                self.builder.build_int_compare(pred, l, r, "ge").expect("ge").into()
+                let pred = if signed {
+                    IntPredicate::SGE
+                } else {
+                    IntPredicate::UGE
+                };
+                self.builder
+                    .build_int_compare(pred, l, r, "ge")
+                    .expect("ge")
+                    .into()
             }
             BinOp::And => self.builder.build_and(l, r, "and").expect("and").into(),
             BinOp::Or => self.builder.build_or(l, r, "or").expect("or").into(),
@@ -505,17 +573,61 @@ impl<'ctx> CodeGen<'ctx> {
         r: FloatValue<'ctx>,
     ) -> BasicValueEnum<'ctx> {
         match op {
-            BinOp::Add => self.builder.build_float_add(l, r, "fadd").expect("fadd").into(),
-            BinOp::Sub => self.builder.build_float_sub(l, r, "fsub").expect("fsub").into(),
-            BinOp::Mul => self.builder.build_float_mul(l, r, "fmul").expect("fmul").into(),
-            BinOp::Div => self.builder.build_float_div(l, r, "fdiv").expect("fdiv").into(),
-            BinOp::Mod => self.builder.build_float_rem(l, r, "frem").expect("frem").into(),
-            BinOp::Eq => self.builder.build_float_compare(FloatPredicate::OEQ, l, r, "feq").expect("feq").into(),
-            BinOp::NotEq => self.builder.build_float_compare(FloatPredicate::UNE, l, r, "fne").expect("fne").into(),
-            BinOp::Lt => self.builder.build_float_compare(FloatPredicate::OLT, l, r, "flt").expect("flt").into(),
-            BinOp::Gt => self.builder.build_float_compare(FloatPredicate::OGT, l, r, "fgt").expect("fgt").into(),
-            BinOp::LtEq => self.builder.build_float_compare(FloatPredicate::OLE, l, r, "fle").expect("fle").into(),
-            BinOp::GtEq => self.builder.build_float_compare(FloatPredicate::OGE, l, r, "fge").expect("fge").into(),
+            BinOp::Add => self
+                .builder
+                .build_float_add(l, r, "fadd")
+                .expect("fadd")
+                .into(),
+            BinOp::Sub => self
+                .builder
+                .build_float_sub(l, r, "fsub")
+                .expect("fsub")
+                .into(),
+            BinOp::Mul => self
+                .builder
+                .build_float_mul(l, r, "fmul")
+                .expect("fmul")
+                .into(),
+            BinOp::Div => self
+                .builder
+                .build_float_div(l, r, "fdiv")
+                .expect("fdiv")
+                .into(),
+            BinOp::Mod => self
+                .builder
+                .build_float_rem(l, r, "frem")
+                .expect("frem")
+                .into(),
+            BinOp::Eq => self
+                .builder
+                .build_float_compare(FloatPredicate::OEQ, l, r, "feq")
+                .expect("feq")
+                .into(),
+            BinOp::NotEq => self
+                .builder
+                .build_float_compare(FloatPredicate::UNE, l, r, "fne")
+                .expect("fne")
+                .into(),
+            BinOp::Lt => self
+                .builder
+                .build_float_compare(FloatPredicate::OLT, l, r, "flt")
+                .expect("flt")
+                .into(),
+            BinOp::Gt => self
+                .builder
+                .build_float_compare(FloatPredicate::OGT, l, r, "fgt")
+                .expect("fgt")
+                .into(),
+            BinOp::LtEq => self
+                .builder
+                .build_float_compare(FloatPredicate::OLE, l, r, "fle")
+                .expect("fle")
+                .into(),
+            BinOp::GtEq => self
+                .builder
+                .build_float_compare(FloatPredicate::OGE, l, r, "fge")
+                .expect("fge")
+                .into(),
             BinOp::And | BinOp::Or => {
                 // Logical And/Or on floats is meaningless, treat as zero
                 self.context.bool_type().const_zero().into()
@@ -547,15 +659,16 @@ impl<'ctx> CodeGen<'ctx> {
                         .into()
                 }
             }
-            UnOp::Not => {
-                self.builder
-                    .build_not(val.into_int_value(), "not")
-                    .expect("not")
-                    .into()
-            }
+            UnOp::Not => self
+                .builder
+                .build_not(val.into_int_value(), "not")
+                .expect("not")
+                .into(),
             UnOp::Ref => {
                 // Ref as a unary op: put value on stack, return pointer.
-                let alloca = self.builder.build_alloca(val.get_type(), "ref_tmp")
+                let alloca = self
+                    .builder
+                    .build_alloca(val.get_type(), "ref_tmp")
                     .expect("alloca");
                 self.builder.build_store(alloca, val).expect("store");
                 alloca.into()
@@ -606,11 +719,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let else_block = self.blocks[else_bb];
                 let cond_i1 = self.ensure_i1(cond_val.into_int_value());
                 self.builder
-                    .build_conditional_branch(
-                        cond_i1,
-                        then_block,
-                        else_block,
-                    )
+                    .build_conditional_branch(cond_i1, then_block, else_block)
                     .expect("cond br");
             }
             Terminator::Switch(operand, cases, default) => {
@@ -672,7 +781,8 @@ impl<'ctx> CodeGen<'ctx> {
                         } else {
                             *val
                         };
-                        agg = self.builder
+                        agg = self
+                            .builder
                             .build_insert_value(agg, coerced, i as u32, "ins")
                             .expect("insert value")
                             .into_struct_value();
@@ -685,7 +795,8 @@ impl<'ctx> CodeGen<'ctx> {
                     let struct_ty = self.context.struct_type(&field_types, false);
                     let mut agg = struct_ty.get_undef();
                     for (i, val) in fields.iter().enumerate() {
-                        agg = self.builder
+                        agg = self
+                            .builder
                             .build_insert_value(agg, *val, i as u32, "ins")
                             .expect("insert value")
                             .into_struct_value();
@@ -699,7 +810,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let struct_ty = self.context.struct_type(&field_types, false);
                 let mut agg = struct_ty.get_undef();
                 for (i, val) in fields.iter().enumerate() {
-                    agg = self.builder
+                    agg = self
+                        .builder
                         .build_insert_value(agg, *val, i as u32, "ins")
                         .expect("insert value")
                         .into_struct_value();
@@ -714,7 +826,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let arr_ty = elem_ty.array_type(fields.len() as u32);
                 let mut agg = arr_ty.get_undef();
                 for (i, val) in fields.iter().enumerate() {
-                    agg = self.builder
+                    agg = self
+                        .builder
                         .build_insert_value(agg, *val, i as u32, "ins")
                         .expect("insert value")
                         .into_array_value();
@@ -837,7 +950,8 @@ impl<'ctx> CodeGen<'ctx> {
         let args_meta: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> =
             arg_vals.iter().map(|v| (*v).into()).collect();
 
-        let result = self.builder
+        let result = self
+            .builder
             .build_call(callee, &args_meta, "call")
             .expect("failed to build named call");
 
@@ -890,14 +1004,14 @@ impl<'ctx> CodeGen<'ctx> {
                 let p: inkwell::types::BasicMetadataTypeEnum = self.context.i8_type().into();
                 self.context.void_type().fn_type(&[p], false)
             }
-            "__adam_println_str" | "__adam_print_str" | "__adam_print_cstr" | "__adam_println_cstr" => {
-                self.context.void_type().fn_type(&param_types, false)
-            }
-            "__adam_alloc" | "__adam_chan_create" => {
-                self.context
-                    .ptr_type(AddressSpace::default())
-                    .fn_type(&param_types, false)
-            }
+            "__adam_println_str"
+            | "__adam_print_str"
+            | "__adam_print_cstr"
+            | "__adam_println_cstr" => self.context.void_type().fn_type(&param_types, false),
+            "__adam_alloc" | "__adam_chan_create" => self
+                .context
+                .ptr_type(AddressSpace::default())
+                .fn_type(&param_types, false),
             "__adam_chan_recv" => {
                 // Fixed signature: (ptr, ptr, i64) -> bool
                 let p: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>> = vec![
@@ -920,7 +1034,8 @@ impl<'ctx> CodeGen<'ctx> {
             }
         };
 
-        self.module.add_function(name, fn_type, Some(inkwell::module::Linkage::External))
+        self.module
+            .add_function(name, fn_type, Some(inkwell::module::Linkage::External))
     }
 
     // ================================================================
@@ -936,7 +1051,8 @@ impl<'ctx> CodeGen<'ctx> {
         let callee = self.get_or_declare_external(name, args);
         let args_meta: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> =
             args.iter().map(|v| (*v).into()).collect();
-        let result = self.builder
+        let result = self
+            .builder
             .build_call(callee, &args_meta, "rt_call")
             .expect("failed to build runtime call");
         match result.try_as_basic_value() {
@@ -951,11 +1067,13 @@ impl<'ctx> CodeGen<'ctx> {
     // Type helpers
     // ================================================================
 
-    pub(crate) fn operand_ir_type(&self, operand: &Operand, local_types: &HashMap<VarId, IrType>) -> IrType {
+    pub(crate) fn operand_ir_type(
+        &self,
+        operand: &Operand,
+        local_types: &HashMap<VarId, IrType>,
+    ) -> IrType {
         match operand {
-            Operand::Var(var_id) => {
-                local_types.get(var_id).cloned().unwrap_or(IrType::I64)
-            }
+            Operand::Var(var_id) => local_types.get(var_id).cloned().unwrap_or(IrType::I64),
             Operand::Constant(c) => match c {
                 Constant::Int(_) => IrType::I64,
                 Constant::Float(_) => IrType::F64,
@@ -977,7 +1095,7 @@ impl<'ctx> CodeGen<'ctx> {
             IrType::I64 | IrType::U64 | IrType::F64 => 8,
             IrType::Ptr(_) | IrType::Function(_, _) | IrType::Channel(_) => 8,
             IrType::String => 24, // ptr + len + cap
-            IrType::Str => 16,   // ptr + len
+            IrType::Str => 16,    // ptr + len
             IrType::Array(elem, Some(n)) => self.size_of_type(elem) * n,
             IrType::Array(_, None) => 24, // ptr + len + cap
             IrType::Tuple(fields) => fields.iter().map(|f| self.size_of_type(f)).sum(),
@@ -991,7 +1109,11 @@ impl<'ctx> CodeGen<'ctx> {
     // ================================================================
 
     /// Coerce a value to match a target LLVM type, inserting casts as needed.
-    fn coerce_value(&self, val: BasicValueEnum<'ctx>, target_ty: BasicTypeEnum<'ctx>) -> BasicValueEnum<'ctx> {
+    fn coerce_value(
+        &self,
+        val: BasicValueEnum<'ctx>,
+        target_ty: BasicTypeEnum<'ctx>,
+    ) -> BasicValueEnum<'ctx> {
         if val.get_type() == target_ty {
             return val;
         }
@@ -1004,12 +1126,14 @@ impl<'ctx> CodeGen<'ctx> {
             if src_bits == dst_bits {
                 return val;
             } else if src_bits < dst_bits {
-                return self.builder
+                return self
+                    .builder
                     .build_int_s_extend(src_int, dst_int_ty, "sext")
                     .expect("sext")
                     .into();
             } else {
-                return self.builder
+                return self
+                    .builder
                     .build_int_truncate(src_int, dst_int_ty, "trunc")
                     .expect("trunc")
                     .into();
@@ -1017,22 +1141,37 @@ impl<'ctx> CodeGen<'ctx> {
         }
         // Float-to-float coercion
         if val.is_float_value() && target_ty.is_float_type() {
-            return self.builder
-                .build_float_cast(val.into_float_value(), target_ty.into_float_type(), "fpcast")
+            return self
+                .builder
+                .build_float_cast(
+                    val.into_float_value(),
+                    target_ty.into_float_type(),
+                    "fpcast",
+                )
                 .expect("fpcast")
                 .into();
         }
         // Int-to-float
         if val.is_int_value() && target_ty.is_float_type() {
-            return self.builder
-                .build_signed_int_to_float(val.into_int_value(), target_ty.into_float_type(), "sitofp")
+            return self
+                .builder
+                .build_signed_int_to_float(
+                    val.into_int_value(),
+                    target_ty.into_float_type(),
+                    "sitofp",
+                )
                 .expect("sitofp")
                 .into();
         }
         // Float-to-int
         if val.is_float_value() && target_ty.is_int_type() {
-            return self.builder
-                .build_float_to_signed_int(val.into_float_value(), target_ty.into_int_type(), "fptosi")
+            return self
+                .builder
+                .build_float_to_signed_int(
+                    val.into_float_value(),
+                    target_ty.into_int_type(),
+                    "fptosi",
+                )
                 .expect("fptosi")
                 .into();
         }
@@ -1046,11 +1185,13 @@ impl<'ctx> CodeGen<'ctx> {
             if src_field_count >= dst_field_types.len() as u32 && !dst_field_types.is_empty() {
                 let mut agg = dst_struct_ty.get_undef();
                 for (i, dst_ft) in dst_field_types.iter().enumerate() {
-                    let field_val = self.builder
+                    let field_val = self
+                        .builder
                         .build_extract_value(src_struct, i as u32, "f")
                         .expect("extract");
                     let coerced = self.coerce_value(field_val, *dst_ft);
-                    agg = self.builder
+                    agg = self
+                        .builder
                         .build_insert_value(agg, coerced, i as u32, "ins")
                         .expect("insert")
                         .into_struct_value();
@@ -1080,19 +1221,26 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Coerce call arguments to match the callee's parameter types.
-    fn coerce_call_args(&self, callee: FunctionValue<'ctx>, args: Vec<BasicValueEnum<'ctx>>) -> Vec<BasicValueEnum<'ctx>> {
+    fn coerce_call_args(
+        &self,
+        callee: FunctionValue<'ctx>,
+        args: Vec<BasicValueEnum<'ctx>>,
+    ) -> Vec<BasicValueEnum<'ctx>> {
         let param_types = callee.get_type().get_param_types();
-        args.into_iter().enumerate().map(|(i, arg)| {
-            if let Some(param_meta_ty) = param_types.get(i) {
-                if let Ok(basic_ty) = BasicTypeEnum::try_from(*param_meta_ty) {
-                    self.coerce_value(arg, basic_ty)
+        args.into_iter()
+            .enumerate()
+            .map(|(i, arg)| {
+                if let Some(param_meta_ty) = param_types.get(i) {
+                    if let Ok(basic_ty) = BasicTypeEnum::try_from(*param_meta_ty) {
+                        self.coerce_value(arg, basic_ty)
+                    } else {
+                        arg
+                    }
                 } else {
                     arg
                 }
-            } else {
-                arg
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     /// Create a zero/default value for a given LLVM type.
@@ -1128,9 +1276,16 @@ impl<'ctx> CodeGen<'ctx> {
 fn is_int_type(ty: &IrType) -> bool {
     matches!(
         ty,
-        IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
-            | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64
-            | IrType::Bool | IrType::Char
+        IrType::I8
+            | IrType::I16
+            | IrType::I32
+            | IrType::I64
+            | IrType::U8
+            | IrType::U16
+            | IrType::U32
+            | IrType::U64
+            | IrType::Bool
+            | IrType::Char
     )
 }
 

@@ -5,11 +5,11 @@
 //! compiler's type checker and codegen consult to know which traits exist,
 //! which primitive types implement them, and how operators map to traits.
 
-pub mod traits;
-pub mod primitives;
 pub mod operator;
+pub mod primitives;
+pub mod traits;
 
 // Re-export the most commonly used items at the crate root for convenience.
-pub use traits::{CoreTrait, Ordering, TraitMethod, core_trait_methods};
-pub use primitives::{primitive_traits, primitive_has_trait};
-pub use operator::{OpKind, op_to_trait, parse_op};
+pub use operator::{op_to_trait, parse_op, OpKind};
+pub use primitives::{primitive_has_trait, primitive_traits};
+pub use traits::{core_trait_methods, CoreTrait, Ordering, TraitMethod};

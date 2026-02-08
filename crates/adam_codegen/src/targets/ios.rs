@@ -23,10 +23,7 @@ pub fn ios_device_target() -> TargetConfig {
         min_os_version: Some(MIN_IOS_VERSION.to_string()),
         sdk_path: find_ios_sdk(),
         linker: "clang".to_string(),
-        linker_flags: vec![
-            "-arch".to_string(),
-            "arm64".to_string(),
-        ],
+        linker_flags: vec!["-arch".to_string(), "arm64".to_string()],
         system_libs: vec!["System".to_string()],
         frameworks: vec![
             "UIKit".to_string(),
@@ -57,10 +54,7 @@ pub fn ios_simulator_target() -> TargetConfig {
         min_os_version: Some(MIN_IOS_VERSION.to_string()),
         sdk_path: find_ios_simulator_sdk(),
         linker: "clang".to_string(),
-        linker_flags: vec![
-            "-arch".to_string(),
-            arch_flag.to_string(),
-        ],
+        linker_flags: vec!["-arch".to_string(), arch_flag.to_string()],
         system_libs: vec!["System".to_string()],
         frameworks: vec![
             "UIKit".to_string(),

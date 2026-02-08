@@ -115,7 +115,11 @@ impl PrettyPrinter {
         for (i, field) in s.fields.iter().enumerate() {
             let fvis = vis_str(field.visibility);
             self.prefix(i == s.fields.len() - 1);
-            self.line(&format!("{fvis}{}: {}", field.name.name, type_str(&field.ty.node)));
+            self.line(&format!(
+                "{fvis}{}: {}",
+                field.name.name,
+                type_str(&field.ty.node)
+            ));
         }
         self.indent -= 1;
     }
@@ -130,7 +134,8 @@ impl PrettyPrinter {
             if variant.fields.is_empty() {
                 self.line(&variant.name.name);
             } else {
-                let fields: Vec<String> = variant.fields.iter().map(|f| type_str(&f.node)).collect();
+                let fields: Vec<String> =
+                    variant.fields.iter().map(|f| type_str(&f.node)).collect();
                 self.line(&format!("{}({})", variant.name.name, fields.join(", ")));
             }
         }
@@ -175,7 +180,11 @@ impl PrettyPrinter {
                 ViewFieldAttr::Binding => "@binding",
             };
             self.prefix(false);
-            self.line(&format!("{attr} {}: {}", field.name.name, type_str(&field.ty.node)));
+            self.line(&format!(
+                "{attr} {}: {}",
+                field.name.name,
+                type_str(&field.ty.node)
+            ));
         }
         self.prefix(true);
         self.line("Body");
@@ -329,7 +338,8 @@ impl PrettyPrinter {
                 self.indent -= 1;
                 if !c.generic_args.is_empty() {
                     self.prefix(false);
-                    let args: Vec<String> = c.generic_args.iter().map(|a| type_str(&a.node)).collect();
+                    let args: Vec<String> =
+                        c.generic_args.iter().map(|a| type_str(&a.node)).collect();
                     self.line(&format!("GenericArgs: [{}]", args.join(", ")));
                 }
                 self.prefix(true);
@@ -479,12 +489,14 @@ impl PrettyPrinter {
                 self.indent -= 1;
             }
             Expr::Closure(c) => {
-                let params: Vec<String> = c.params.iter().map(|p| {
-                    match &p.ty {
+                let params: Vec<String> = c
+                    .params
+                    .iter()
+                    .map(|p| match &p.ty {
                         Some(t) => format!("{}: {}", p.name.name, type_str(&t.node)),
                         None => p.name.name.clone(),
-                    }
-                }).collect();
+                    })
+                    .collect();
                 self.line(&format!("Closure |{}|", params.join(", ")));
                 self.indent += 1;
                 self.prefix(true);
@@ -528,7 +540,10 @@ impl PrettyPrinter {
                     Some(_) => "buffered",
                     None => "unbuffered",
                 };
-                self.line(&format!("ChanCreate({cap}) chan[{}]", type_str(&c.element_type.node)));
+                self.line(&format!(
+                    "ChanCreate({cap}) chan[{}]",
+                    type_str(&c.element_type.node)
+                ));
             }
             Expr::Select(s) => {
                 self.line("Select");
@@ -552,30 +567,26 @@ impl PrettyPrinter {
                 }
                 self.indent -= 1;
             }
-            Expr::Return(val) => {
-                match val {
-                    Some(e) => {
-                        self.line("Return");
-                        self.indent += 1;
-                        self.prefix(true);
-                        self.print_expr(&e.node);
-                        self.indent -= 1;
-                    }
-                    None => self.line("Return (void)"),
+            Expr::Return(val) => match val {
+                Some(e) => {
+                    self.line("Return");
+                    self.indent += 1;
+                    self.prefix(true);
+                    self.print_expr(&e.node);
+                    self.indent -= 1;
                 }
-            }
-            Expr::Break(val) => {
-                match val {
-                    Some(e) => {
-                        self.line("Break");
-                        self.indent += 1;
-                        self.prefix(true);
-                        self.print_expr(&e.node);
-                        self.indent -= 1;
-                    }
-                    None => self.line("Break"),
+                None => self.line("Return (void)"),
+            },
+            Expr::Break(val) => match val {
+                Some(e) => {
+                    self.line("Break");
+                    self.indent += 1;
+                    self.prefix(true);
+                    self.print_expr(&e.node);
+                    self.indent -= 1;
                 }
-            }
+                None => self.line("Break"),
+            },
             Expr::Continue => self.line("Continue"),
         }
     }
@@ -696,14 +707,17 @@ fn generics_str(params: &[GenericParam]) -> String {
     if params.is_empty() {
         return String::new();
     }
-    let parts: Vec<String> = params.iter().map(|p| {
-        if p.bounds.is_empty() {
-            p.name.name.clone()
-        } else {
-            let bounds: Vec<&str> = p.bounds.iter().map(|b| b.name.as_str()).collect();
-            format!("{}: {}", p.name.name, bounds.join(" + "))
-        }
-    }).collect();
+    let parts: Vec<String> = params
+        .iter()
+        .map(|p| {
+            if p.bounds.is_empty() {
+                p.name.name.clone()
+            } else {
+                let bounds: Vec<&str> = p.bounds.iter().map(|b| b.name.as_str()).collect();
+                format!("{}: {}", p.name.name, bounds.join(" + "))
+            }
+        })
+        .collect();
     format!("[{}]", parts.join(", "))
 }
 
@@ -723,19 +737,21 @@ fn type_str(ty: &Type) -> String {
         Type::Named(path) => {
             let mut s = path.name.name.clone();
             if !path.generic_args.is_empty() {
-                let args: Vec<String> = path.generic_args.iter().map(|a| type_str(&a.node)).collect();
+                let args: Vec<String> = path
+                    .generic_args
+                    .iter()
+                    .map(|a| type_str(&a.node))
+                    .collect();
                 s.push_str(&format!("[{}]", args.join(", ")));
             }
             s
         }
         Type::Reference(inner) => format!("&{}", type_str(&inner.node)),
         Type::MutReference(inner) => format!("&mut {}", type_str(&inner.node)),
-        Type::Array(arr) => {
-            match &arr.size {
-                Some(_) => format!("[{}; N]", type_str(&arr.element.node)),
-                None => format!("[{}]", type_str(&arr.element.node)),
-            }
-        }
+        Type::Array(arr) => match &arr.size {
+            Some(_) => format!("[{}; N]", type_str(&arr.element.node)),
+            None => format!("[{}]", type_str(&arr.element.node)),
+        },
         Type::Tuple(elems) => {
             let parts: Vec<String> = elems.iter().map(|e| type_str(&e.node)).collect();
             format!("({})", parts.join(", "))
@@ -744,7 +760,11 @@ fn type_str(ty: &Type) -> String {
         Type::Result(r) => format!("{} ! {}", type_str(&r.ok.node), type_str(&r.err.node)),
         Type::Function(f) => {
             let params: Vec<String> = f.params.iter().map(|p| type_str(&p.node)).collect();
-            format!("fn({}) -> {}", params.join(", "), type_str(&f.return_type.node))
+            format!(
+                "fn({}) -> {}",
+                params.join(", "),
+                type_str(&f.return_type.node)
+            )
         }
         Type::Channel(inner) => format!("chan[{}]", type_str(&inner.node)),
         Type::Inferred => "_".to_string(),

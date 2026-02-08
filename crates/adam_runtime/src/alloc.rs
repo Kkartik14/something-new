@@ -30,7 +30,12 @@ pub extern "C" fn __adam_dealloc(ptr: *mut u8, size: u64, align: u64) {
 
 /// Reallocate — grow or shrink an allocation.
 #[no_mangle]
-pub extern "C" fn __adam_realloc(ptr: *mut u8, old_size: u64, align: u64, new_size: u64) -> *mut u8 {
+pub extern "C" fn __adam_realloc(
+    ptr: *mut u8,
+    old_size: u64,
+    align: u64,
+    new_size: u64,
+) -> *mut u8 {
     if old_size == 0 {
         return __adam_alloc(new_size, align);
     }

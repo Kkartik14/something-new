@@ -1,7 +1,7 @@
 //! Adam Type System — type checking, inference, and generic instantiation.
 
-pub mod ty;
 pub mod checker;
+pub mod ty;
 
 #[cfg(test)]
 mod tests;
@@ -12,5 +12,5 @@ mod adversarial_tests;
 #[cfg(test)]
 mod fuzz_tests;
 
-pub use ty::{TypeContext, TypeId, Ty, FnSig, StructInfo, EnumInfo, TraitInfo};
-pub use checker::{TypeChecker, TypeCheckResult, TypeError};
+pub use checker::{TypeCheckResult, TypeChecker, TypeError};
+pub use ty::{EnumInfo, FnSig, StructInfo, TraitInfo, Ty, TypeContext, TypeId};

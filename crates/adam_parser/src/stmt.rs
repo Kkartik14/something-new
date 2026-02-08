@@ -70,9 +70,7 @@ impl Parser {
             }
 
             // Mutable binding: mut name := ... or mut name: Type = ...
-            TokenKind::Mut
-                if matches!(self.peek().kind, TokenKind::Identifier(_)) =>
-            {
+            TokenKind::Mut if matches!(self.peek().kind, TokenKind::Identifier(_)) => {
                 self.advance(); // consume 'mut'
                 self.parse_let_stmt_with_mutability(start, Mutability::Mutable)
             }
@@ -173,16 +171,12 @@ impl Parser {
             if name == "in" {
                 self.advance();
             } else {
-                return Err(self.error_at_current(&format!(
-                    "expected `in`, found `{}`",
-                    name
-                )));
+                return Err(self.error_at_current(&format!("expected `in`, found `{}`", name)));
             }
         } else {
-            return Err(self.error_at_current(&format!(
-                "expected `in`, found {}",
-                self.current().kind
-            )));
+            return Err(
+                self.error_at_current(&format!("expected `in`, found {}", self.current().kind))
+            );
         }
 
         let iterable = self.parse_expr_no_struct()?;
@@ -208,10 +202,7 @@ impl Parser {
         let body = self.parse_block()?;
 
         let s = start.merge(self.prev_span());
-        Ok(Spanned::new(
-            Stmt::While(WhileStmt { condition, body }),
-            s,
-        ))
+        Ok(Spanned::new(Stmt::While(WhileStmt { condition, body }), s))
     }
 
     /// Parse expression statement.

@@ -37,7 +37,10 @@ pub fn format_files(path: Option<&str>, check_only: bool) -> Result<(), String> 
         for file in &needs_formatting {
             println!("Needs formatting: {}", file.display());
         }
-        return Err(format!("{} file(s) need formatting", needs_formatting.len()));
+        return Err(format!(
+            "{} file(s) need formatting",
+            needs_formatting.len()
+        ));
     }
 
     if needs_formatting.is_empty() {
@@ -121,22 +124,21 @@ pub fn format_source(source: &str) -> String {
         }
 
         // Check if this is a top-level item.
-        let is_top_level_item = indent_level == 0 && (
-            trimmed.starts_with("fn ")
-            || trimmed.starts_with("pub fn ")
-            || trimmed.starts_with("struct ")
-            || trimmed.starts_with("pub struct ")
-            || trimmed.starts_with("enum ")
-            || trimmed.starts_with("pub enum ")
-            || trimmed.starts_with("trait ")
-            || trimmed.starts_with("pub trait ")
-            || trimmed.starts_with("impl ")
-            || trimmed.starts_with("view ")
-            || trimmed.starts_with("pub view ")
-            || trimmed.starts_with("module ")
-            || trimmed.starts_with("test ")
-            || trimmed.starts_with("bench ")
-        );
+        let is_top_level_item = indent_level == 0
+            && (trimmed.starts_with("fn ")
+                || trimmed.starts_with("pub fn ")
+                || trimmed.starts_with("struct ")
+                || trimmed.starts_with("pub struct ")
+                || trimmed.starts_with("enum ")
+                || trimmed.starts_with("pub enum ")
+                || trimmed.starts_with("trait ")
+                || trimmed.starts_with("pub trait ")
+                || trimmed.starts_with("impl ")
+                || trimmed.starts_with("view ")
+                || trimmed.starts_with("pub view ")
+                || trimmed.starts_with("module ")
+                || trimmed.starts_with("test ")
+                || trimmed.starts_with("bench "));
 
         // Add blank line between top-level items.
         if is_top_level_item && prev_was_top_level_item && !output.is_empty() {
@@ -240,7 +242,10 @@ mod tests {
     fn test_format_blank_line_between_top_level() {
         let source = "fn foo() {\n}\nfn bar() {\n}\n";
         let result = format_source(source);
-        assert!(result.contains("}\n\nfn bar"), "missing blank line between functions");
+        assert!(
+            result.contains("}\n\nfn bar"),
+            "missing blank line between functions"
+        );
     }
 
     #[test]
@@ -255,7 +260,10 @@ mod tests {
         let source = "fn foo() {\nif true {\nprint(\"yes\")\n}\n}\n";
         let result = format_source(source);
         assert!(result.contains("    if true"), "missing indentation");
-        assert!(result.contains("        print"), "missing nested indentation");
+        assert!(
+            result.contains("        print"),
+            "missing nested indentation"
+        );
     }
 
     #[test]

@@ -80,8 +80,8 @@ pub struct RegisterFile {
     pub x26: u64,
     pub x27: u64,
     pub x28: u64,
-    pub x29: u64,   // FP
-    pub x30: u64,   // LR (return address)
+    pub x29: u64, // FP
+    pub x30: u64, // LR (return address)
     pub d8: u64,
     pub d9: u64,
     pub d10: u64,
@@ -153,8 +153,7 @@ impl Stack {
     /// The size is rounded up to the nearest page boundary (4KB).
     pub fn new(size: usize) -> Self {
         let size = align_to_page(size.max(MIN_STACK_SIZE));
-        let layout = std::alloc::Layout::from_size_align(size, 16)
-            .expect("invalid stack layout");
+        let layout = std::alloc::Layout::from_size_align(size, 16).expect("invalid stack layout");
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
             std::alloc::handle_alloc_error(layout);
@@ -362,18 +361,23 @@ mod tests {
     #[test]
     fn test_stack_alignment() {
         let stack = Stack::new(DEFAULT_STACK_SIZE);
-        assert_eq!(stack.top() as usize % 16, 0, "stack top must be 16-byte aligned");
-        assert_eq!(stack.bottom() as usize % 16, 0, "stack bottom must be 16-byte aligned");
+        assert_eq!(
+            stack.top() as usize % 16,
+            0,
+            "stack top must be 16-byte aligned"
+        );
+        assert_eq!(
+            stack.bottom() as usize % 16,
+            0,
+            "stack bottom must be 16-byte aligned"
+        );
     }
 
     #[test]
     fn test_stack_top_above_bottom() {
         let stack = Stack::new(DEFAULT_STACK_SIZE);
         assert!(stack.top() as usize > stack.bottom() as usize);
-        assert_eq!(
-            stack.top() as usize - stack.bottom() as usize,
-            stack.size()
-        );
+        assert_eq!(stack.top() as usize - stack.bottom() as usize, stack.size());
     }
 
     #[test]
@@ -407,7 +411,11 @@ mod tests {
     fn test_create_many_threads() {
         // Verify we can create 1000 threads without issues.
         let threads: Vec<GreenThread> = (0..1000)
-            .map(|i| GreenThread::new(move || { let _ = i; }))
+            .map(|i| {
+                GreenThread::new(move || {
+                    let _ = i;
+                })
+            })
             .collect();
         assert_eq!(threads.len(), 1000);
         // All IDs should be unique.

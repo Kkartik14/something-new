@@ -32,11 +32,7 @@ fn borrow_check(src: &str) -> BorrowCheckResult {
     let resolve_result = resolve(&parse_result.ast);
     let type_result = TypeChecker::new().check(&parse_result.ast);
 
-    BorrowChecker::new().check(
-        &parse_result.ast,
-        Some(&resolve_result),
-        Some(&type_result),
-    )
+    BorrowChecker::new().check(&parse_result.ast, Some(&resolve_result), Some(&type_result))
 }
 
 /// Assert that borrow checking produces no errors.
@@ -78,10 +74,7 @@ fn assert_error_count(src: &str, n: usize) -> BorrowCheckResult {
 
 /// Assert that at least one error message contains the given substring.
 fn assert_error_contains(result: &BorrowCheckResult, substr: &str) {
-    let has = result
-        .errors
-        .iter()
-        .any(|e| e.message.contains(substr));
+    let has = result.errors.iter().any(|e| e.message.contains(substr));
     assert!(
         has,
         "no error message contains '{}'; errors: {:?}",
@@ -957,9 +950,8 @@ fn test_if_else_both_borrow_ok() {
 fn regression_closure_captures_move_non_copy() {
     // Bug: closures that captured non-Copy variables didn't mark them as moved,
     // allowing use-after-move.
-    let result = assert_has_errors(
-        "fn test() {\n    s := \"hello\"\n    f := |x| s\n    print(s)\n}"
-    );
+    let result =
+        assert_has_errors("fn test() {\n    s := \"hello\"\n    f := |x| s\n    print(s)\n}");
     assert_error_contains(&result, "moved");
 }
 
@@ -978,7 +970,7 @@ fn regression_unknown_fn_defaults_to_own() {
     // Bug: calling an unknown function defaulted to Borrow semantics,
     // meaning non-Copy args were never consumed. Now defaults to Own (conservative).
     let result = assert_has_errors(
-        "fn test() {\n    s := \"hello\"\n    unknown_function(s)\n    print(s)\n}"
+        "fn test() {\n    s := \"hello\"\n    unknown_function(s)\n    print(s)\n}",
     );
     assert_error_contains(&result, "moved");
 }
@@ -997,7 +989,7 @@ fn regression_field_assign_on_immutable() {
     // Bug: assigning to a field of an immutable variable (e.g., p.x = 5)
     // was not caught.
     let result = assert_has_errors(
-        "struct Point { x i32 }\nfn test() {\n    p := Point { x: 1 }\n    p.x = 5\n}"
+        "struct Point { x i32 }\nfn test() {\n    p := Point { x: 1 }\n    p.x = 5\n}",
     );
     assert_error_contains(&result, "mutable");
 }

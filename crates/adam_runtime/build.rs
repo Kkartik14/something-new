@@ -7,7 +7,10 @@ fn main() {
         "aarch64" => "src/arch/aarch64.S",
         "x86_64" => "src/arch/x86_64.S",
         _ => {
-            println!("cargo:warning=Unsupported architecture for context switching: {}", arch);
+            println!(
+                "cargo:warning=Unsupported architecture for context switching: {}",
+                arch
+            );
             return;
         }
     };

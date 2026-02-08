@@ -11,12 +11,12 @@
 //!   adam pkg <subcmd>        Package management
 //!   adam clean               Remove build artifacts
 
-mod manifest;
-mod project;
+mod bench;
 mod compile;
 mod format;
+mod manifest;
+mod project;
 mod testrunner;
-mod bench;
 
 use std::env;
 use std::process;
@@ -142,7 +142,10 @@ fn cmd_test(args: &[String]) -> Result<(), i32> {
 
 fn cmd_fmt(args: &[String]) -> Result<(), i32> {
     let check_only = args.iter().any(|a| a == "--check");
-    let path = args.iter().find(|a| !a.starts_with('-')).map(|s| s.as_str());
+    let path = args
+        .iter()
+        .find(|a| !a.starts_with('-'))
+        .map(|s| s.as_str());
     format::format_files(path, check_only).map_err(|e| {
         eprintln!("{}", e);
         1

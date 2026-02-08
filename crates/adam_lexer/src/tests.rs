@@ -1,7 +1,7 @@
 //! Comprehensive lexer test suite.
 
-use crate::token::*;
 use crate::lexer::Lexer;
+use crate::token::*;
 
 /// Helper: tokenize source and return token kinds (excluding Eof).
 fn kinds(source: &str) -> Vec<TokenKind> {
@@ -72,42 +72,82 @@ fn test_only_comments() {
 fn test_all_keywords() {
     let source = "fn struct enum trait impl view let mut own pub use mod if else match for while loop break continue return spawn select after chan true false nil self Self";
     let k = kinds(source);
-    assert_eq!(k, vec![
-        TokenKind::Fn, TokenKind::Struct, TokenKind::Enum, TokenKind::Trait,
-        TokenKind::Impl, TokenKind::View, TokenKind::Let, TokenKind::Mut,
-        TokenKind::Own, TokenKind::Pub, TokenKind::Use, TokenKind::Mod,
-        TokenKind::If, TokenKind::Else, TokenKind::Match, TokenKind::For,
-        TokenKind::While, TokenKind::Loop, TokenKind::Break, TokenKind::Continue,
-        TokenKind::Return, TokenKind::Spawn, TokenKind::Select, TokenKind::After,
-        TokenKind::Chan, TokenKind::True, TokenKind::False, TokenKind::Nil,
-        TokenKind::SelfValue, TokenKind::SelfType,
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Fn,
+            TokenKind::Struct,
+            TokenKind::Enum,
+            TokenKind::Trait,
+            TokenKind::Impl,
+            TokenKind::View,
+            TokenKind::Let,
+            TokenKind::Mut,
+            TokenKind::Own,
+            TokenKind::Pub,
+            TokenKind::Use,
+            TokenKind::Mod,
+            TokenKind::If,
+            TokenKind::Else,
+            TokenKind::Match,
+            TokenKind::For,
+            TokenKind::While,
+            TokenKind::Loop,
+            TokenKind::Break,
+            TokenKind::Continue,
+            TokenKind::Return,
+            TokenKind::Spawn,
+            TokenKind::Select,
+            TokenKind::After,
+            TokenKind::Chan,
+            TokenKind::True,
+            TokenKind::False,
+            TokenKind::Nil,
+            TokenKind::SelfValue,
+            TokenKind::SelfType,
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_keyword_prefix_is_identifier() {
     // "fnord" should be identifier, not fn + ord
     let k = kinds("fnord");
-    assert_eq!(k, vec![TokenKind::Identifier("fnord".to_string()), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("fnord".to_string()),
+            TokenKind::Newline
+        ]
+    );
 }
 
 #[test]
 fn test_keyword_suffix_is_identifier() {
     let k = kinds("format");
-    assert_eq!(k, vec![TokenKind::Identifier("format".to_string()), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("format".to_string()),
+            TokenKind::Newline
+        ]
+    );
 }
 
 #[test]
 fn test_keyword_case_sensitive() {
     // "Fn" is an identifier, not keyword fn
     let k = kinds("Fn Struct IF");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("Fn".to_string()),
-        TokenKind::Identifier("Struct".to_string()),
-        TokenKind::Identifier("IF".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("Fn".to_string()),
+            TokenKind::Identifier("Struct".to_string()),
+            TokenKind::Identifier("IF".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 // ========================================================
@@ -117,41 +157,53 @@ fn test_keyword_case_sensitive() {
 #[test]
 fn test_simple_identifiers() {
     let k = kinds("foo bar baz");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("foo".to_string()),
-        TokenKind::Identifier("bar".to_string()),
-        TokenKind::Identifier("baz".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("foo".to_string()),
+            TokenKind::Identifier("bar".to_string()),
+            TokenKind::Identifier("baz".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_underscore_identifiers() {
     let k = kinds("_ _foo foo_bar foo_");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("_".to_string()),
-        TokenKind::Identifier("_foo".to_string()),
-        TokenKind::Identifier("foo_bar".to_string()),
-        TokenKind::Identifier("foo_".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("_".to_string()),
+            TokenKind::Identifier("_foo".to_string()),
+            TokenKind::Identifier("foo_bar".to_string()),
+            TokenKind::Identifier("foo_".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_identifier_with_numbers() {
     let k = kinds("x1 vec3 point2d");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("x1".to_string()),
-        TokenKind::Identifier("vec3".to_string()),
-        TokenKind::Identifier("point2d".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("x1".to_string()),
+            TokenKind::Identifier("vec3".to_string()),
+            TokenKind::Identifier("point2d".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_single_char_identifier() {
     let k = kinds("x");
-    assert_eq!(k, vec![TokenKind::Identifier("x".to_string()), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![TokenKind::Identifier("x".to_string()), TokenKind::Newline]
+    );
 }
 
 // ========================================================
@@ -161,54 +213,72 @@ fn test_single_char_identifier() {
 #[test]
 fn test_decimal_integers() {
     let k = kinds("0 1 42 1000 999999");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(0), TokenKind::IntLiteral(1),
-        TokenKind::IntLiteral(42), TokenKind::IntLiteral(1000),
-        TokenKind::IntLiteral(999999), TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(0),
+            TokenKind::IntLiteral(1),
+            TokenKind::IntLiteral(42),
+            TokenKind::IntLiteral(1000),
+            TokenKind::IntLiteral(999999),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_integer_with_underscores() {
     let k = kinds("1_000_000 1_0");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(1_000_000),
-        TokenKind::IntLiteral(10),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(1_000_000),
+            TokenKind::IntLiteral(10),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_hex_integers() {
     let k = kinds("0xFF 0x00 0xDEAD_BEEF");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(0xFF),
-        TokenKind::IntLiteral(0x00),
-        TokenKind::IntLiteral(0xDEAD_BEEF),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(0xFF),
+            TokenKind::IntLiteral(0x00),
+            TokenKind::IntLiteral(0xDEAD_BEEF),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_octal_integers() {
     let k = kinds("0o77 0o0 0o755");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(0o77),
-        TokenKind::IntLiteral(0o0),
-        TokenKind::IntLiteral(0o755),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(0o77),
+            TokenKind::IntLiteral(0o0),
+            TokenKind::IntLiteral(0o755),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_binary_integers() {
     let k = kinds("0b1010 0b0 0b1111_0000");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(0b1010),
-        TokenKind::IntLiteral(0b0),
-        TokenKind::IntLiteral(0b1111_0000),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(0b1010),
+            TokenKind::IntLiteral(0b0),
+            TokenKind::IntLiteral(0b1111_0000),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -239,12 +309,15 @@ fn test_binary_no_digits_error() {
 #[test]
 fn test_simple_floats() {
     let k = kinds("3.14 0.5 100.0");
-    assert_eq!(k, vec![
-        TokenKind::FloatLiteral(3.14),
-        TokenKind::FloatLiteral(0.5),
-        TokenKind::FloatLiteral(100.0),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::FloatLiteral(3.14),
+            TokenKind::FloatLiteral(0.5),
+            TokenKind::FloatLiteral(100.0),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -256,12 +329,15 @@ fn test_float_with_underscores() {
 #[test]
 fn test_float_scientific() {
     let k = kinds("1.0e10 1.5e-3 2.0E+5");
-    assert_eq!(k, vec![
-        TokenKind::FloatLiteral(1.0e10),
-        TokenKind::FloatLiteral(1.5e-3),
-        TokenKind::FloatLiteral(2.0e5),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::FloatLiteral(1.0e10),
+            TokenKind::FloatLiteral(1.5e-3),
+            TokenKind::FloatLiteral(2.0e5),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -274,12 +350,15 @@ fn test_integer_scientific_is_float() {
 fn test_dot_after_int_is_not_float() {
     // "5.method" should be int 5, dot, identifier method
     let k = kinds("5.method");
-    assert_eq!(k, vec![
-        TokenKind::IntLiteral(5),
-        TokenKind::Dot,
-        TokenKind::Identifier("method".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::IntLiteral(5),
+            TokenKind::Dot,
+            TokenKind::Identifier("method".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -295,40 +374,58 @@ fn test_zero() {
 #[test]
 fn test_simple_string() {
     let k = kinds(r#""hello""#);
-    assert_eq!(k, vec![TokenKind::StringLiteral("hello".to_string()), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::StringLiteral("hello".to_string()),
+            TokenKind::Newline
+        ]
+    );
 }
 
 #[test]
 fn test_empty_string() {
     let k = kinds(r#""""#);
-    assert_eq!(k, vec![TokenKind::StringLiteral("".to_string()), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![TokenKind::StringLiteral("".to_string()), TokenKind::Newline]
+    );
 }
 
 #[test]
 fn test_string_escapes() {
     let k = kinds(r#""\n\t\r\\\"\0""#);
-    assert_eq!(k, vec![
-        TokenKind::StringLiteral("\n\t\r\\\"\0".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::StringLiteral("\n\t\r\\\"\0".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_string_escaped_brace() {
     let k = kinds(r#""\{not interpolation\}""#);
-    assert_eq!(k, vec![
-        TokenKind::StringLiteral("{not interpolation}".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::StringLiteral("{not interpolation}".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_string_unicode_escape() {
     let k = kinds(r#""\u{1F600}""#);
-    assert_eq!(k, vec![
-        TokenKind::StringLiteral("😀".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::StringLiteral("😀".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -417,31 +514,59 @@ fn test_unterminated_char() {
 fn test_single_char_operators() {
     // @ doesn't end a statement, so no trailing Newline
     let k = kinds("+ - * / % < > = ! & . ? @");
-    assert_eq!(k, vec![
-        TokenKind::Plus, TokenKind::Minus, TokenKind::Star, TokenKind::Slash,
-        TokenKind::Percent, TokenKind::Lt, TokenKind::Gt, TokenKind::Assign,
-        TokenKind::Not, TokenKind::Ampersand, TokenKind::Dot, TokenKind::Question,
-        TokenKind::At,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Plus,
+            TokenKind::Minus,
+            TokenKind::Star,
+            TokenKind::Slash,
+            TokenKind::Percent,
+            TokenKind::Lt,
+            TokenKind::Gt,
+            TokenKind::Assign,
+            TokenKind::Not,
+            TokenKind::Ampersand,
+            TokenKind::Dot,
+            TokenKind::Question,
+            TokenKind::At,
+        ]
+    );
 }
 
 #[test]
 fn test_double_char_operators() {
     let k = kinds("== != <= >= && || -> => := ..");
-    assert_eq!(k, vec![
-        TokenKind::Eq, TokenKind::NotEq, TokenKind::LtEq, TokenKind::GtEq,
-        TokenKind::And, TokenKind::Or, TokenKind::Arrow, TokenKind::FatArrow,
-        TokenKind::ColonAssign, TokenKind::DotDot,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Eq,
+            TokenKind::NotEq,
+            TokenKind::LtEq,
+            TokenKind::GtEq,
+            TokenKind::And,
+            TokenKind::Or,
+            TokenKind::Arrow,
+            TokenKind::FatArrow,
+            TokenKind::ColonAssign,
+            TokenKind::DotDot,
+        ]
+    );
 }
 
 #[test]
 fn test_compound_assignment() {
     let k = kinds("+= -= *= /= %=");
-    assert_eq!(k, vec![
-        TokenKind::PlusAssign, TokenKind::MinusAssign, TokenKind::StarAssign,
-        TokenKind::SlashAssign, TokenKind::PercentAssign,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::PlusAssign,
+            TokenKind::MinusAssign,
+            TokenKind::StarAssign,
+            TokenKind::SlashAssign,
+            TokenKind::PercentAssign,
+        ]
+    );
 }
 
 #[test]
@@ -457,12 +582,20 @@ fn test_pipe_operator() {
 #[test]
 fn test_delimiters() {
     let k = kinds("( ) { } [ ] , : ;");
-    assert_eq!(k, vec![
-        TokenKind::LParen, TokenKind::RParen,
-        TokenKind::LBrace, TokenKind::RBrace,
-        TokenKind::LBracket, TokenKind::RBracket,
-        TokenKind::Comma, TokenKind::Colon, TokenKind::Semicolon,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::LParen,
+            TokenKind::RParen,
+            TokenKind::LBrace,
+            TokenKind::RBrace,
+            TokenKind::LBracket,
+            TokenKind::RBracket,
+            TokenKind::Comma,
+            TokenKind::Colon,
+            TokenKind::Semicolon,
+        ]
+    );
 }
 
 // ========================================================
@@ -503,43 +636,55 @@ fn test_newline_after_rbracket() {
 fn test_no_newline_after_operator() {
     // Newline after + is not significant
     let k = kinds("a +\nb");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Plus,
-        TokenKind::Identifier("b".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Plus,
+            TokenKind::Identifier("b".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_no_newline_after_comma() {
     let k = kinds("a,\nb");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Comma,
-        TokenKind::Identifier("b".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Comma,
+            TokenKind::Identifier("b".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_no_newline_after_lparen() {
     let k = kinds("(\na");
-    assert_eq!(k, vec![
-        TokenKind::LParen,
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::LParen,
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_no_newline_after_lbrace() {
     let k = kinds("{\na");
-    assert_eq!(k, vec![
-        TokenKind::LBrace,
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::LBrace,
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -585,32 +730,41 @@ fn test_multiple_newlines_collapsed() {
 #[test]
 fn test_line_comment() {
     let k = kinds("foo // this is a comment\nbar");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("foo".to_string()),
-        TokenKind::Newline,
-        TokenKind::Identifier("bar".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("foo".to_string()),
+            TokenKind::Newline,
+            TokenKind::Identifier("bar".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_block_comment() {
     let k = kinds("foo /* comment */ bar");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("foo".to_string()),
-        TokenKind::Identifier("bar".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("foo".to_string()),
+            TokenKind::Identifier("bar".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_nested_block_comment() {
     let k = kinds("foo /* outer /* inner */ still comment */ bar");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("foo".to_string()),
-        TokenKind::Identifier("bar".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("foo".to_string()),
+            TokenKind::Identifier("bar".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -630,7 +784,11 @@ fn test_unknown_character_recovery() {
     let result = Lexer::new("foo ~ bar").tokenize();
     assert!(!result.errors.is_empty());
     // Should still get foo and bar tokens
-    let idents: Vec<_> = result.tokens.iter().filter(|t| matches!(&t.kind, TokenKind::Identifier(_))).collect();
+    let idents: Vec<_> = result
+        .tokens
+        .iter()
+        .filter(|t| matches!(&t.kind, TokenKind::Identifier(_)))
+        .collect();
     assert_eq!(idents.len(), 2);
 }
 
@@ -659,7 +817,10 @@ fn test_first_token_location() {
 fn test_second_line_location() {
     let k = kinds_with_loc("foo\nbar");
     // bar should be on line 2, column 1
-    let bar = k.iter().find(|(kind, _, _)| *kind == TokenKind::Identifier("bar".to_string())).unwrap();
+    let bar = k
+        .iter()
+        .find(|(kind, _, _)| *kind == TokenKind::Identifier("bar".to_string()))
+        .unwrap();
     assert_eq!(bar.1, 2); // line
     assert_eq!(bar.2, 1); // column
 }
@@ -679,95 +840,113 @@ fn test_column_tracking() {
 #[test]
 fn test_function_declaration() {
     let k = kinds("fn add(a i32, b i32) -> i32 {");
-    assert_eq!(k, vec![
-        TokenKind::Fn,
-        TokenKind::Identifier("add".to_string()),
-        TokenKind::LParen,
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Identifier("i32".to_string()),
-        TokenKind::Comma,
-        TokenKind::Identifier("b".to_string()),
-        TokenKind::Identifier("i32".to_string()),
-        TokenKind::RParen,
-        TokenKind::Arrow,
-        TokenKind::Identifier("i32".to_string()),
-        TokenKind::LBrace,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Fn,
+            TokenKind::Identifier("add".to_string()),
+            TokenKind::LParen,
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Identifier("i32".to_string()),
+            TokenKind::Comma,
+            TokenKind::Identifier("b".to_string()),
+            TokenKind::Identifier("i32".to_string()),
+            TokenKind::RParen,
+            TokenKind::Arrow,
+            TokenKind::Identifier("i32".to_string()),
+            TokenKind::LBrace,
+        ]
+    );
 }
 
 #[test]
 fn test_variable_declaration() {
     let k = kinds("x := 42");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("x".to_string()),
-        TokenKind::ColonAssign,
-        TokenKind::IntLiteral(42),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("x".to_string()),
+            TokenKind::ColonAssign,
+            TokenKind::IntLiteral(42),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_mutable_variable() {
     let k = kinds("mut count := 0");
-    assert_eq!(k, vec![
-        TokenKind::Mut,
-        TokenKind::Identifier("count".to_string()),
-        TokenKind::ColonAssign,
-        TokenKind::IntLiteral(0),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Mut,
+            TokenKind::Identifier("count".to_string()),
+            TokenKind::ColonAssign,
+            TokenKind::IntLiteral(0),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_typed_variable() {
     let k = kinds("name: String = \"adam\"");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("name".to_string()),
-        TokenKind::Colon,
-        TokenKind::Identifier("String".to_string()),
-        TokenKind::Assign,
-        TokenKind::StringLiteral("adam".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("name".to_string()),
+            TokenKind::Colon,
+            TokenKind::Identifier("String".to_string()),
+            TokenKind::Assign,
+            TokenKind::StringLiteral("adam".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_method_chain() {
     let k = kinds("x.foo().bar(1, 2)");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("x".to_string()),
-        TokenKind::Dot,
-        TokenKind::Identifier("foo".to_string()),
-        TokenKind::LParen,
-        TokenKind::RParen,
-        TokenKind::Dot,
-        TokenKind::Identifier("bar".to_string()),
-        TokenKind::LParen,
-        TokenKind::IntLiteral(1),
-        TokenKind::Comma,
-        TokenKind::IntLiteral(2),
-        TokenKind::RParen,
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("x".to_string()),
+            TokenKind::Dot,
+            TokenKind::Identifier("foo".to_string()),
+            TokenKind::LParen,
+            TokenKind::RParen,
+            TokenKind::Dot,
+            TokenKind::Identifier("bar".to_string()),
+            TokenKind::LParen,
+            TokenKind::IntLiteral(1),
+            TokenKind::Comma,
+            TokenKind::IntLiteral(2),
+            TokenKind::RParen,
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_struct_definition() {
     let source = "struct Point {\n    x f64\n    y f64\n}";
     let k = kinds(source);
-    assert_eq!(k, vec![
-        TokenKind::Struct,
-        TokenKind::Identifier("Point".to_string()),
-        TokenKind::LBrace,
-        TokenKind::Identifier("x".to_string()),
-        TokenKind::Identifier("f64".to_string()),
-        TokenKind::Newline,
-        TokenKind::Identifier("y".to_string()),
-        TokenKind::Identifier("f64".to_string()),
-        TokenKind::Newline,
-        TokenKind::RBrace,
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Struct,
+            TokenKind::Identifier("Point".to_string()),
+            TokenKind::LBrace,
+            TokenKind::Identifier("x".to_string()),
+            TokenKind::Identifier("f64".to_string()),
+            TokenKind::Newline,
+            TokenKind::Identifier("y".to_string()),
+            TokenKind::Identifier("f64".to_string()),
+            TokenKind::Newline,
+            TokenKind::RBrace,
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
@@ -882,7 +1061,10 @@ fn test_token_display() {
     assert_eq!(format!("{}", TokenKind::Fn), "`fn`");
     assert_eq!(format!("{}", TokenKind::Plus), "`+`");
     assert_eq!(format!("{}", TokenKind::Eof), "end of file");
-    assert_eq!(format!("{}", TokenKind::Identifier("foo".to_string())), "identifier `foo`");
+    assert_eq!(
+        format!("{}", TokenKind::Identifier("foo".to_string())),
+        "identifier `foo`"
+    );
     assert_eq!(format!("{}", TokenKind::IntLiteral(42)), "integer `42`");
 }
 
@@ -893,19 +1075,29 @@ fn test_token_display() {
 #[test]
 fn test_adjacent_operators() {
     let k = kinds("a+b");
-    assert_eq!(k, vec![
-        TokenKind::Identifier("a".to_string()),
-        TokenKind::Plus,
-        TokenKind::Identifier("b".to_string()),
-        TokenKind::Newline,
-    ]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Plus,
+            TokenKind::Identifier("b".to_string()),
+            TokenKind::Newline,
+        ]
+    );
 }
 
 #[test]
 fn test_negative_number_is_two_tokens() {
     // -5 is Minus then IntLiteral, not a negative literal
     let k = kinds("-5");
-    assert_eq!(k, vec![TokenKind::Minus, TokenKind::IntLiteral(5), TokenKind::Newline]);
+    assert_eq!(
+        k,
+        vec![
+            TokenKind::Minus,
+            TokenKind::IntLiteral(5),
+            TokenKind::Newline
+        ]
+    );
 }
 
 #[test]

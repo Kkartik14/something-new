@@ -3,16 +3,16 @@
 //! Handwritten recursive descent parser with Pratt parsing
 //! for expressions (correct operator precedence).
 
-pub mod parser;
-mod types;
-mod pattern;
 mod expr;
-mod stmt;
 mod item;
+pub mod parser;
+mod pattern;
+mod stmt;
+mod types;
 
-#[cfg(test)]
-mod tests;
 #[cfg(test)]
 mod adversarial_tests;
+#[cfg(test)]
+mod tests;
 
-pub use parser::{Parser, ParseError, ParseResult};
+pub use parser::{ParseError, ParseResult, Parser};

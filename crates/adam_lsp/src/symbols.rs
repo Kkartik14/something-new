@@ -27,10 +27,7 @@ pub struct DocumentSymbol {
 }
 
 /// Extract document symbols from analysis results.
-pub fn document_symbols(
-    source: &str,
-    analysis: Option<&AnalysisResult>,
-) -> Vec<DocumentSymbol> {
+pub fn document_symbols(source: &str, analysis: Option<&AnalysisResult>) -> Vec<DocumentSymbol> {
     let mut symbols = Vec::new();
 
     // Try to extract from resolved declarations.
@@ -45,7 +42,9 @@ pub fn document_symbols(
                     adam_resolve::DeclKind::Trait => SymbolKind::Trait,
                     adam_resolve::DeclKind::Variable { .. } => SymbolKind::Variable,
                     adam_resolve::DeclKind::Module => SymbolKind::Module,
-                    adam_resolve::DeclKind::Field | adam_resolve::DeclKind::ViewField => SymbolKind::Field,
+                    adam_resolve::DeclKind::Field | adam_resolve::DeclKind::ViewField => {
+                        SymbolKind::Field
+                    }
                     _ => continue, // Skip parameters and other non-outline items.
                 };
 
@@ -152,10 +151,15 @@ fn extract_item_name(line: &str, prefix: &str) -> Option<String> {
         return None;
     }
     let rest = &line[prefix.len()..];
-    let name: String = rest.chars()
+    let name: String = rest
+        .chars()
         .take_while(|c| c.is_alphanumeric() || *c == '_')
         .collect();
-    if name.is_empty() { None } else { Some(name) }
+    if name.is_empty() {
+        None
+    } else {
+        Some(name)
+    }
 }
 
 /// Convert byte span to Range.
@@ -200,7 +204,10 @@ mod tests {
 
     #[test]
     fn test_extract_item_name_struct() {
-        assert_eq!(extract_item_name("struct Point {", "struct "), Some("Point".into()));
+        assert_eq!(
+            extract_item_name("struct Point {", "struct "),
+            Some("Point".into())
+        );
     }
 
     #[test]
@@ -210,7 +217,8 @@ mod tests {
 
     #[test]
     fn test_extract_symbols_from_source() {
-        let source = "fn main() {\n}\n\nstruct Point {\n    x: Float\n}\n\nenum Color {\n    Red\n}\n";
+        let source =
+            "fn main() {\n}\n\nstruct Point {\n    x: Float\n}\n\nenum Color {\n    Red\n}\n";
         let symbols = extract_symbols_from_source(source);
         assert_eq!(symbols.len(), 3);
         assert_eq!(symbols[0].name, "main");

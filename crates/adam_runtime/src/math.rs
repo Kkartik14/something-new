@@ -402,10 +402,7 @@ mod tests {
 
     #[test]
     fn test_sin_pi_over_2() {
-        assert!(approx_eq(
-            __adam_math_sin(std::f64::consts::FRAC_PI_2),
-            1.0
-        ));
+        assert!(approx_eq(__adam_math_sin(std::f64::consts::FRAC_PI_2), 1.0));
     }
 
     #[test]
@@ -588,19 +585,31 @@ mod tests {
     #[test]
     fn test_sin_2pi_approx_zero() {
         let result = __adam_math_sin(2.0 * std::f64::consts::PI);
-        assert!(result.abs() < 1e-10, "sin(2*PI) should be ~0, got {}", result);
+        assert!(
+            result.abs() < 1e-10,
+            "sin(2*PI) should be ~0, got {}",
+            result
+        );
     }
 
     #[test]
     fn test_cos_2pi_approx_one() {
         let result = __adam_math_cos(2.0 * std::f64::consts::PI);
-        assert!(approx_eq(result, 1.0), "cos(2*PI) should be ~1, got {}", result);
+        assert!(
+            approx_eq(result, 1.0),
+            "cos(2*PI) should be ~1, got {}",
+            result
+        );
     }
 
     #[test]
     fn test_tan_pi_over_4_approx_one() {
         let result = __adam_math_tan(std::f64::consts::FRAC_PI_4);
-        assert!(approx_eq(result, 1.0), "tan(PI/4) should be ~1, got {}", result);
+        assert!(
+            approx_eq(result, 1.0),
+            "tan(PI/4) should be ~1, got {}",
+            result
+        );
     }
 
     // --- Pow edge cases ---
@@ -774,7 +783,10 @@ mod tests {
     fn test_floor_neg_zero() {
         let result = __adam_math_floor(-0.0);
         assert_eq!(result, 0.0);
-        assert!(result.is_sign_negative(), "floor(-0.0) should preserve sign");
+        assert!(
+            result.is_sign_negative(),
+            "floor(-0.0) should preserve sign"
+        );
     }
 
     #[test]

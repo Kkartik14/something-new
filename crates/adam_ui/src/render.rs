@@ -102,20 +102,13 @@ pub trait RenderBackend {
 // ---------------------------------------------------------------------------
 
 /// Generate render commands from a view tree and its layout.
-pub fn generate_render_commands(
-    view: &ViewNode,
-    layout_node: &LayoutNode,
-) -> Vec<RenderCommand> {
+pub fn generate_render_commands(view: &ViewNode, layout_node: &LayoutNode) -> Vec<RenderCommand> {
     let mut commands = Vec::new();
     render_node(view, layout_node, &mut commands);
     commands
 }
 
-fn render_node(
-    view: &ViewNode,
-    layout_node: &LayoutNode,
-    commands: &mut Vec<RenderCommand>,
-) {
+fn render_node(view: &ViewNode, layout_node: &LayoutNode, commands: &mut Vec<RenderCommand>) {
     let rect = layout_node.rect;
 
     match view {
@@ -133,7 +126,9 @@ fn render_node(
             });
         }
 
-        ViewNode::Button { label, modifiers, .. } => {
+        ViewNode::Button {
+            label, modifiers, ..
+        } => {
             let bg = modifiers.background.unwrap_or(Color::rgb(0, 122, 255));
             let cr = modifiers.corner_radius.unwrap_or(8.0);
             render_shadow(rect, modifiers, cr, commands);
@@ -150,7 +145,9 @@ fn render_node(
                     corner_radius: cr,
                 });
             }
-            let pad = modifiers.padding.unwrap_or(EdgeInsets::symmetric(16.0, 8.0));
+            let pad = modifiers
+                .padding
+                .unwrap_or(EdgeInsets::symmetric(16.0, 8.0));
             let fg = modifiers.foreground.unwrap_or(Color::WHITE);
             let font = modifiers.font.clone().unwrap_or_default();
             commands.push(RenderCommand::DrawText {
@@ -166,7 +163,10 @@ fn render_node(
             render_background(rect, modifiers, commands);
             let cr = modifiers.corner_radius.unwrap_or(0.0);
             if cr > 0.0 {
-                commands.push(RenderCommand::PushClip { rect, corner_radius: cr });
+                commands.push(RenderCommand::PushClip {
+                    rect,
+                    corner_radius: cr,
+                });
             }
             commands.push(RenderCommand::DrawImage {
                 source: source.clone(),
@@ -177,7 +177,11 @@ fn render_node(
             }
         }
 
-        ViewNode::Container { kind, children, modifiers } => {
+        ViewNode::Container {
+            kind,
+            children,
+            modifiers,
+        } => {
             let cr = modifiers.corner_radius.unwrap_or(0.0);
             render_shadow(rect, modifiers, cr, commands);
             render_background(rect, modifiers, commands);
@@ -188,7 +192,10 @@ fn render_node(
 
             let needs_clip = matches!(kind, ContainerKind::Scroll) || cr > 0.0;
             if needs_clip {
-                commands.push(RenderCommand::PushClip { rect, corner_radius: cr });
+                commands.push(RenderCommand::PushClip {
+                    rect,
+                    corner_radius: cr,
+                });
             }
 
             if let Some(border) = &modifiers.border {
@@ -224,10 +231,19 @@ fn render_node(
             commands.push(RenderCommand::PopClip);
         }
 
-        ViewNode::TextInput { value, placeholder, modifiers, .. } => {
+        ViewNode::TextInput {
+            value,
+            placeholder,
+            modifiers,
+            ..
+        } => {
             let bg = modifiers.background.unwrap_or(Color::rgb(245, 245, 245));
             let cr = modifiers.corner_radius.unwrap_or(6.0);
-            commands.push(RenderCommand::FillRect { rect, color: bg, corner_radius: cr });
+            commands.push(RenderCommand::FillRect {
+                rect,
+                color: bg,
+                corner_radius: cr,
+            });
             if let Some(border) = &modifiers.border {
                 commands.push(RenderCommand::StrokeRect {
                     rect,
@@ -236,7 +252,9 @@ fn render_node(
                     corner_radius: cr,
                 });
             }
-            let pad = modifiers.padding.unwrap_or(EdgeInsets::symmetric(12.0, 8.0));
+            let pad = modifiers
+                .padding
+                .unwrap_or(EdgeInsets::symmetric(12.0, 8.0));
             let display_text = if value.is_empty() { placeholder } else { value };
             let color = if value.is_empty() {
                 Color::rgb(180, 180, 180)
@@ -252,7 +270,9 @@ fn render_node(
             });
         }
 
-        ViewNode::Toggle { is_on, modifiers, .. } => {
+        ViewNode::Toggle {
+            is_on, modifiers, ..
+        } => {
             render_background(rect, modifiers, commands);
             let track_color = if *is_on {
                 Color::rgb(52, 199, 89)
@@ -267,7 +287,13 @@ fn render_node(
             });
         }
 
-        ViewNode::Slider { value, min, max, modifiers, .. } => {
+        ViewNode::Slider {
+            value,
+            min,
+            max,
+            modifiers,
+            ..
+        } => {
             render_background(rect, modifiers, commands);
             commands.push(RenderCommand::DrawSlider {
                 rect,
@@ -366,7 +392,8 @@ impl TestRenderBackend {
 
     /// Count commands of a specific type in the last frame.
     pub fn count_in_last_frame<F: Fn(&RenderCommand) -> bool>(&self, pred: F) -> usize {
-        self.frames.last()
+        self.frames
+            .last()
             .map(|f| f.iter().filter(|c| pred(c)).count())
             .unwrap_or(0)
     }
@@ -439,7 +466,10 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let text_cmds: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::DrawText { .. })).collect();
+        let text_cmds: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
+            .collect();
         assert_eq!(text_cmds.len(), 1);
         match text_cmds[0] {
             RenderCommand::DrawText { text: t, .. } => assert_eq!(t, "Hello"),
@@ -458,8 +488,14 @@ mod tests {
         let commands = generate_render_commands(&view, &layout_node);
 
         // Button should have a fill rect and text
-        let fills: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::FillRect { .. })).collect();
-        let texts: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::DrawText { .. })).collect();
+        let fills: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::FillRect { .. }))
+            .collect();
+        let texts: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawText { .. }))
+            .collect();
         assert!(!fills.is_empty(), "button should have fill rect");
         assert!(!texts.is_empty(), "button should have text");
     }
@@ -477,8 +513,14 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let fills: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::FillRect { .. })).collect();
-        assert!(!fills.is_empty(), "container with background should have fill");
+        let fills: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::FillRect { .. }))
+            .collect();
+        assert!(
+            !fills.is_empty(),
+            "container with background should have fill"
+        );
     }
 
     #[test]
@@ -491,7 +533,10 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let toggles: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::DrawToggle { .. })).collect();
+        let toggles: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawToggle { .. }))
+            .collect();
         assert_eq!(toggles.len(), 1);
     }
 
@@ -504,13 +549,17 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let progress: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::DrawProgress { .. })).collect();
+        let progress: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::DrawProgress { .. }))
+            .collect();
         assert_eq!(progress.len(), 1);
     }
 
     #[test]
     fn test_render_empty() {
-        let commands = generate_render_commands(&ViewNode::Empty, &LayoutNode::leaf(LayoutRect::ZERO));
+        let commands =
+            generate_render_commands(&ViewNode::Empty, &LayoutNode::leaf(LayoutRect::ZERO));
         assert!(commands.is_empty());
     }
 
@@ -523,15 +572,14 @@ mod tests {
         render_to_backend(&view, &layout_node, &mut backend, 400.0, 800.0);
 
         assert_eq!(backend.frames.len(), 1);
-        let text_count = backend.count_in_last_frame(|c| matches!(c, RenderCommand::DrawText { .. }));
+        let text_count =
+            backend.count_in_last_frame(|c| matches!(c, RenderCommand::DrawText { .. }));
         assert_eq!(text_count, 1);
     }
 
     #[test]
     fn test_render_scroll_view_clips() {
-        let items: Vec<ViewNode> = (0..10)
-            .map(|i| text(&format!("item {}", i)))
-            .collect();
+        let items: Vec<ViewNode> = (0..10).map(|i| text(&format!("item {}", i))).collect();
         let view = ViewNode::Container {
             kind: ContainerKind::Scroll,
             children: items,
@@ -541,8 +589,14 @@ mod tests {
         let commands = generate_render_commands(&view, &layout_node);
 
         // Should have PushClip and PopClip
-        let clips: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::PushClip { .. })).collect();
-        let pops: Vec<_> = commands.iter().filter(|c| matches!(c, RenderCommand::PopClip)).collect();
+        let clips: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::PushClip { .. }))
+            .collect();
+        let pops: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, RenderCommand::PopClip))
+            .collect();
         assert_eq!(clips.len(), 1, "scroll view should push clip");
         assert_eq!(pops.len(), 1, "scroll view should pop clip");
     }
@@ -558,13 +612,16 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let texts: Vec<_> = commands.iter().filter_map(|c| {
-            if let RenderCommand::DrawText { text, color, .. } = c {
-                Some((text.as_str(), *color))
-            } else {
-                None
-            }
-        }).collect();
+        let texts: Vec<_> = commands
+            .iter()
+            .filter_map(|c| {
+                if let RenderCommand::DrawText { text, color, .. } = c {
+                    Some((text.as_str(), *color))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         assert_eq!(texts.len(), 1);
         assert_eq!(texts[0].0, "Enter text...");
@@ -583,13 +640,16 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let texts: Vec<_> = commands.iter().filter_map(|c| {
-            if let RenderCommand::DrawText { text, .. } = c {
-                Some(text.as_str())
-            } else {
-                None
-            }
-        }).collect();
+        let texts: Vec<_> = commands
+            .iter()
+            .filter_map(|c| {
+                if let RenderCommand::DrawText { text, .. } = c {
+                    Some(text.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         assert_eq!(texts.len(), 1);
         assert_eq!(texts[0], "hello");
@@ -608,7 +668,8 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let opacities: Vec<_> = commands.iter()
+        let opacities: Vec<_> = commands
+            .iter()
             .filter(|c| matches!(c, RenderCommand::PushOpacity(_) | RenderCommand::PopOpacity))
             .collect();
         assert_eq!(opacities.len(), 2, "should push and pop opacity");
@@ -632,7 +693,8 @@ mod tests {
         let layout_node = do_layout(&view);
         let commands = generate_render_commands(&view, &layout_node);
 
-        let shadows: Vec<_> = commands.iter()
+        let shadows: Vec<_> = commands
+            .iter()
             .filter(|c| matches!(c, RenderCommand::DrawShadow { .. }))
             .collect();
         assert_eq!(shadows.len(), 1);

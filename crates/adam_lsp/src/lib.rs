@@ -13,17 +13,17 @@ pub mod completion;
 pub mod document;
 pub mod goto;
 pub mod hover;
-pub mod symbols;
 pub mod protocol;
+pub mod symbols;
 
 pub use analysis::{AnalysisResult, Diagnostic, DiagnosticSeverity, Position, Range};
-pub use completion::{CompletionItem, CompletionKind, complete_at};
-pub use document::{DocumentStore, Document};
+pub use completion::{complete_at, CompletionItem, CompletionKind};
+pub use document::{Document, DocumentStore};
 pub use goto::goto_definition;
 pub use hover::hover_at;
-pub use symbols::{DocumentSymbol, SymbolKind, document_symbols};
+pub use symbols::{document_symbols, DocumentSymbol, SymbolKind};
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod stress_tests;
+#[cfg(test)]
+mod tests;

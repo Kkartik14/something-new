@@ -220,7 +220,11 @@ mod tests {
         let mut unique = names.clone();
         unique.sort();
         unique.dedup();
-        assert_eq!(names.len(), unique.len(), "duplicate Android C function names");
+        assert_eq!(
+            names.len(),
+            unique.len(),
+            "duplicate Android C function names"
+        );
     }
 
     #[test]

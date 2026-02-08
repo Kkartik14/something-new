@@ -33,7 +33,12 @@ pub struct Token {
 
 impl Token {
     pub fn new(kind: TokenKind, span: Span, line: u32, column: u32) -> Self {
-        Self { kind, span, line, column }
+        Self {
+            kind,
+            span,
+            line,
+            column,
+        }
     }
 }
 
@@ -93,8 +98,8 @@ pub enum TokenKind {
     NotEq,         // !=
     Lt,            // <
     Gt,            // >
-    LtEq,         // <=
-    GtEq,         // >=
+    LtEq,          // <=
+    GtEq,          // >=
     And,           // &&
     Or,            // ||
     Not,           // !
@@ -113,22 +118,22 @@ pub enum TokenKind {
     PercentAssign, // %=
 
     // === Delimiters ===
-    LParen,   // (
-    RParen,   // )
-    LBrace,   // {
-    RBrace,   // }
-    LBracket, // [
-    RBracket, // ]
-    Comma,    // ,
-    Colon,    // :
+    LParen,    // (
+    RParen,    // )
+    LBrace,    // {
+    RBrace,    // }
+    LBracket,  // [
+    RBracket,  // ]
+    Comma,     // ,
+    Colon,     // :
     Semicolon, // ;
 
     // === Special ===
-    Newline,              // significant newline (statement terminator)
-    At,                   // @ (for @state, @prop, @binding)
-    StringInterpolStart,  // start of {expr} inside a string
-    StringInterpolEnd,    // end of {expr} inside a string
-    Pipe,                 // | (for closures and or-patterns)
+    Newline,             // significant newline (statement terminator)
+    At,                  // @ (for @state, @prop, @binding)
+    StringInterpolStart, // start of {expr} inside a string
+    StringInterpolEnd,   // end of {expr} inside a string
+    Pipe,                // | (for closures and or-patterns)
 
     // === Meta ===
     Eof,

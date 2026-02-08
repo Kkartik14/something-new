@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -8,7 +9,6 @@ use inkwell::targets::{
 };
 use inkwell::types::{BasicTypeEnum, StructType};
 use inkwell::values::{FunctionValue, PointerValue};
-use inkwell::basic_block::BasicBlock;
 use inkwell::OptimizationLevel;
 
 use adam_ir::ir::{BlockId, FnId, VarId};

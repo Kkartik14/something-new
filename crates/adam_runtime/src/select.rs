@@ -27,9 +27,7 @@ use crate::scheduler;
 /// A single case (arm) in a select statement.
 pub enum SelectCase {
     /// Receive from a channel.
-    Recv {
-        channel: Arc<Channel>,
-    },
+    Recv { channel: Arc<Channel> },
     /// Send a value to a channel. The value is wrapped in Option so it
     /// can be moved out on success without cloning.
     Send {
@@ -48,9 +46,7 @@ pub enum SelectResult {
         value: Option<Box<dyn Any + Send>>,
     },
     /// A send case at the given index completed.
-    Sent {
-        index: usize,
-    },
+    Sent { index: usize },
     /// The timeout expired before any case was ready.
     Timeout,
     /// The default case was selected (no other case was ready).

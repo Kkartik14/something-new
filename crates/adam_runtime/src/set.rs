@@ -3,9 +3,8 @@
 //! Thin wrapper around `AdamMap` with zero-sized values (`val_size = 0`).
 
 use crate::map::{
-    __adam_map_clear, __adam_map_clone, __adam_map_contains_key, __adam_map_drop,
+    AdamMap, __adam_map_clear, __adam_map_clone, __adam_map_contains_key, __adam_map_drop,
     __adam_map_insert, __adam_map_is_empty, __adam_map_len, __adam_map_new, __adam_map_remove,
-    AdamMap,
 };
 use std::ptr;
 
@@ -35,7 +34,7 @@ pub extern "C" fn __adam_set_insert(set: *mut AdamMap, val_ptr: *const u8, hash:
     let existed = __adam_map_insert(
         set,
         val_ptr,
-        ptr::null(),     // no value bytes (val_size == 0)
+        ptr::null(), // no value bytes (val_size == 0)
         hash,
         ptr::null_mut(), // no old value to retrieve
     );
@@ -248,15 +247,15 @@ mod tests {
     fn test_insert_1000_elements_all_contained() {
         let mut s = new_i32_set();
         for i in 0..1_000 {
-            assert!(insert_i32(&mut s, i), "insert of {} should return true (new)", i);
+            assert!(
+                insert_i32(&mut s, i),
+                "insert of {} should return true (new)",
+                i
+            );
         }
         assert_eq!(__adam_set_len(&s), 1_000);
         for i in 0..1_000 {
-            assert!(
-                contains_i32(&s, i),
-                "set should contain {}",
-                i
-            );
+            assert!(contains_i32(&s, i), "set should contain {}", i);
         }
         // Elements outside the range should not be contained.
         assert!(!contains_i32(&s, 1_000));
@@ -288,9 +287,18 @@ mod tests {
         insert_i32(&mut s, 1);
         insert_i32(&mut s, 2);
         insert_i32(&mut s, 3);
-        assert!(!remove_i32(&mut s, 99), "removing non-existent should return false");
-        assert!(!remove_i32(&mut s, -1), "removing non-existent should return false");
-        assert!(!remove_i32(&mut s, 0), "removing non-existent should return false");
+        assert!(
+            !remove_i32(&mut s, 99),
+            "removing non-existent should return false"
+        );
+        assert!(
+            !remove_i32(&mut s, -1),
+            "removing non-existent should return false"
+        );
+        assert!(
+            !remove_i32(&mut s, 0),
+            "removing non-existent should return false"
+        );
         assert_eq!(__adam_set_len(&s), 3);
         __adam_set_drop(&mut s);
     }
@@ -302,7 +310,10 @@ mod tests {
         assert!(remove_i32(&mut s, 42));
         assert!(!contains_i32(&s, 42));
         // Re-inserting after removal should be treated as new.
-        assert!(insert_i32(&mut s, 42), "insert after remove should return true (new)");
+        assert!(
+            insert_i32(&mut s, 42),
+            "insert after remove should return true (new)"
+        );
         assert!(contains_i32(&s, 42));
         assert_eq!(__adam_set_len(&s), 1);
         __adam_set_drop(&mut s);
@@ -376,7 +387,11 @@ mod tests {
         }
         // Remove from the middle of the chain.
         for i in (0..30i32).step_by(2) {
-            assert!(__adam_set_remove(&mut s, i.to_ne_bytes().as_ptr(), collision_hash));
+            assert!(__adam_set_remove(
+                &mut s,
+                i.to_ne_bytes().as_ptr(),
+                collision_hash
+            ));
         }
         assert_eq!(__adam_set_len(&s), 15);
         // Odd elements should still be present.
@@ -408,16 +423,28 @@ mod tests {
         }
         // Remove even elements.
         for i in (0..1_000).step_by(2) {
-            assert!(remove_i32(&mut s, i), "even element {} should be removable", i);
+            assert!(
+                remove_i32(&mut s, i),
+                "even element {} should be removable",
+                i
+            );
         }
         assert_eq!(__adam_set_len(&s), 500);
         // Verify odd elements remain.
         for i in (1..1_000).step_by(2) {
-            assert!(contains_i32(&s, i), "odd element {} should still be present", i);
+            assert!(
+                contains_i32(&s, i),
+                "odd element {} should still be present",
+                i
+            );
         }
         // Verify even elements are gone.
         for i in (0..1_000).step_by(2) {
-            assert!(!contains_i32(&s, i), "even element {} should have been removed", i);
+            assert!(
+                !contains_i32(&s, i),
+                "even element {} should have been removed",
+                i
+            );
         }
         __adam_set_drop(&mut s);
     }

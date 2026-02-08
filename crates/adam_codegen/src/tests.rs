@@ -4,12 +4,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use inkwell::context::Context;
 
+use adam_ir::lower::lower_module;
 use adam_lexer::Lexer;
 use adam_parser::Parser;
-use adam_ir::lower::lower_module;
 
-use crate::CodeGen;
 use crate::link;
+use crate::CodeGen;
 
 static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
 
@@ -38,20 +38,24 @@ fn compile_and_run(src: &str) -> String {
     // Verify the LLVM module
     if let Err(e) = codegen.verify() {
         let ir_text = codegen.print_to_string();
-        panic!("LLVM verification failed: {}\n\nGenerated IR:\n{}", e, ir_text);
+        panic!(
+            "LLVM verification failed: {}\n\nGenerated IR:\n{}",
+            e, ir_text
+        );
     }
 
     // 5. Emit object file
     let obj_path = test_dir.join("test.o");
-    codegen.emit_object_file(&obj_path).expect("failed to emit object");
+    codegen
+        .emit_object_file(&obj_path)
+        .expect("failed to emit object");
 
     // 6. Find runtime library
     let runtime_path = find_runtime_lib();
 
     // 7. Link
     let exe_path = test_dir.join("test_bin");
-    link::link_object(&obj_path, &runtime_path, &exe_path)
-        .expect("failed to link");
+    link::link_object(&obj_path, &runtime_path, &exe_path).expect("failed to link");
 
     // 8. Run and capture output
     let output = Command::new(&exe_path)
@@ -150,13 +154,21 @@ fn test_ir_comparison_ops() {
 
 #[test]
 fn test_ir_conditional_branch() {
-    let ir = compile_to_ir("fn abs(x i32) -> i32 {\n    if x < 0 {\n        return -x\n    }\n    return x\n}");
-    assert!(ir.contains("br i1"), "expected conditional branch in IR: {}", ir);
+    let ir = compile_to_ir(
+        "fn abs(x i32) -> i32 {\n    if x < 0 {\n        return -x\n    }\n    return x\n}",
+    );
+    assert!(
+        ir.contains("br i1"),
+        "expected conditional branch in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_multiple_functions() {
-    let ir = compile_to_ir("fn foo() -> i32 { return 1 }\nfn bar() -> i32 { return 2 }\nfn baz() -> i32 { return 3 }");
+    let ir = compile_to_ir(
+        "fn foo() -> i32 { return 1 }\nfn bar() -> i32 { return 2 }\nfn baz() -> i32 { return 3 }",
+    );
     assert!(ir.contains("foo"), "expected 'foo' in IR");
     assert!(ir.contains("bar"), "expected 'bar' in IR");
     assert!(ir.contains("baz"), "expected 'baz' in IR");
@@ -164,40 +176,67 @@ fn test_ir_multiple_functions() {
 
 #[test]
 fn test_ir_function_call() {
-    let ir = compile_to_ir("fn double(x i32) -> i32 { return x + x }\nfn main() -> i32 { return double(21) }");
-    assert!(ir.contains("call"), "expected call instruction in IR: {}", ir);
+    let ir = compile_to_ir(
+        "fn double(x i32) -> i32 { return x + x }\nfn main() -> i32 { return double(21) }",
+    );
+    assert!(
+        ir.contains("call"),
+        "expected call instruction in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_while_loop() {
     let ir = compile_to_ir("fn count() -> i32 {\n    mut i := 0\n    while i < 10 {\n        i = i + 1\n    }\n    return i\n}");
-    assert!(ir.contains("br label"), "expected unconditional branch in IR: {}", ir);
+    assert!(
+        ir.contains("br label"),
+        "expected unconditional branch in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_boolean_ops() {
     let ir = compile_to_ir("fn logic(a bool, b bool) -> bool {\n    return a && b\n}");
-    assert!(ir.contains("and"), "expected 'and' instruction in IR: {}", ir);
+    assert!(
+        ir.contains("and"),
+        "expected 'and' instruction in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_negation() {
     let ir = compile_to_ir("fn negate(x i32) -> i32 {\n    return -x\n}");
-    assert!(ir.contains("sub") || ir.contains("neg"), "expected neg/sub in IR: {}", ir);
+    assert!(
+        ir.contains("sub") || ir.contains("neg"),
+        "expected neg/sub in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_struct_creation() {
     let ir = compile_to_ir("struct Point {\n    x i32\n    y i32\n}\nfn make_point() -> Point {\n    p := Point { x: 1, y: 2 }\n    return p\n}");
     // Struct type should be defined with fields, and values should appear.
-    assert!(ir.contains("Point") && ir.contains("1") && ir.contains("2"),
-        "expected struct with fields in IR: {}", ir);
+    assert!(
+        ir.contains("Point") && ir.contains("1") && ir.contains("2"),
+        "expected struct with fields in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_field_access() {
-    let ir = compile_to_ir("struct Point {\n    x i32\n    y i32\n}\nfn get_x(p Point) -> i32 {\n    return p.x\n}");
-    assert!(ir.contains("extractvalue"), "expected extractvalue in IR: {}", ir);
+    let ir = compile_to_ir(
+        "struct Point {\n    x i32\n    y i32\n}\nfn get_x(p Point) -> i32 {\n    return p.x\n}",
+    );
+    assert!(
+        ir.contains("extractvalue"),
+        "expected extractvalue in IR: {}",
+        ir
+    );
 }
 
 #[test]
@@ -209,13 +248,21 @@ fn test_ir_float_arithmetic() {
 #[test]
 fn test_ir_multiple_locals() {
     let ir = compile_to_ir("fn locals() -> i32 {\n    a := 1\n    b := 2\n    c := 3\n    d := a + b + c\n    return d\n}");
-    assert!(ir.contains("alloca"), "expected alloca instructions in IR: {}", ir);
+    assert!(
+        ir.contains("alloca"),
+        "expected alloca instructions in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_string_literal() {
     let ir = compile_to_ir("fn greet() {\n    name := \"Hello\"\n}");
-    assert!(ir.contains("Hello"), "expected string literal in IR: {}", ir);
+    assert!(
+        ir.contains("Hello"),
+        "expected string literal in IR: {}",
+        ir
+    );
 }
 
 #[test]
@@ -227,7 +274,9 @@ fn test_ir_recursive_function() {
 
 #[test]
 fn test_ir_enum_variant() {
-    let ir = compile_to_ir("enum Color {\n    Red\n    Green\n    Blue\n}\nfn get_color() {\n    c := Red\n}");
+    let ir = compile_to_ir(
+        "enum Color {\n    Red\n    Green\n    Blue\n}\nfn get_color() {\n    c := Red\n}",
+    );
     assert!(ir.contains("define"), "expected function definition in IR");
 }
 
@@ -235,14 +284,21 @@ fn test_ir_enum_variant() {
 fn test_ir_tuple_creation() {
     let ir = compile_to_ir("fn make_tuple() {\n    t := (1, 2, 3)\n}");
     // Constant tuples may use const struct instead of insertvalue.
-    assert!(ir.contains("i64 1") && ir.contains("i64 2") && ir.contains("i64 3"),
-        "expected tuple values in IR: {}", ir);
+    assert!(
+        ir.contains("i64 1") && ir.contains("i64 2") && ir.contains("i64 3"),
+        "expected tuple values in IR: {}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_mutation() {
     let ir = compile_to_ir("fn mutate() {\n    mut x := 5\n    x = 10\n}");
-    assert!(ir.contains("store"), "expected store instruction in IR: {}", ir);
+    assert!(
+        ir.contains("store"),
+        "expected store instruction in IR: {}",
+        ir
+    );
 }
 
 // ================================================================
@@ -293,7 +349,8 @@ fn e2e_multiple_functions() {
 
 #[test]
 fn e2e_boolean_logic() {
-    let output = compile_and_run("fn main() {\n    x := true && false\n    __adam_print_bool(x)\n}");
+    let output =
+        compile_and_run("fn main() {\n    x := true && false\n    __adam_print_bool(x)\n}");
     assert_eq!(output.trim(), "false");
 }
 
@@ -305,7 +362,9 @@ fn e2e_nested_if() {
 
 #[test]
 fn e2e_variables_and_mutation() {
-    let output = compile_and_run("fn main() {\n    mut x := 10\n    x = x + 5\n    x = x * 2\n    __adam_print_int(x)\n}");
+    let output = compile_and_run(
+        "fn main() {\n    mut x := 10\n    x = x + 5\n    x = x * 2\n    __adam_print_int(x)\n}",
+    );
     assert_eq!(output.trim(), "30");
 }
 
@@ -359,7 +418,8 @@ fn e2e_multiple_returns() {
 
 #[test]
 fn e2e_complex_expression() {
-    let output = compile_and_run("fn main() {\n    x := (1 + 2) * (3 + 4)\n    __adam_print_int(x)\n}");
+    let output =
+        compile_and_run("fn main() {\n    x := (1 + 2) * (3 + 4)\n    __adam_print_int(x)\n}");
     assert_eq!(output.trim(), "21");
 }
 
@@ -388,21 +448,37 @@ fn e2e_struct_as_arg() {
 #[test]
 fn test_ir_chan_create() {
     let ir = compile_to_ir("fn main() {\n    ch := chan[i32]()\n}");
-    assert!(ir.contains("__adam_chan_create"), "expected chan_create call in IR:\n{}", ir);
+    assert!(
+        ir.contains("__adam_chan_create"),
+        "expected chan_create call in IR:\n{}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_chan_create_buffered() {
     let ir = compile_to_ir("fn main() {\n    ch := chan[i32](10)\n}");
-    assert!(ir.contains("__adam_chan_create"), "expected chan_create call in IR:\n{}", ir);
+    assert!(
+        ir.contains("__adam_chan_create"),
+        "expected chan_create call in IR:\n{}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_spawn_basic() {
     let ir = compile_to_ir("fn work() {}\nfn main() {\n    spawn { work() }\n}");
-    assert!(ir.contains("__adam_spawn"), "expected spawn call in IR:\n{}", ir);
+    assert!(
+        ir.contains("__adam_spawn"),
+        "expected spawn call in IR:\n{}",
+        ir
+    );
     // The outlined function should exist.
-    assert!(ir.contains("main__spawn_"), "expected outlined spawn function in IR:\n{}", ir);
+    assert!(
+        ir.contains("main__spawn_"),
+        "expected outlined spawn function in IR:\n{}",
+        ir
+    );
 }
 
 #[test]
@@ -410,21 +486,43 @@ fn test_ir_spawn_generates_outlined_function() {
     let ir = compile_to_ir("fn process(x i32) {}\nfn main() {\n    spawn { process(42) }\n}");
     // Should have the outlined function definition.
     assert!(ir.contains("define"), "expected function definitions in IR");
-    assert!(ir.contains("__adam_spawn"), "expected __adam_spawn call in IR:\n{}", ir);
+    assert!(
+        ir.contains("__adam_spawn"),
+        "expected __adam_spawn call in IR:\n{}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_spawn_with_captures() {
-    let ir = compile_to_ir("fn consume(x i32) {}\nfn main() {\n    x := 42\n    spawn { consume(x) }\n}");
-    assert!(ir.contains("__adam_spawn"), "expected spawn call in IR:\n{}", ir);
+    let ir = compile_to_ir(
+        "fn consume(x i32) {}\nfn main() {\n    x := 42\n    spawn { consume(x) }\n}",
+    );
+    assert!(
+        ir.contains("__adam_spawn"),
+        "expected spawn call in IR:\n{}",
+        ir
+    );
     // When there are captures, we should see alloc for the env struct.
-    assert!(ir.contains("__adam_alloc"), "expected heap alloc for captures in IR:\n{}", ir);
+    assert!(
+        ir.contains("__adam_alloc"),
+        "expected heap alloc for captures in IR:\n{}",
+        ir
+    );
 }
 
 #[test]
 fn test_ir_chan_method_calls() {
     // ch.send(val) and ch.recv() go through CallNamed.
     let ir = compile_to_ir("fn main() {\n    ch := chan[i32](1)\n    ch.send(42)\n}");
-    assert!(ir.contains("call"), "expected call instruction in IR:\n{}", ir);
-    assert!(ir.contains("__adam_chan_create"), "expected chan_create in IR:\n{}", ir);
+    assert!(
+        ir.contains("call"),
+        "expected call instruction in IR:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("__adam_chan_create"),
+        "expected chan_create in IR:\n{}",
+        ir
+    );
 }

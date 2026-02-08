@@ -4,8 +4,8 @@
 //! and platform-specific configuration needed to compile Adam code for
 //! a given platform.
 
-pub mod ios;
 pub mod android;
+pub mod ios;
 
 use std::path::{Path, PathBuf};
 
@@ -87,12 +87,18 @@ pub enum Platform {
 impl Platform {
     /// Whether this is a mobile platform.
     pub fn is_mobile(&self) -> bool {
-        matches!(self, Platform::IOS | Platform::IOSSimulator | Platform::Android | Platform::AndroidEmulator)
+        matches!(
+            self,
+            Platform::IOS | Platform::IOSSimulator | Platform::Android | Platform::AndroidEmulator
+        )
     }
 
     /// Whether this is an Apple platform.
     pub fn is_apple(&self) -> bool {
-        matches!(self, Platform::MacOS | Platform::IOS | Platform::IOSSimulator)
+        matches!(
+            self,
+            Platform::MacOS | Platform::IOS | Platform::IOSSimulator
+        )
     }
 
     /// Whether this is an Android platform.
@@ -337,11 +343,23 @@ mod tests {
     #[test]
     fn test_platform_cli_names() {
         assert_eq!(Platform::from_cli_name("ios"), Some(Platform::IOS));
-        assert_eq!(Platform::from_cli_name("ios-simulator"), Some(Platform::IOSSimulator));
-        assert_eq!(Platform::from_cli_name("ios-sim"), Some(Platform::IOSSimulator));
+        assert_eq!(
+            Platform::from_cli_name("ios-simulator"),
+            Some(Platform::IOSSimulator)
+        );
+        assert_eq!(
+            Platform::from_cli_name("ios-sim"),
+            Some(Platform::IOSSimulator)
+        );
         assert_eq!(Platform::from_cli_name("android"), Some(Platform::Android));
-        assert_eq!(Platform::from_cli_name("android-emulator"), Some(Platform::AndroidEmulator));
-        assert_eq!(Platform::from_cli_name("android-emu"), Some(Platform::AndroidEmulator));
+        assert_eq!(
+            Platform::from_cli_name("android-emulator"),
+            Some(Platform::AndroidEmulator)
+        );
+        assert_eq!(
+            Platform::from_cli_name("android-emu"),
+            Some(Platform::AndroidEmulator)
+        );
         assert_eq!(Platform::from_cli_name("macos"), Some(Platform::MacOS));
         assert_eq!(Platform::from_cli_name("linux"), Some(Platform::Linux));
         assert_eq!(Platform::from_cli_name("windows"), None);
@@ -386,7 +404,10 @@ mod tests {
 
         let mut shared_config = config.clone();
         shared_config.output_format = OutputFormat::SharedLib;
-        assert_eq!(shared_config.output_filename("adam_app"), "libadam_app.dylib");
+        assert_eq!(
+            shared_config.output_filename("adam_app"),
+            "libadam_app.dylib"
+        );
 
         let android_config = android::android_device_target();
         let mut android_shared = android_config.clone();

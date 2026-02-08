@@ -4,7 +4,7 @@ use adam_ast::common::*;
 use adam_ast::types::*;
 use adam_lexer::TokenKind;
 
-use crate::parser::{span, Parser, ParseError};
+use crate::parser::{span, ParseError, Parser};
 
 impl Parser {
     /// Parse a type annotation. Handles the `T ! E` result operator at the top level.
@@ -161,7 +161,10 @@ impl Parser {
                 };
                 let s = start.merge(end);
 
-                Ok(Spanned::new(Type::Named(TypePath { name, generic_args }), s))
+                Ok(Spanned::new(
+                    Type::Named(TypePath { name, generic_args }),
+                    s,
+                ))
             }
 
             // Self type
@@ -177,10 +180,9 @@ impl Parser {
                 ))
             }
 
-            _ => Err(self.error_at_current(&format!(
-                "expected type, found {}",
-                self.current().kind
-            ))),
+            _ => {
+                Err(self.error_at_current(&format!("expected type, found {}", self.current().kind)))
+            }
         }
     }
 

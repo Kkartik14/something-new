@@ -251,11 +251,7 @@ impl Parser {
     }
 
     /// Parse infix expression.
-    fn parse_infix(
-        &mut self,
-        lhs: Spanned<Expr>,
-        rbp: u8,
-    ) -> Result<Spanned<Expr>, ParseError> {
+    fn parse_infix(&mut self, lhs: Spanned<Expr>, rbp: u8) -> Result<Spanned<Expr>, ParseError> {
         let op_tok = self.advance();
         let start = lhs.span;
 
@@ -265,10 +261,7 @@ impl Parser {
                 let value = self.parse_expr_bp(rbp)?;
                 let s = start.merge(value.span);
                 Ok(Spanned::new(
-                    Expr::Assign(Box::new(AssignExpr {
-                        target: lhs,
-                        value,
-                    })),
+                    Expr::Assign(Box::new(AssignExpr { target: lhs, value })),
                     s,
                 ))
             }
@@ -423,10 +416,7 @@ impl Parser {
                 self.expect(TokenKind::RBracket)?;
                 let s = start.merge(self.prev_span());
                 Ok(Spanned::new(
-                    Expr::Index(Box::new(IndexExpr {
-                        object: lhs,
-                        index,
-                    })),
+                    Expr::Index(Box::new(IndexExpr { object: lhs, index })),
                     s,
                 ))
             }
@@ -590,10 +580,7 @@ impl Parser {
     }
 
     /// Parse struct literal body: { field: value, ... }
-    fn parse_struct_literal_body(
-        &mut self,
-        name: Ident,
-    ) -> Result<Spanned<Expr>, ParseError> {
+    fn parse_struct_literal_body(&mut self, name: Ident) -> Result<Spanned<Expr>, ParseError> {
         let start = name.span;
         self.advance(); // consume {
         self.skip_newlines();
@@ -607,10 +594,7 @@ impl Parser {
                 self.parse_expr()?
             } else {
                 // Shorthand: Name { x, y } is Name { x: x, y: y }
-                Spanned::new(
-                    Expr::Identifier(field_name.clone()),
-                    field_name.span,
-                )
+                Spanned::new(Expr::Identifier(field_name.clone()), field_name.span)
             };
 
             fields.push((field_name, value));
@@ -801,10 +785,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
         let s = start.merge(self.prev_span());
-        Ok(Spanned::new(
-            Expr::Select(Box::new(SelectExpr { arms })),
-            s,
-        ))
+        Ok(Spanned::new(Expr::Select(Box::new(SelectExpr { arms })), s))
     }
 
     /// Parse a single select arm.
@@ -839,10 +820,7 @@ impl Parser {
             let expr = self.parse_expr()?;
             let expr_span = expr.span;
             Block {
-                stmts: vec![Spanned::new(
-                    adam_ast::stmt::Stmt::Expr(expr),
-                    expr_span,
-                )],
+                stmts: vec![Spanned::new(adam_ast::stmt::Stmt::Expr(expr), expr_span)],
             }
         };
 

@@ -145,7 +145,11 @@ impl Scheduler {
         // Collect handles first, then join outside the lock.
         let handles: Vec<JoinHandle<()>> = {
             let mut inner = self.inner.lock().unwrap();
-            inner.worker_handles.iter_mut().filter_map(|h| h.take()).collect()
+            inner
+                .worker_handles
+                .iter_mut()
+                .filter_map(|h| h.take())
+                .collect()
         };
         for h in handles {
             let _ = h.join();
@@ -286,10 +290,7 @@ fn run_worker(sched: Arc<Scheduler>, worker_id: usize) {
                 WORKER_CONTEXT.with(|ctx| {
                     let worker_ctx = unsafe { &mut *ctx.get() };
                     unsafe {
-                        crate::context_switch::switch_raw(
-                            worker_ctx,
-                            &mut green_thread,
-                        );
+                        crate::context_switch::switch_raw(worker_ctx, &mut green_thread);
                     }
                 });
 
@@ -332,7 +333,9 @@ fn run_worker(sched: Arc<Scheduler>, worker_id: usize) {
             None => {
                 // No work available — park this worker.
                 let inner = sched.inner.lock().unwrap();
-                let runnable = inner.live_thread_count.saturating_sub(inner.blocked_threads.len());
+                let runnable = inner
+                    .live_thread_count
+                    .saturating_sub(inner.blocked_threads.len());
                 if inner.live_thread_count == 0 && !sched.is_shutdown() {
                     // All threads completed — signal shutdown.
                     drop(inner);
@@ -343,7 +346,11 @@ fn run_worker(sched: Arc<Scheduler>, worker_id: usize) {
                 let _ = runnable; // used for future deadlock detection
 
                 sched.parked_workers.fetch_add(1, Ordering::SeqCst);
-                let _inner = sched.notify.wait_timeout(inner, std::time::Duration::from_millis(10)).unwrap().0;
+                let _inner = sched
+                    .notify
+                    .wait_timeout(inner, std::time::Duration::from_millis(10))
+                    .unwrap()
+                    .0;
                 sched.parked_workers.fetch_sub(1, Ordering::SeqCst);
             }
         }
@@ -379,7 +386,10 @@ fn find_work(sched: &Scheduler, worker_id: usize) -> Option<GreenThread> {
     // 2. Check global queue.
     if let Some(t) = inner.global_queue.pop_front() {
         // Also batch-steal from global queue to local.
-        let steal_count = inner.global_queue.len().min(inner.local_queues[worker_id].capacity().max(1) / 2);
+        let steal_count = inner
+            .global_queue
+            .len()
+            .min(inner.local_queues[worker_id].capacity().max(1) / 2);
         for _ in 0..steal_count {
             if let Some(t2) = inner.global_queue.pop_front() {
                 inner.local_queues[worker_id].push_back(t2);

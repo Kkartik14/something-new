@@ -345,7 +345,11 @@ mod tests {
             let results = group.wait();
             assert_eq!(results.len(), 3);
             assert_eq!(results[0], Ok(1));
-            assert!(results[1].is_err(), "panicked task should be Err, got {:?}", results[1]);
+            assert!(
+                results[1].is_err(),
+                "panicked task should be Err, got {:?}",
+                results[1]
+            );
             assert_eq!(results[2], Ok(3));
             result2.store(1, Ordering::SeqCst);
         });

@@ -48,17 +48,26 @@ fn get_word_at(source: &str, position: Position) -> Option<String> {
     let before = &line[..col];
     let after = &line[col..];
 
-    let start: String = before.chars().rev()
+    let start: String = before
+        .chars()
+        .rev()
         .take_while(|c| c.is_alphanumeric() || *c == '_')
         .collect::<String>()
-        .chars().rev().collect();
+        .chars()
+        .rev()
+        .collect();
 
-    let end: String = after.chars()
+    let end: String = after
+        .chars()
         .take_while(|c| c.is_alphanumeric() || *c == '_')
         .collect();
 
     let word = format!("{}{}", start, end);
-    if word.is_empty() { None } else { Some(word) }
+    if word.is_empty() {
+        None
+    } else {
+        Some(word)
+    }
 }
 
 /// Convert byte span to Range.
@@ -99,7 +108,10 @@ mod tests {
     #[test]
     fn test_get_word_at() {
         let source = "let counter = 0";
-        assert_eq!(get_word_at(source, Position::new(0, 5)), Some("counter".into()));
+        assert_eq!(
+            get_word_at(source, Position::new(0, 5)),
+            Some("counter".into())
+        );
     }
 
     #[test]
@@ -139,7 +151,12 @@ mod tests {
         // Full integration: analyze source, then try goto.
         let source = "fn main() {\n}\n";
         let analysis = crate::analysis::analyze(source);
-        let result = goto_definition(source, "file:///t.adam", Position::new(0, 3), Some(&analysis));
+        let result = goto_definition(
+            source,
+            "file:///t.adam",
+            Position::new(0, 3),
+            Some(&analysis),
+        );
         // "main" should be found as a declaration.
         if let Some(goto) = result {
             assert_eq!(goto.uri, "file:///t.adam");

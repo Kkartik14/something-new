@@ -9,7 +9,9 @@ impl<'ctx> CodeGen<'ctx> {
     /// Allocate space on the stack for a local variable.
     pub fn stack_alloc(&self, ty: &IrType, name: &str) -> PointerValue<'ctx> {
         let llvm_ty = self.llvm_type(ty);
-        self.builder.build_alloca(llvm_ty, name).expect("failed to build alloca")
+        self.builder
+            .build_alloca(llvm_ty, name)
+            .expect("failed to build alloca")
     }
 
     /// Generate a heap allocation: calls `__adam_alloc(size, align)` → ptr.
@@ -21,7 +23,8 @@ impl<'ctx> CodeGen<'ctx> {
         let size_val = self.context.i64_type().const_int(size, false);
         let align_val = self.context.i64_type().const_int(align, false);
 
-        let result = self.builder
+        let result = self
+            .builder
             .build_call(alloc_fn, &[size_val.into(), align_val.into()], "heap_ptr")
             .expect("failed to build alloc call");
 
@@ -43,7 +46,11 @@ impl<'ctx> CodeGen<'ctx> {
         let align_val = self.context.i64_type().const_int(align, false);
 
         self.builder
-            .build_call(dealloc_fn, &[ptr.into(), size_val.into(), align_val.into()], "")
+            .build_call(
+                dealloc_fn,
+                &[ptr.into(), size_val.into(), align_val.into()],
+                "",
+            )
             .expect("failed to build dealloc call");
     }
 
@@ -51,10 +58,20 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn codegen_drop(&self, ptr: PointerValue<'ctx>, ty: &IrType) {
         match ty {
             // Primitives: no drop needed.
-            IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
-            | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64
-            | IrType::F32 | IrType::F64
-            | IrType::Bool | IrType::Char | IrType::Unit | IrType::Void => {}
+            IrType::I8
+            | IrType::I16
+            | IrType::I32
+            | IrType::I64
+            | IrType::U8
+            | IrType::U16
+            | IrType::U32
+            | IrType::U64
+            | IrType::F32
+            | IrType::F64
+            | IrType::Bool
+            | IrType::Char
+            | IrType::Unit
+            | IrType::Void => {}
 
             // String: call __adam_string_drop(ptr)
             IrType::String => {
@@ -80,7 +97,8 @@ impl<'ctx> CodeGen<'ctx> {
 
             // Heap pointer: dealloc the pointee
             IrType::Ptr(inner) => {
-                let pointee = self.builder
+                let pointee = self
+                    .builder
                     .build_load(
                         self.context.ptr_type(AddressSpace::default()),
                         ptr,
@@ -108,12 +126,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     /// Build a `memcpy(dst, src, size)` call.
-    pub fn build_memcpy(
-        &self,
-        dst: PointerValue<'ctx>,
-        src: PointerValue<'ctx>,
-        size: u64,
-    ) {
+    pub fn build_memcpy(&self, dst: PointerValue<'ctx>, src: PointerValue<'ctx>, size: u64) {
         let memcpy_fn = self.get_or_declare_void_fn(
             "llvm.memcpy.p0.p0.i64",
             &[
@@ -128,7 +141,11 @@ impl<'ctx> CodeGen<'ctx> {
         let is_volatile = self.context.bool_type().const_zero();
 
         self.builder
-            .build_call(memcpy_fn, &[dst.into(), src.into(), size_val.into(), is_volatile.into()], "")
+            .build_call(
+                memcpy_fn,
+                &[dst.into(), src.into(), size_val.into(), is_volatile.into()],
+                "",
+            )
             .expect("failed to build memcpy");
     }
 
@@ -148,7 +165,8 @@ impl<'ctx> CodeGen<'ctx> {
             ],
             false,
         );
-        self.module.add_function(name, fn_type, Some(inkwell::module::Linkage::External))
+        self.module
+            .add_function(name, fn_type, Some(inkwell::module::Linkage::External))
     }
 
     fn get_or_declare_dealloc(&self) -> inkwell::values::FunctionValue<'ctx> {
@@ -164,7 +182,8 @@ impl<'ctx> CodeGen<'ctx> {
             ],
             false,
         );
-        self.module.add_function(name, fn_type, Some(inkwell::module::Linkage::External))
+        self.module
+            .add_function(name, fn_type, Some(inkwell::module::Linkage::External))
     }
 
     /// Get or declare a void-returning function with the given name and param types.
@@ -177,6 +196,7 @@ impl<'ctx> CodeGen<'ctx> {
             return f;
         }
         let fn_type = self.context.void_type().fn_type(param_types, false);
-        self.module.add_function(name, fn_type, Some(inkwell::module::Linkage::External))
+        self.module
+            .add_function(name, fn_type, Some(inkwell::module::Linkage::External))
     }
 }

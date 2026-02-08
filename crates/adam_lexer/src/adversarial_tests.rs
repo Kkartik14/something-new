@@ -112,7 +112,10 @@ mod tests {
     fn test_unterminated_string() {
         let source = "\"hello";
         let result = Lexer::new(source).tokenize();
-        assert!(!result.errors.is_empty(), "unterminated string should error");
+        assert!(
+            !result.errors.is_empty(),
+            "unterminated string should error"
+        );
     }
 
     #[test]
@@ -160,7 +163,10 @@ mod tests {
     fn test_unterminated_block_comment() {
         let source = "/* this never ends";
         let result = Lexer::new(source).tokenize();
-        assert!(!result.errors.is_empty(), "unterminated comment should error");
+        assert!(
+            !result.errors.is_empty(),
+            "unterminated comment should error"
+        );
     }
 
     #[test]
@@ -268,8 +274,12 @@ mod tests {
     #[test]
     fn test_many_keywords_in_sequence() {
         let keywords = vec!["fn", "let", "if", "else", "for", "while", "return"];
-        let source: String = keywords.iter().cycle().take(10_000)
-            .map(|k| format!("{} ", k)).collect();
+        let source: String = keywords
+            .iter()
+            .cycle()
+            .take(10_000)
+            .map(|k| format!("{} ", k))
+            .collect();
         let result = Lexer::new(&source).tokenize();
         assert!(result.tokens.len() >= 10_000);
     }

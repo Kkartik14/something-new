@@ -29,11 +29,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // 2. Link into executable.
         let executable_path = output_dir.join(output_name);
-        link_object(
-            &object_path,
-            runtime_lib_path,
-            &executable_path,
-        )?;
+        link_object(&object_path, runtime_lib_path, &executable_path)?;
 
         Ok(CompileOutput {
             object_path,
@@ -102,7 +98,10 @@ pub fn link_with_target_config(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("linker failed for target {}: {}", config.platform, stderr));
+        return Err(format!(
+            "linker failed for target {}: {}",
+            config.platform, stderr
+        ));
     }
 
     Ok(())

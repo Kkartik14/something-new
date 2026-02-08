@@ -424,15 +424,19 @@ fn stress_complete_inside_bodies() {
     let struct_src = "struct Foo {\n    i";
     let items = complete_at(struct_src, Position::new(1, 5), None);
     let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
-    assert!(labels.contains(&"if") || labels.contains(&"impl") || labels.contains(&"in"),
-        "should suggest keywords starting with 'i'");
+    assert!(
+        labels.contains(&"if") || labels.contains(&"impl") || labels.contains(&"in"),
+        "should suggest keywords starting with 'i'"
+    );
 
     // Inside enum body -- typing 'l' should match 'let', 'loop'.
     let enum_src = "enum E {\n    l";
     let items = complete_at(enum_src, Position::new(1, 5), None);
     let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
-    assert!(labels.contains(&"let") || labels.contains(&"loop"),
-        "should suggest keywords starting with 'l'");
+    assert!(
+        labels.contains(&"let") || labels.contains(&"loop"),
+        "should suggest keywords starting with 'l'"
+    );
 }
 
 /// Test 12: Complete with partial identifiers.
@@ -522,16 +526,28 @@ fn stress_symbols_many_declarations() {
         source.push_str(&format!("struct S{} {{\n    x i32\n}}\n", i));
     }
     for i in 0..20 {
-        source.push_str(&format!("fn func_{}() -> i32 {{\n    return {}\n}}\n", i, i));
+        source.push_str(&format!(
+            "fn func_{}() -> i32 {{\n    return {}\n}}\n",
+            i, i
+        ));
     }
     for i in 0..20 {
         source.push_str(&format!("enum E{} {{\n    A\n    B\n}}\n", i));
     }
 
     let symbols = document_symbols(&source, None);
-    let struct_count = symbols.iter().filter(|s| s.kind == SymbolKind::Struct).count();
-    let fn_count = symbols.iter().filter(|s| s.kind == SymbolKind::Function).count();
-    let enum_count = symbols.iter().filter(|s| s.kind == SymbolKind::Enum).count();
+    let struct_count = symbols
+        .iter()
+        .filter(|s| s.kind == SymbolKind::Struct)
+        .count();
+    let fn_count = symbols
+        .iter()
+        .filter(|s| s.kind == SymbolKind::Function)
+        .count();
+    let enum_count = symbols
+        .iter()
+        .filter(|s| s.kind == SymbolKind::Enum)
+        .count();
 
     assert!(
         struct_count >= 20,
@@ -602,7 +618,10 @@ fn stress_ir_lower_30_programs() {
         ("fn f(x i32) -> i32 { return x }\n", 1),
         ("fn add(a i32, b i32) -> i32 { return a + b }\n", 1),
         ("fn main() { print(\"hello\") }\n", 1),
-        ("fn max(a i32, b i32) -> i32 { if a > b { return a } else { return b } }\n", 1),
+        (
+            "fn max(a i32, b i32) -> i32 { if a > b { return a } else { return b } }\n",
+            1,
+        ),
         ("fn f() { mut x := 0\n x = 1 }\n", 1),
         ("fn f() { x := [1, 2, 3] }\n", 1),
         ("fn f() { t := (1, 2) }\n", 1),
@@ -614,7 +633,10 @@ fn stress_ir_lower_30_programs() {
         ("fn f() { for i in 0..10 { print(i) } }\n", 1),
         ("fn f() { while true { break } }\n", 1),
         ("fn f() { loop { break } }\n", 1),
-        ("fn f(x i32) -> i32 { match x { 1 => return 1\n _ => return 0 } }\n", 1),
+        (
+            "fn f(x i32) -> i32 { match x { 1 => return 1\n _ => return 0 } }\n",
+            1,
+        ),
         ("fn f() { g := |x| x + 1 }\n", 1),
         ("fn f() { spawn { print(\"task\") } }\n", 1),
         ("fn f() { ch := chan[i32](1) }\n", 1),
@@ -656,7 +678,11 @@ fn stress_ir_lower_structs() {
     assert!(names.contains(&"Point"), "missing Point struct");
     assert!(names.contains(&"Color"), "missing Color struct");
 
-    let point = module.struct_defs.iter().find(|s| s.name == "Point").unwrap();
+    let point = module
+        .struct_defs
+        .iter()
+        .find(|s| s.name == "Point")
+        .unwrap();
     assert_eq!(point.fields.len(), 2);
     assert_eq!(point.fields[0].name, "x");
     assert_eq!(point.fields[1].name, "y");
@@ -677,7 +703,8 @@ fn stress_ir_lower_generic_like() {
 /// Test 20: Lower program with closures/lambdas.
 #[test]
 fn stress_ir_lower_closures() {
-    let source = "fn apply() -> i32 {\n    f := |x| x + 1\n    g := |a, b| a + b\n    return f(5)\n}\n";
+    let source =
+        "fn apply() -> i32 {\n    f := |x| x + 1\n    g := |a, b| a + b\n    return f(5)\n}\n";
     let module = lower(source);
     assert_eq!(module.functions.len(), 1);
     // Closures are lowered inline -- just verify no crash.
@@ -703,7 +730,10 @@ fn stress_ir_lower_match() {
 #[test]
 fn stress_ir_lower_empty() {
     let module = lower("");
-    assert!(module.functions.is_empty(), "empty program should have no functions");
+    assert!(
+        module.functions.is_empty(),
+        "empty program should have no functions"
+    );
     assert!(module.struct_defs.is_empty());
     assert!(module.globals.is_empty());
 }
@@ -762,11 +792,7 @@ fn stress_document_store_1000_updates() {
     store.open(uri.to_string(), 0, "fn main() {}\n".to_string());
 
     for version in 1..=1000 {
-        store.update(
-            uri,
-            version,
-            format!("fn main() {{ x := {} }}\n", version),
-        );
+        store.update(uri, version, format!("fn main() {{ x := {} }}\n", version));
     }
     let doc = store.get(uri).unwrap();
     assert_eq!(doc.version, 1000);
@@ -842,7 +868,12 @@ fn stress_goto_definition_finds_function() {
     let source = "fn hello() {\n}\nfn main() {\n    hello()\n}\n";
     let analysis = analyze(source);
     // Cursor on "hello" in the call site (line 3, somewhere in "hello").
-    let result = goto_definition(source, "file:///t.adam", Position::new(3, 5), Some(&analysis));
+    let result = goto_definition(
+        source,
+        "file:///t.adam",
+        Position::new(3, 5),
+        Some(&analysis),
+    );
     // If the resolver tracks "hello" as a declaration, we should find it.
     // Either way, no crash.
     if let Some(goto) = result {

@@ -80,22 +80,17 @@ impl CompletionItem {
 
 /// Adam language keywords.
 const KEYWORDS: &[&str] = &[
-    "fn", "pub", "struct", "enum", "trait", "impl", "view",
-    "let", "mut", "if", "else", "for", "while", "loop",
-    "match", "return", "break", "continue", "in", "as",
-    "true", "false", "nil", "self", "use", "module",
-    "test", "bench", "spawn", "select", "async", "await",
-    "own", "ref", "move", "type", "where",
+    "fn", "pub", "struct", "enum", "trait", "impl", "view", "let", "mut", "if", "else", "for",
+    "while", "loop", "match", "return", "break", "continue", "in", "as", "true", "false", "nil",
+    "self", "use", "module", "test", "bench", "spawn", "select", "async", "await", "own", "ref",
+    "move", "type", "where",
 ];
 
 /// Built-in types.
 const BUILTIN_TYPES: &[&str] = &[
-    "Int", "Int8", "Int16", "Int32", "Int64",
-    "UInt", "UInt8", "UInt16", "UInt32", "UInt64",
-    "Float", "Float32", "Float64",
-    "Bool", "String", "Char", "Void",
-    "Vec", "Map", "Set", "Option", "Result",
-    "Channel",
+    "Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64",
+    "Float", "Float32", "Float64", "Bool", "String", "Char", "Void", "Vec", "Map", "Set", "Option",
+    "Result", "Channel",
 ];
 
 /// Compute completions at a position.
@@ -162,7 +157,9 @@ pub fn complete_at(
                         adam_resolve::DeclKind::Enum => CompletionKind::Enum,
                         adam_resolve::DeclKind::Trait => CompletionKind::Trait,
                         adam_resolve::DeclKind::Module => CompletionKind::Module,
-                        adam_resolve::DeclKind::Field | adam_resolve::DeclKind::ViewField => CompletionKind::Field,
+                        adam_resolve::DeclKind::Field | adam_resolve::DeclKind::ViewField => {
+                            CompletionKind::Field
+                        }
                         adam_resolve::DeclKind::Method => CompletionKind::Function,
                         _ => CompletionKind::Variable,
                     };
@@ -268,7 +265,8 @@ mod tests {
     fn test_complete_no_match() {
         let items = complete_at("let x = zzz", Position::new(0, 11), None);
         // No keywords/types start with "zzz".
-        let keyword_items: Vec<_> = items.iter()
+        let keyword_items: Vec<_> = items
+            .iter()
             .filter(|i| i.kind == CompletionKind::Keyword)
             .collect();
         assert!(keyword_items.is_empty());
@@ -284,7 +282,8 @@ mod tests {
     #[test]
     fn test_complete_snippets() {
         let items = complete_at("fn", Position::new(0, 2), None);
-        let snippets: Vec<_> = items.iter()
+        let snippets: Vec<_> = items
+            .iter()
             .filter(|i| i.kind == CompletionKind::Snippet)
             .collect();
         assert!(!snippets.is_empty());

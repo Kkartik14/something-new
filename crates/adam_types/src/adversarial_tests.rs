@@ -2,10 +2,10 @@
 //! These tests are designed to FIND BUGS by probing edge cases,
 //! boundary conditions, and adversarial scenarios.
 
-use adam_lexer::Lexer;
-use adam_parser::Parser;
 use crate::checker::TypeChecker;
 use crate::ty::*;
+use adam_lexer::Lexer;
+use adam_parser::Parser;
 
 // ============================================================
 // Helpers
@@ -212,10 +212,14 @@ fn main() {
     e := Empty {}
 }"#;
     let result = typecheck_ok(src);
-    let has_struct = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Struct(_))
-    });
-    assert!(has_struct, "Empty struct literal should produce Struct type");
+    let has_struct = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Struct(_)));
+    assert!(
+        has_struct,
+        "Empty struct literal should produce Struct type"
+    );
 }
 
 /// BUG PROBE: Struct literal with ALL wrong field types.
@@ -496,7 +500,10 @@ fn adversarial_inference_chain() {
     g := f + 1
 }"#;
     let result = typecheck_ok(src);
-    assert!(result.errors.is_empty(), "Type inference should propagate through chain");
+    assert!(
+        result.errors.is_empty(),
+        "Type inference should propagate through chain"
+    );
 }
 
 /// BUG PROBE: Inference through function return - is the returned type correct?
@@ -527,7 +534,9 @@ fn adversarial_error_propagation() {
     let result = typecheck_with_errors(src);
     // Should have exactly 1 error for undefined_var, not cascading errors.
     // If error type propagates silently, subsequent ops should not add errors.
-    let non_undefined_errors: Vec<_> = result.errors.iter()
+    let non_undefined_errors: Vec<_> = result
+        .errors
+        .iter()
         .filter(|e| !e.message.contains("undefined"))
         .collect();
     assert!(
@@ -548,7 +557,10 @@ fn adversarial_never_unifies() {
     }
 }"#;
     let result = typecheck_ok(src);
-    assert!(result.errors.is_empty(), "Never from return should unify with i32");
+    assert!(
+        result.errors.is_empty(),
+        "Never from return should unify with i32"
+    );
 }
 
 /// BUG PROBE: TypeVar chain - does unification follow the chain?
@@ -716,9 +728,10 @@ fn adversarial_closure_type_mismatch() {
     // This should be valid - closure returns String, that's fine.
     // The closure type is fn(i32) -> String.
     let result = typecheck_ok(src);
-    let has_fn = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Function(_))
-    });
+    let has_fn = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Function(_)));
     assert!(has_fn, "Closure should produce Function type");
 }
 
@@ -830,9 +843,10 @@ fn adversarial_empty_array_inference() {
     arr := []
 }"#;
     let result = typecheck_ok(src);
-    let has_array = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Array(_, _))
-    });
+    let has_array = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Array(_, _)));
     assert!(has_array, "Empty array should produce Array type");
 }
 
@@ -860,9 +874,10 @@ fn adversarial_nested_tuples() {
     t := ((1, 2), (3, 4))
 }"#;
     let result = typecheck_ok(src);
-    let has_tuple = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Tuple(_))
-    });
+    let has_tuple = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Tuple(_)));
     assert!(has_tuple, "Nested tuple should produce Tuple type");
 }
 
@@ -1198,7 +1213,10 @@ fn main() {
     x := o.inner.value
 }"#;
     let result = typecheck_ok(src);
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "o.inner.value should produce i32");
 }
 
@@ -1239,14 +1257,18 @@ fn adversarial_arithmetic_on_error() {
 }"#;
     let result = typecheck_with_errors(src);
     // Only the undefined variable error should be reported.
-    let undefined_errors = result.errors.iter()
+    let undefined_errors = result
+        .errors
+        .iter()
         .filter(|e| e.message.contains("undefined"))
         .count();
     assert!(
         undefined_errors >= 1,
         "Should have at least one undefined variable error"
     );
-    let arithmetic_errors = result.errors.iter()
+    let arithmetic_errors = result
+        .errors
+        .iter()
         .filter(|e| e.message.contains("arithmetic"))
         .count();
     assert_eq!(
@@ -1496,7 +1518,10 @@ fn main() {
     x := c.add(1, 2)
 }"#;
     let result = typecheck_ok(src);
-    assert!(result.errors.is_empty(), "Method with self + 2 params should work with 2 args");
+    assert!(
+        result.errors.is_empty(),
+        "Method with self + 2 params should work with 2 args"
+    );
 }
 
 /// BUG PROBE: Method with no params besides self, called with args.
@@ -1535,7 +1560,10 @@ fn adversarial_string_interp_type() {
     s := "value is {x}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
     assert!(has_string, "String interpolation should produce String");
 }
 
@@ -1733,10 +1761,14 @@ fn main() {
     f := add
 }"#;
     let result = typecheck_ok(src);
-    let has_fn = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Function(_))
-    });
-    assert!(has_fn, "Function name as value should produce Function type");
+    let has_fn = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Function(_)));
+    assert!(
+        has_fn,
+        "Function name as value should produce Function type"
+    );
 }
 
 // ============================================================

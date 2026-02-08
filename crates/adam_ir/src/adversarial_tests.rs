@@ -38,11 +38,7 @@ fn lower(src: &str) -> IrModule {
 fn lower_and_verify(src: &str) -> IrModule {
     let module = lower(src);
     let result = verify_module(&module);
-    assert!(
-        result.is_ok(),
-        "verify errors: {:?}",
-        result.errors
-    );
+    assert!(result.is_ok(), "verify errors: {:?}", result.errors);
     module
 }
 
@@ -65,8 +61,7 @@ fn first_fn(module: &IrModule) -> &IrFunction {
 
 /// Check that all terminator targets in a function actually exist as block IDs.
 fn assert_all_targets_valid(func: &IrFunction) {
-    let block_ids: std::collections::HashSet<BlockId> =
-        func.blocks.iter().map(|b| b.id).collect();
+    let block_ids: std::collections::HashSet<BlockId> = func.blocks.iter().map(|b| b.id).collect();
     for block in &func.blocks {
         let targets = terminator_targets(&block.terminator);
         for target in &targets {
@@ -107,7 +102,10 @@ fn adversarial_empty_function() {
     let module = lower("fn nothing() {}");
     let f = first_fn(&module);
     assert_eq!(f.name, "nothing");
-    assert!(!f.blocks.is_empty(), "empty function should have at least one block");
+    assert!(
+        !f.blocks.is_empty(),
+        "empty function should have at least one block"
+    );
 
     // The entry block should have a Return terminator (not Unreachable).
     let entry = &f.blocks[f.entry as usize];
@@ -119,7 +117,11 @@ fn adversarial_empty_function() {
 
     // Verify the IR.
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "empty function should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "empty function should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -166,7 +168,11 @@ fn adversarial_deeply_nested_control_flow() {
 
     // Should verify.
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "deeply nested code should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "deeply nested code should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -213,7 +219,11 @@ fn adversarial_break_from_nested_loops() {
     );
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "nested break should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "nested break should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -238,7 +248,11 @@ fn adversarial_break_targets_correct_loop() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "break targeting should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "break targeting should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -271,10 +285,17 @@ fn adversarial_continue_in_for_loop() {
         .map(|b| b.id)
         .collect();
 
-    assert!(!header_blocks.is_empty(), "for loop should have a header with a branch");
+    assert!(
+        !header_blocks.is_empty(),
+        "for loop should have a header with a branch"
+    );
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "continue in for loop should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "continue in for loop should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -309,7 +330,10 @@ fn adversarial_match_many_arms() {
             false
         }
     });
-    assert!(switch_found, "match with 10 literal arms should produce a Switch with 10 cases");
+    assert!(
+        switch_found,
+        "match with 10 literal arms should produce a Switch with 10 cases"
+    );
 
     // Each arm should have its own block.
     assert!(
@@ -321,7 +345,11 @@ fn adversarial_match_many_arms() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "many-arm match should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "many-arm match should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -338,7 +366,10 @@ fn adversarial_const_fold_division_by_zero_not_folded() {
     // The division should still be a BinaryOp, NOT a constant.
     let has_div_op = f.blocks.iter().any(|b| {
         b.instructions.iter().any(|i| {
-            matches!(i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Div, _, _)))
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::BinaryOp(BinOp::Div, _, _))
+            )
         })
     });
     assert!(
@@ -355,13 +386,13 @@ fn adversarial_const_fold_modulo_by_zero_not_folded() {
 
     let has_mod_op = f.blocks.iter().any(|b| {
         b.instructions.iter().any(|i| {
-            matches!(i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Mod, _, _)))
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::BinaryOp(BinOp::Mod, _, _))
+            )
         })
     });
-    assert!(
-        has_mod_op,
-        "modulo by zero should NOT be folded"
-    );
+    assert!(has_mod_op, "modulo by zero should NOT be folded");
 }
 
 #[test]
@@ -377,10 +408,7 @@ fn adversarial_const_fold_integer_overflow_wraps() {
             matches!(i, Instruction::Assign(_, RValue::Constant(Constant::Int(v))) if *v == i64::MIN)
         })
     });
-    assert!(
-        has_min,
-        "overflow should wrap to i64::MIN via wrapping_add"
-    );
+    assert!(has_min, "overflow should wrap to i64::MIN via wrapping_add");
 }
 
 #[test]
@@ -422,7 +450,10 @@ fn adversarial_const_fold_negate_i64_min() {
     let f = first_fn(&module);
     let printed = print_function(f);
     // Just ensure we didn't crash.
-    assert!(!printed.is_empty(), "should produce output after folding -i64::MIN");
+    assert!(
+        !printed.is_empty(),
+        "should produce output after folding -i64::MIN"
+    );
 }
 
 #[test]
@@ -467,7 +498,10 @@ fn adversarial_dead_code_after_return() {
     // Entry block should have Return(5).
     let entry = &f.blocks[f.entry as usize];
     assert!(
-        matches!(&entry.terminator, Terminator::Return(Some(Operand::Constant(Constant::Int(5))))),
+        matches!(
+            &entry.terminator,
+            Terminator::Return(Some(Operand::Constant(Constant::Int(5))))
+        ),
         "entry should return 5, got: {:?}",
         entry.terminator
     );
@@ -506,7 +540,11 @@ fn adversarial_match_with_empty_arm() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "match with simple arms should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "match with simple arms should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -524,7 +562,11 @@ fn adversarial_if_with_empty_then() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "if with expr body should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "if with expr body should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -576,13 +618,18 @@ fn adversarial_string_interpolation_multiple_parts() {
     assert!(!printed.is_empty());
 
     // Should have at least 2 __str_concat calls for 3+ parts.
-    let concat_count = f.blocks.iter().flat_map(|b| &b.instructions).filter(|i| {
-        if let Instruction::Assign(_, RValue::CallNamed(name, _)) = i {
-            name == "__str_concat"
-        } else {
-            false
-        }
-    }).count();
+    let concat_count = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .filter(|i| {
+            if let Instruction::Assign(_, RValue::CallNamed(name, _)) = i {
+                name == "__str_concat"
+            } else {
+                false
+            }
+        })
+        .count();
     assert!(
         concat_count >= 2,
         "multi-part interpolation should produce at least 2 concat calls, got {}",
@@ -590,7 +637,11 @@ fn adversarial_string_interpolation_multiple_parts() {
     );
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "multi-part interpolation should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "multi-part interpolation should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -614,14 +665,19 @@ fn main() {
     let entry = &main_fn.blocks[main_fn.entry as usize];
 
     let has_add = entry.instructions.iter().any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _)))
+        matches!(
+            i,
+            Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _))
+        )
     });
     assert!(has_add, "should have Add for 1+2 argument");
 
     // Should have two Call instructions (mul and add).
-    let call_count = entry.instructions.iter().filter(|i| {
-        matches!(i, Instruction::Assign(_, RValue::Call(_, _)))
-    }).count();
+    let call_count = entry
+        .instructions
+        .iter()
+        .filter(|i| matches!(i, Instruction::Assign(_, RValue::Call(_, _))))
+        .count();
     assert!(
         call_count >= 2,
         "should have at least 2 call instructions, got {}",
@@ -683,7 +739,11 @@ fn adversarial_multiple_assignments() {
     }
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "multiple assignments should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "multiple assignments should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -796,17 +856,11 @@ fn adversarial_verifier_catches_nonexistent_target() {
             return_type: IrType::Unit,
             entry: 0,
             locals: vec![],
-            blocks: vec![
-                BasicBlock {
-                    id: 0,
-                    instructions: vec![],
-                    terminator: Terminator::Branch(
-                        Operand::Constant(Constant::Bool(true)),
-                        50,
-                        100,
-                    ),
-                },
-            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![],
+                terminator: Terminator::Branch(Operand::Constant(Constant::Bool(true)), 50, 100),
+            }],
         }],
         globals: vec![],
         string_literals: vec![],
@@ -832,8 +886,16 @@ fn adversarial_verifier_catches_duplicate_local_ids() {
             return_type: IrType::Unit,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 0, name: "y".into(), ty: IrType::I64 }, // duplicate ID!
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 0,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                }, // duplicate ID!
             ],
             blocks: vec![BasicBlock {
                 id: 0,
@@ -860,17 +922,15 @@ fn adversarial_verifier_switch_with_invalid_default() {
             return_type: IrType::Unit,
             entry: 0,
             locals: vec![],
-            blocks: vec![
-                BasicBlock {
-                    id: 0,
-                    instructions: vec![],
-                    terminator: Terminator::Switch(
-                        Operand::Constant(Constant::Int(0)),
-                        vec![(Constant::Int(1), 0)], // case target is valid (itself)
-                        999, // default target is INVALID
-                    ),
-                },
-            ],
+            blocks: vec![BasicBlock {
+                id: 0,
+                instructions: vec![],
+                terminator: Terminator::Switch(
+                    Operand::Constant(Constant::Int(0)),
+                    vec![(Constant::Int(1), 0)], // case target is valid (itself)
+                    999,                         // default target is INVALID
+                ),
+            }],
         }],
         globals: vec![],
         string_literals: vec![],
@@ -878,7 +938,10 @@ fn adversarial_verifier_switch_with_invalid_default() {
     };
 
     let result = verify_module(&module);
-    assert!(!result.is_ok(), "should catch invalid switch default target");
+    assert!(
+        !result.is_ok(),
+        "should catch invalid switch default target"
+    );
     assert!(
         result.errors.iter().any(|e| e.message.contains("999")),
         "error should mention the invalid target 999"
@@ -920,88 +983,228 @@ fn adversarial_printer_all_instruction_types() {
         id: 0,
         name: "all_types".into(),
         params: vec![
-            IrParam { name: "a".into(), ty: IrType::I32 },
-            IrParam { name: "b".into(), ty: IrType::String },
+            IrParam {
+                name: "a".into(),
+                ty: IrType::I32,
+            },
+            IrParam {
+                name: "b".into(),
+                ty: IrType::String,
+            },
         ],
         return_type: IrType::Tuple(vec![IrType::I32, IrType::Bool]),
         entry: 0,
         locals: vec![
-            IrLocal { id: 0, name: "a".into(), ty: IrType::I32 },
-            IrLocal { id: 1, name: "b".into(), ty: IrType::String },
-            IrLocal { id: 2, name: "t1".into(), ty: IrType::I64 },
-            IrLocal { id: 3, name: "t2".into(), ty: IrType::Bool },
-            IrLocal { id: 4, name: "t3".into(), ty: IrType::F64 },
-            IrLocal { id: 5, name: "t4".into(), ty: IrType::Char },
-            IrLocal { id: 6, name: "t5".into(), ty: IrType::Unit },
-            IrLocal { id: 7, name: "t6".into(), ty: IrType::Ptr(Box::new(IrType::I32)) },
-            IrLocal { id: 8, name: "t7".into(), ty: IrType::Array(Box::new(IrType::I32), Some(10)) },
-            IrLocal { id: 9, name: "t8".into(), ty: IrType::Channel(Box::new(IrType::I64)) },
-            IrLocal { id: 10, name: "t9".into(), ty: IrType::Function(vec![IrType::I32], Box::new(IrType::Bool)) },
-            IrLocal { id: 11, name: "t10".into(), ty: IrType::Struct("Point".into()) },
-            IrLocal { id: 12, name: "t11".into(), ty: IrType::Enum("Color".into()) },
-            IrLocal { id: 13, name: "t12".into(), ty: IrType::Void },
-        ],
-        blocks: vec![
-            BasicBlock {
+            IrLocal {
                 id: 0,
-                instructions: vec![
-                    // Constants
-                    Instruction::Assign(2, RValue::Constant(Constant::Int(42))),
-                    Instruction::Assign(3, RValue::Constant(Constant::Bool(true))),
-                    Instruction::Assign(4, RValue::Constant(Constant::Float(3.14))),
-                    Instruction::Assign(5, RValue::Constant(Constant::Char('A'))),
-                    Instruction::Assign(6, RValue::Constant(Constant::Unit)),
-                    Instruction::Assign(2, RValue::Constant(Constant::Nil)),
-                    Instruction::Assign(2, RValue::Constant(Constant::String(0))),
-                    // Binary ops
-                    Instruction::Assign(2, RValue::BinaryOp(BinOp::Add, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(2, RValue::BinaryOp(BinOp::Sub, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(2, RValue::BinaryOp(BinOp::Mul, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(2, RValue::BinaryOp(BinOp::Div, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(2, RValue::BinaryOp(BinOp::Mod, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::Eq, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::NotEq, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::Lt, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::Gt, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::LtEq, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::GtEq, Operand::Var(0), Operand::Var(0))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::And, Operand::Constant(Constant::Bool(true)), Operand::Constant(Constant::Bool(false)))),
-                    Instruction::Assign(3, RValue::BinaryOp(BinOp::Or, Operand::Constant(Constant::Bool(true)), Operand::Constant(Constant::Bool(false)))),
-                    // Unary ops
-                    Instruction::Assign(2, RValue::UnaryOp(UnOp::Neg, Operand::Var(0))),
-                    Instruction::Assign(3, RValue::UnaryOp(UnOp::Not, Operand::Var(3))),
-                    Instruction::Assign(7, RValue::UnaryOp(UnOp::Ref, Operand::Var(0))),
-                    // Calls
-                    Instruction::Assign(2, RValue::Call(0, vec![Operand::Var(0)])),
-                    Instruction::Assign(2, RValue::CallNamed("print".into(), vec![Operand::Var(1)])),
-                    // Aggregates
-                    Instruction::Assign(8, RValue::Aggregate(AggregateKind::Array, vec![Operand::Constant(Constant::Int(1)), Operand::Constant(Constant::Int(2))])),
-                    Instruction::Assign(6, RValue::Aggregate(AggregateKind::Tuple, vec![Operand::Constant(Constant::Int(1)), Operand::Constant(Constant::Bool(true))])),
-                    Instruction::Assign(11, RValue::Aggregate(AggregateKind::Struct("Point".into()), vec![Operand::Constant(Constant::Int(1)), Operand::Constant(Constant::Int(2))])),
-                    // Field, Index
-                    Instruction::Assign(2, RValue::Field(Operand::Var(11), 0)),
-                    Instruction::Assign(2, RValue::Index(Operand::Var(8), Operand::Constant(Constant::Int(0)))),
-                    // Ref, Deref, Cast
-                    Instruction::Assign(7, RValue::Ref(0)),
-                    Instruction::Assign(7, RValue::MutRef(0)),
-                    Instruction::Assign(2, RValue::Deref(Operand::Var(7))),
-                    Instruction::Assign(4, RValue::Cast(Operand::Var(0), IrType::F64)),
-                    // Heap alloc
-                    Instruction::Assign(7, RValue::HeapAlloc(IrType::I32)),
-                    // Channel ops
-                    Instruction::Assign(9, RValue::ChanCreate(IrType::I64, Some(10))),
-                    Instruction::Assign(9, RValue::ChanCreate(IrType::I64, None)),
-                    Instruction::Assign(6, RValue::ChanSend(Operand::Var(9), Operand::Constant(Constant::Int(42)))),
-                    Instruction::Assign(2, RValue::ChanRecv(Operand::Var(9))),
-                    // Use
-                    Instruction::Assign(2, RValue::Use(Operand::Var(0))),
-                    // Nop and Drop
-                    Instruction::Nop,
-                    Instruction::Drop(0),
-                ],
-                terminator: Terminator::Return(Some(Operand::Constant(Constant::Unit))),
+                name: "a".into(),
+                ty: IrType::I32,
+            },
+            IrLocal {
+                id: 1,
+                name: "b".into(),
+                ty: IrType::String,
+            },
+            IrLocal {
+                id: 2,
+                name: "t1".into(),
+                ty: IrType::I64,
+            },
+            IrLocal {
+                id: 3,
+                name: "t2".into(),
+                ty: IrType::Bool,
+            },
+            IrLocal {
+                id: 4,
+                name: "t3".into(),
+                ty: IrType::F64,
+            },
+            IrLocal {
+                id: 5,
+                name: "t4".into(),
+                ty: IrType::Char,
+            },
+            IrLocal {
+                id: 6,
+                name: "t5".into(),
+                ty: IrType::Unit,
+            },
+            IrLocal {
+                id: 7,
+                name: "t6".into(),
+                ty: IrType::Ptr(Box::new(IrType::I32)),
+            },
+            IrLocal {
+                id: 8,
+                name: "t7".into(),
+                ty: IrType::Array(Box::new(IrType::I32), Some(10)),
+            },
+            IrLocal {
+                id: 9,
+                name: "t8".into(),
+                ty: IrType::Channel(Box::new(IrType::I64)),
+            },
+            IrLocal {
+                id: 10,
+                name: "t9".into(),
+                ty: IrType::Function(vec![IrType::I32], Box::new(IrType::Bool)),
+            },
+            IrLocal {
+                id: 11,
+                name: "t10".into(),
+                ty: IrType::Struct("Point".into()),
+            },
+            IrLocal {
+                id: 12,
+                name: "t11".into(),
+                ty: IrType::Enum("Color".into()),
+            },
+            IrLocal {
+                id: 13,
+                name: "t12".into(),
+                ty: IrType::Void,
             },
         ],
+        blocks: vec![BasicBlock {
+            id: 0,
+            instructions: vec![
+                // Constants
+                Instruction::Assign(2, RValue::Constant(Constant::Int(42))),
+                Instruction::Assign(3, RValue::Constant(Constant::Bool(true))),
+                Instruction::Assign(4, RValue::Constant(Constant::Float(3.14))),
+                Instruction::Assign(5, RValue::Constant(Constant::Char('A'))),
+                Instruction::Assign(6, RValue::Constant(Constant::Unit)),
+                Instruction::Assign(2, RValue::Constant(Constant::Nil)),
+                Instruction::Assign(2, RValue::Constant(Constant::String(0))),
+                // Binary ops
+                Instruction::Assign(
+                    2,
+                    RValue::BinaryOp(BinOp::Add, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    2,
+                    RValue::BinaryOp(BinOp::Sub, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    2,
+                    RValue::BinaryOp(BinOp::Mul, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    2,
+                    RValue::BinaryOp(BinOp::Div, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    2,
+                    RValue::BinaryOp(BinOp::Mod, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::Eq, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::NotEq, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::Lt, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::Gt, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::LtEq, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(BinOp::GtEq, Operand::Var(0), Operand::Var(0)),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(
+                        BinOp::And,
+                        Operand::Constant(Constant::Bool(true)),
+                        Operand::Constant(Constant::Bool(false)),
+                    ),
+                ),
+                Instruction::Assign(
+                    3,
+                    RValue::BinaryOp(
+                        BinOp::Or,
+                        Operand::Constant(Constant::Bool(true)),
+                        Operand::Constant(Constant::Bool(false)),
+                    ),
+                ),
+                // Unary ops
+                Instruction::Assign(2, RValue::UnaryOp(UnOp::Neg, Operand::Var(0))),
+                Instruction::Assign(3, RValue::UnaryOp(UnOp::Not, Operand::Var(3))),
+                Instruction::Assign(7, RValue::UnaryOp(UnOp::Ref, Operand::Var(0))),
+                // Calls
+                Instruction::Assign(2, RValue::Call(0, vec![Operand::Var(0)])),
+                Instruction::Assign(2, RValue::CallNamed("print".into(), vec![Operand::Var(1)])),
+                // Aggregates
+                Instruction::Assign(
+                    8,
+                    RValue::Aggregate(
+                        AggregateKind::Array,
+                        vec![
+                            Operand::Constant(Constant::Int(1)),
+                            Operand::Constant(Constant::Int(2)),
+                        ],
+                    ),
+                ),
+                Instruction::Assign(
+                    6,
+                    RValue::Aggregate(
+                        AggregateKind::Tuple,
+                        vec![
+                            Operand::Constant(Constant::Int(1)),
+                            Operand::Constant(Constant::Bool(true)),
+                        ],
+                    ),
+                ),
+                Instruction::Assign(
+                    11,
+                    RValue::Aggregate(
+                        AggregateKind::Struct("Point".into()),
+                        vec![
+                            Operand::Constant(Constant::Int(1)),
+                            Operand::Constant(Constant::Int(2)),
+                        ],
+                    ),
+                ),
+                // Field, Index
+                Instruction::Assign(2, RValue::Field(Operand::Var(11), 0)),
+                Instruction::Assign(
+                    2,
+                    RValue::Index(Operand::Var(8), Operand::Constant(Constant::Int(0))),
+                ),
+                // Ref, Deref, Cast
+                Instruction::Assign(7, RValue::Ref(0)),
+                Instruction::Assign(7, RValue::MutRef(0)),
+                Instruction::Assign(2, RValue::Deref(Operand::Var(7))),
+                Instruction::Assign(4, RValue::Cast(Operand::Var(0), IrType::F64)),
+                // Heap alloc
+                Instruction::Assign(7, RValue::HeapAlloc(IrType::I32)),
+                // Channel ops
+                Instruction::Assign(9, RValue::ChanCreate(IrType::I64, Some(10))),
+                Instruction::Assign(9, RValue::ChanCreate(IrType::I64, None)),
+                Instruction::Assign(
+                    6,
+                    RValue::ChanSend(Operand::Var(9), Operand::Constant(Constant::Int(42))),
+                ),
+                Instruction::Assign(2, RValue::ChanRecv(Operand::Var(9))),
+                // Use
+                Instruction::Assign(2, RValue::Use(Operand::Var(0))),
+                // Nop and Drop
+                Instruction::Nop,
+                Instruction::Drop(0),
+            ],
+            terminator: Terminator::Return(Some(Operand::Constant(Constant::Unit))),
+        }],
     };
 
     // This should not panic.
@@ -1009,7 +1212,10 @@ fn adversarial_printer_all_instruction_types() {
     assert!(!output.is_empty());
 
     // Verify it mentions key items.
-    assert!(output.contains("fn @all_types"), "should print function name");
+    assert!(
+        output.contains("fn @all_types"),
+        "should print function name"
+    );
     assert!(output.contains("add"), "should print add operation");
     assert!(output.contains("nop"), "should print nop");
     assert!(output.contains("drop"), "should print drop");
@@ -1028,9 +1234,11 @@ fn adversarial_printer_all_terminator_types() {
             params: vec![],
             return_type: IrType::Unit,
             entry: 0,
-            locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-            ],
+            locals: vec![IrLocal {
+                id: 0,
+                name: "x".into(),
+                ty: IrType::I64,
+            }],
             blocks: vec![
                 // Goto
                 BasicBlock {
@@ -1056,10 +1264,7 @@ fn adversarial_printer_all_terminator_types() {
                     instructions: vec![],
                     terminator: Terminator::Switch(
                         Operand::Var(0),
-                        vec![
-                            (Constant::Int(1), 4),
-                            (Constant::Int(2), 5),
-                        ],
+                        vec![(Constant::Int(1), 4), (Constant::Int(2), 5)],
                         6,
                     ),
                 },
@@ -1085,7 +1290,10 @@ fn adversarial_printer_all_terminator_types() {
                             target: 7,
                         },
                         SelectBranch {
-                            kind: SelectBranchKind::Send(Operand::Var(0), Operand::Constant(Constant::Int(1))),
+                            kind: SelectBranchKind::Send(
+                                Operand::Var(0),
+                                Operand::Constant(Constant::Int(1)),
+                            ),
                             target: 7,
                         },
                         SelectBranch {
@@ -1127,30 +1335,102 @@ fn adversarial_printer_all_types() {
         id: 0,
         name: "types".into(),
         params: vec![
-            IrParam { name: "a".into(), ty: IrType::I8 },
-            IrParam { name: "b".into(), ty: IrType::I16 },
-            IrParam { name: "c".into(), ty: IrType::I32 },
-            IrParam { name: "d".into(), ty: IrType::I64 },
-            IrParam { name: "e".into(), ty: IrType::U8 },
-            IrParam { name: "f".into(), ty: IrType::U16 },
-            IrParam { name: "g".into(), ty: IrType::U32 },
-            IrParam { name: "h".into(), ty: IrType::U64 },
-            IrParam { name: "i".into(), ty: IrType::F32 },
-            IrParam { name: "j".into(), ty: IrType::F64 },
-            IrParam { name: "k".into(), ty: IrType::Bool },
-            IrParam { name: "l".into(), ty: IrType::Char },
-            IrParam { name: "m".into(), ty: IrType::Unit },
-            IrParam { name: "n".into(), ty: IrType::String },
-            IrParam { name: "o".into(), ty: IrType::Str },
-            IrParam { name: "p".into(), ty: IrType::Void },
-            IrParam { name: "q".into(), ty: IrType::Ptr(Box::new(IrType::I32)) },
-            IrParam { name: "r".into(), ty: IrType::Array(Box::new(IrType::I32), None) },
-            IrParam { name: "s".into(), ty: IrType::Array(Box::new(IrType::I32), Some(5)) },
-            IrParam { name: "t".into(), ty: IrType::Tuple(vec![IrType::I32, IrType::Bool]) },
-            IrParam { name: "u".into(), ty: IrType::Struct("Foo".into()) },
-            IrParam { name: "v".into(), ty: IrType::Enum("Bar".into()) },
-            IrParam { name: "w".into(), ty: IrType::Function(vec![IrType::I32], Box::new(IrType::Bool)) },
-            IrParam { name: "x".into(), ty: IrType::Channel(Box::new(IrType::I64)) },
+            IrParam {
+                name: "a".into(),
+                ty: IrType::I8,
+            },
+            IrParam {
+                name: "b".into(),
+                ty: IrType::I16,
+            },
+            IrParam {
+                name: "c".into(),
+                ty: IrType::I32,
+            },
+            IrParam {
+                name: "d".into(),
+                ty: IrType::I64,
+            },
+            IrParam {
+                name: "e".into(),
+                ty: IrType::U8,
+            },
+            IrParam {
+                name: "f".into(),
+                ty: IrType::U16,
+            },
+            IrParam {
+                name: "g".into(),
+                ty: IrType::U32,
+            },
+            IrParam {
+                name: "h".into(),
+                ty: IrType::U64,
+            },
+            IrParam {
+                name: "i".into(),
+                ty: IrType::F32,
+            },
+            IrParam {
+                name: "j".into(),
+                ty: IrType::F64,
+            },
+            IrParam {
+                name: "k".into(),
+                ty: IrType::Bool,
+            },
+            IrParam {
+                name: "l".into(),
+                ty: IrType::Char,
+            },
+            IrParam {
+                name: "m".into(),
+                ty: IrType::Unit,
+            },
+            IrParam {
+                name: "n".into(),
+                ty: IrType::String,
+            },
+            IrParam {
+                name: "o".into(),
+                ty: IrType::Str,
+            },
+            IrParam {
+                name: "p".into(),
+                ty: IrType::Void,
+            },
+            IrParam {
+                name: "q".into(),
+                ty: IrType::Ptr(Box::new(IrType::I32)),
+            },
+            IrParam {
+                name: "r".into(),
+                ty: IrType::Array(Box::new(IrType::I32), None),
+            },
+            IrParam {
+                name: "s".into(),
+                ty: IrType::Array(Box::new(IrType::I32), Some(5)),
+            },
+            IrParam {
+                name: "t".into(),
+                ty: IrType::Tuple(vec![IrType::I32, IrType::Bool]),
+            },
+            IrParam {
+                name: "u".into(),
+                ty: IrType::Struct("Foo".into()),
+            },
+            IrParam {
+                name: "v".into(),
+                ty: IrType::Enum("Bar".into()),
+            },
+            IrParam {
+                name: "w".into(),
+                ty: IrType::Function(vec![IrType::I32], Box::new(IrType::Bool)),
+            },
+            IrParam {
+                name: "x".into(),
+                ty: IrType::Channel(Box::new(IrType::I64)),
+            },
         ],
         return_type: IrType::Unit,
         entry: 0,
@@ -1208,15 +1488,23 @@ fn adversarial_select_lowering() {
     let f = first_fn(&module);
 
     // Should have a Select terminator.
-    let has_select = f.blocks.iter().any(|b| {
-        matches!(&b.terminator, Terminator::Select(branches) if branches.len() == 2)
-    });
-    assert!(has_select, "select with 2 arms should produce a Select with 2 branches");
+    let has_select = f
+        .blocks
+        .iter()
+        .any(|b| matches!(&b.terminator, Terminator::Select(branches) if branches.len() == 2));
+    assert!(
+        has_select,
+        "select with 2 arms should produce a Select with 2 branches"
+    );
 
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "select lowering should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "select lowering should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -1240,15 +1528,23 @@ fn area(s Shape) -> f64 {
     let f = module.functions.iter().find(|f| f.name == "area").unwrap();
 
     // Should have a Switch terminator for the match.
-    let has_switch = f.blocks.iter().any(|b| {
-        matches!(&b.terminator, Terminator::Switch(_, cases, _) if cases.len() >= 2)
-    });
-    assert!(has_switch, "enum match should produce a switch with at least 2 cases");
+    let has_switch = f
+        .blocks
+        .iter()
+        .any(|b| matches!(&b.terminator, Terminator::Switch(_, cases, _) if cases.len() >= 2));
+    assert!(
+        has_switch,
+        "enum match should produce a switch with at least 2 cases"
+    );
 
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "enum match should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "enum match should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -1296,7 +1592,11 @@ fn adversarial_closure_captures() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "closure with captures should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "closure with captures should verify: {:?}",
+        result.errors
+    );
 }
 
 // ================================================================
@@ -1432,7 +1732,11 @@ fn adversarial_large_function_stress() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "large function should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "large function should verify: {:?}",
+        result.errors
+    );
 
     // Also test that optimization doesn't break it.
     let mut opt_module = module.clone();
@@ -1480,7 +1784,10 @@ fn adversarial_spawn_continuation_reachable() {
     );
 
     // The Spawn terminator should exist.
-    let has_spawn = f.blocks.iter().any(|b| matches!(&b.terminator, Terminator::Spawn(_, _)));
+    let has_spawn = f
+        .blocks
+        .iter()
+        .any(|b| matches!(&b.terminator, Terminator::Spawn(_, _)));
     assert!(has_spawn, "should have Spawn terminator");
 
     // After DCE, the continue block should survive if it's reachable.
@@ -1524,9 +1831,10 @@ fn adversarial_match_switch_block_calculation() {
     assert_all_targets_valid(f);
 
     // The switch terminator should exist.
-    let has_switch = f.blocks.iter().any(|b| {
-        matches!(&b.terminator, Terminator::Switch(_, _, _))
-    });
+    let has_switch = f
+        .blocks
+        .iter()
+        .any(|b| matches!(&b.terminator, Terminator::Switch(_, _, _)));
     assert!(has_switch, "match should produce a switch terminator");
 
     // Verify!
@@ -1551,15 +1859,15 @@ fn adversarial_cfg_simplify_dangling_references() {
             params: vec![],
             return_type: IrType::Unit,
             entry: 0,
-            locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-            ],
+            locals: vec![IrLocal {
+                id: 0,
+                name: "x".into(),
+                ty: IrType::I64,
+            }],
             blocks: vec![
                 BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::Constant(Constant::Int(0))),
-                    ],
+                    instructions: vec![Instruction::Assign(0, RValue::Constant(Constant::Int(0)))],
                     terminator: Terminator::Goto(1), // bb0 -> bb1
                 },
                 BasicBlock {
@@ -1598,15 +1906,15 @@ fn adversarial_cfg_simplify_dangling_references() {
             params: vec![],
             return_type: IrType::Unit,
             entry: 0,
-            locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-            ],
+            locals: vec![IrLocal {
+                id: 0,
+                name: "x".into(),
+                ty: IrType::I64,
+            }],
             blocks: vec![
                 BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::Constant(Constant::Int(0))),
-                    ],
+                    instructions: vec![Instruction::Assign(0, RValue::Constant(Constant::Int(0)))],
                     terminator: Terminator::Goto(1), // bb0 -> bb1 (only predecessor)
                 },
                 BasicBlock {
@@ -1724,7 +2032,11 @@ fn adversarial_if_as_expression() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "if-expression should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "if-expression should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1742,7 +2054,11 @@ fn adversarial_match_as_expression() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "match-expression should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "match-expression should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1792,7 +2108,11 @@ fn adversarial_nested_match_in_if() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "nested match-in-if should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "nested match-in-if should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1809,7 +2129,11 @@ fn adversarial_while_with_complex_condition() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "while with && condition should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "while with && condition should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1827,7 +2151,11 @@ fn adversarial_for_over_array() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "for-over-array should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "for-over-array should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1863,7 +2191,11 @@ fn adversarial_empty_match() {
 
     // With only a wildcard, there should be NO switch (just a Goto to the default).
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "wildcard-only match should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "wildcard-only match should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -1892,7 +2224,10 @@ fn adversarial_break_outside_loop() {
     // The break outside loop should produce a block with Unreachable
     // terminator (since there's no loop_stack entry).
     let printed = print_function(f);
-    assert!(!printed.is_empty(), "should produce output even with bad break");
+    assert!(
+        !printed.is_empty(),
+        "should produce output even with bad break"
+    );
 }
 
 #[test]
@@ -1904,9 +2239,11 @@ fn adversarial_verifier_instruction_references_invalid_fn() {
             params: vec![],
             return_type: IrType::Unit,
             entry: 0,
-            locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-            ],
+            locals: vec![IrLocal {
+                id: 0,
+                name: "x".into(),
+                ty: IrType::I64,
+            }],
             blocks: vec![BasicBlock {
                 id: 0,
                 instructions: vec![
@@ -1936,8 +2273,14 @@ fn adversarial_print_module_with_globals() {
     let module = IrModule {
         functions: vec![],
         globals: vec![
-            IrGlobal { name: "GLOBAL_X".into(), ty: IrType::I64 },
-            IrGlobal { name: "GLOBAL_S".into(), ty: IrType::String },
+            IrGlobal {
+                name: "GLOBAL_X".into(),
+                ty: IrType::I64,
+            },
+            IrGlobal {
+                name: "GLOBAL_S".into(),
+                ty: IrType::String,
+            },
         ],
         string_literals: vec!["hello".into(), "world".into()],
         struct_defs: vec![],
@@ -1946,7 +2289,10 @@ fn adversarial_print_module_with_globals() {
     let output = print_module(&module);
     assert!(output.contains("GLOBAL_X"), "should print global name");
     assert!(output.contains("GLOBAL_S"), "should print global name");
-    assert!(output.contains("string literals"), "should print string literal section");
+    assert!(
+        output.contains("string literals"),
+        "should print string literal section"
+    );
 }
 
 #[test]
@@ -1976,7 +2322,11 @@ fn adversarial_deeply_nested_loops_with_break_continue() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "nested loops with break/continue should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "nested loops with break/continue should verify: {:?}",
+        result.errors
+    );
 
     // Also survive optimization.
     let mut opt_module = module;
@@ -2002,7 +2352,11 @@ fn adversarial_match_with_binding_pattern() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "match with binding pattern should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "match with binding pattern should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -2042,12 +2396,18 @@ fn adversarial_const_fold_chained_operations() {
     // Check what happened.
     let has_const_5 = f.blocks.iter().any(|b| {
         b.instructions.iter().any(|i| {
-            matches!(i, Instruction::Assign(_, RValue::Constant(Constant::Int(5))))
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Int(5)))
+            )
         })
     });
     let has_const_3 = f.blocks.iter().any(|b| {
         b.instructions.iter().any(|i| {
-            matches!(i, Instruction::Assign(_, RValue::Constant(Constant::Int(3))))
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Int(3)))
+            )
         })
     });
 
@@ -2097,7 +2457,10 @@ fn adversarial_verify_module_with_duplicate_function_names() {
     let result = verify_module(&module);
     assert!(!result.is_ok(), "should catch duplicate function names");
     assert!(
-        result.errors.iter().any(|e| e.message.contains("duplicate")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("duplicate")),
         "error should mention 'duplicate'"
     );
 }
@@ -2153,7 +2516,11 @@ fn adversarial_loop_continue_targets_header() {
     assert_all_targets_valid(f);
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "loop with continue should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "loop with continue should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -2190,5 +2557,9 @@ fn adversarial_nested_if_else_chain() {
     );
 
     let result = verify_function_standalone(f);
-    assert!(result.is_ok(), "if-else chain should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "if-else chain should verify: {:?}",
+        result.errors
+    );
 }

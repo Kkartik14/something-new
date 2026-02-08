@@ -113,8 +113,8 @@ fn discover_bench_files() -> Result<Vec<PathBuf>, String> {
 }
 
 fn collect_bench_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
     for entry in entries {
         let path = entry.map_err(|e| format!("{}", e))?.path();
         if path.is_file() {
@@ -131,8 +131,8 @@ fn collect_bench_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), Strin
 }
 
 fn collect_all_adam_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("failed to read {}: {}", dir.display(), e))?;
     for entry in entries {
         let path = entry.map_err(|e| format!("{}", e))?.path();
         if path.is_file() && path.extension().map(|e| e == "adam").unwrap_or(false) {

@@ -29,7 +29,11 @@ pub fn print_module(module: &IrModule) -> String {
     // Globals.
     if !module.globals.is_empty() {
         for global in &module.globals {
-            out.push_str(&format!("global @{}: {}\n", global.name, fmt_type(&global.ty)));
+            out.push_str(&format!(
+                "global @{}: {}\n",
+                global.name,
+                fmt_type(&global.ty)
+            ));
         }
         out.push('\n');
     }
@@ -66,7 +70,9 @@ pub fn print_function(func: &IrFunction) -> String {
         for local in &func.locals {
             out.push_str(&format!(
                 "  ;   %{} = {} : {}\n",
-                local.id, local.name, fmt_type(&local.ty)
+                local.id,
+                local.name,
+                fmt_type(&local.ty)
             ));
         }
         out.push('\n');
@@ -141,7 +147,12 @@ fn fmt_rvalue(rv: &RValue) -> String {
     match rv {
         RValue::Use(op) => fmt_operand(op),
         RValue::BinaryOp(op, left, right) => {
-            format!("{} {} {}", fmt_binop(op), fmt_operand(left), fmt_operand(right))
+            format!(
+                "{} {} {}",
+                fmt_binop(op),
+                fmt_operand(left),
+                fmt_operand(right)
+            )
         }
         RValue::UnaryOp(op, operand) => {
             format!("{} {}", fmt_unop(op), fmt_operand(operand))
@@ -172,12 +183,10 @@ fn fmt_rvalue(rv: &RValue) -> String {
         RValue::Cast(op, ty) => format!("{} as {}", fmt_operand(op), fmt_type(ty)),
         RValue::Constant(c) => fmt_constant(c),
         RValue::HeapAlloc(ty) => format!("heap_alloc {}", fmt_type(ty)),
-        RValue::ChanCreate(ty, cap) => {
-            match cap {
-                Some(n) => format!("chan_create[{}]({})", fmt_type(ty), n),
-                None => format!("chan_create[{}]()", fmt_type(ty)),
-            }
-        }
+        RValue::ChanCreate(ty, cap) => match cap {
+            Some(n) => format!("chan_create[{}]({})", fmt_type(ty), n),
+            None => format!("chan_create[{}]()", fmt_type(ty)),
+        },
         RValue::ChanSend(chan, val) => {
             format!("chan_send {} <- {}", fmt_operand(chan), fmt_operand(val))
         }

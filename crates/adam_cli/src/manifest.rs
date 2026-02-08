@@ -65,8 +65,7 @@ impl Manifest {
         }
         let content = fs::read_to_string(path)
             .map_err(|e| format!("failed to read {}: {}", path.display(), e))?;
-        toml::from_str(&content)
-            .map_err(|e| format!("invalid adam.toml: {}", e))
+        toml::from_str(&content).map_err(|e| format!("invalid adam.toml: {}", e))
     }
 
     /// Save manifest to adam.toml.
@@ -78,8 +77,7 @@ impl Manifest {
     pub fn save_to(&self, path: &Path) -> Result<(), String> {
         let content = toml::to_string_pretty(self)
             .map_err(|e| format!("failed to serialize manifest: {}", e))?;
-        fs::write(path, content)
-            .map_err(|e| format!("failed to write {}: {}", path.display(), e))
+        fs::write(path, content).map_err(|e| format!("failed to write {}: {}", path.display(), e))
     }
 
     /// Create a default manifest for a new project.
@@ -121,19 +119,19 @@ impl LockFile {
     pub fn load() -> Result<Self, String> {
         let path = Path::new("adam.lock");
         if !path.exists() {
-            return Ok(LockFile { packages: Vec::new() });
+            return Ok(LockFile {
+                packages: Vec::new(),
+            });
         }
-        let content = fs::read_to_string(path)
-            .map_err(|e| format!("failed to read adam.lock: {}", e))?;
-        toml::from_str(&content)
-            .map_err(|e| format!("invalid adam.lock: {}", e))
+        let content =
+            fs::read_to_string(path).map_err(|e| format!("failed to read adam.lock: {}", e))?;
+        toml::from_str(&content).map_err(|e| format!("invalid adam.lock: {}", e))
     }
 
     pub fn save(&self) -> Result<(), String> {
         let content = toml::to_string_pretty(self)
             .map_err(|e| format!("failed to serialize lock file: {}", e))?;
-        fs::write("adam.lock", content)
-            .map_err(|e| format!("failed to write adam.lock: {}", e))
+        fs::write("adam.lock", content).map_err(|e| format!("failed to write adam.lock: {}", e))
     }
 }
 
@@ -290,21 +288,28 @@ pub struct Semver {
 impl Semver {
     pub fn parse(s: &str) -> Result<Self, String> {
         let parts: Vec<&str> = s.trim().split('.').collect();
-        let major = parts.first()
+        let major = parts
+            .first()
             .ok_or("missing major version")?
             .parse::<u64>()
             .map_err(|_| format!("invalid major version in '{}'", s))?;
-        let minor = parts.get(1)
+        let minor = parts
+            .get(1)
             .map(|p| p.parse::<u64>())
             .transpose()
             .map_err(|_| format!("invalid minor version in '{}'", s))?
             .unwrap_or(0);
-        let patch = parts.get(2)
+        let patch = parts
+            .get(2)
             .map(|p| p.parse::<u64>())
             .transpose()
             .map_err(|_| format!("invalid patch version in '{}'", s))?
             .unwrap_or(0);
-        Ok(Semver { major, minor, patch })
+        Ok(Semver {
+            major,
+            minor,
+            patch,
+        })
     }
 }
 
@@ -419,7 +424,8 @@ pub fn pkg_install() -> Result<(), i32> {
                         std::os::unix::fs::symlink(
                             fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf()),
                             &dst,
-                        ).map_err(|e| {
+                        )
+                        .map_err(|e| {
                             eprintln!("error: failed to symlink '{}': {}", name, e);
                             1
                         })?;
@@ -431,7 +437,10 @@ pub fn pkg_install() -> Result<(), i32> {
                     }
                     count += 1;
                 } else {
-                    eprintln!("warning: path dependency '{}' not found at '{}'", name, path);
+                    eprintln!(
+                        "warning: path dependency '{}' not found at '{}'",
+                        name, path
+                    );
                 }
             }
         }
@@ -469,7 +478,10 @@ mod tests {
         let path = dir.path().join("adam.toml");
 
         let mut m = Manifest::new_project("test");
-        m.dependencies.insert("http".to_string(), DependencySpec::Version("1.0".to_string()));
+        m.dependencies.insert(
+            "http".to_string(),
+            DependencySpec::Version("1.0".to_string()),
+        );
 
         m.save_to(&path).unwrap();
         let loaded = Manifest::load_from(&path).unwrap();
@@ -527,14 +539,12 @@ target = "ios"
         let lock_path = dir.path().join("adam.lock");
 
         let lock = LockFile {
-            packages: vec![
-                LockedPackage {
-                    name: "http".to_string(),
-                    version: "2.0.1".to_string(),
-                    source: Some("registry".to_string()),
-                    checksum: Some("abc123".to_string()),
-                },
-            ],
+            packages: vec![LockedPackage {
+                name: "http".to_string(),
+                version: "2.0.1".to_string(),
+                source: Some("registry".to_string()),
+                checksum: Some("abc123".to_string()),
+            }],
         };
         let content = toml::to_string_pretty(&lock).unwrap();
         fs::write(&lock_path, content).unwrap();
@@ -577,24 +587,49 @@ git = "https://example.com/repo"
     #[test]
     fn test_semver_parse_full() {
         let v = Semver::parse("1.2.3").unwrap();
-        assert_eq!(v, Semver { major: 1, minor: 2, patch: 3 });
+        assert_eq!(
+            v,
+            Semver {
+                major: 1,
+                minor: 2,
+                patch: 3
+            }
+        );
     }
 
     #[test]
     fn test_semver_parse_major_minor() {
         let v = Semver::parse("2.5").unwrap();
-        assert_eq!(v, Semver { major: 2, minor: 5, patch: 0 });
+        assert_eq!(
+            v,
+            Semver {
+                major: 2,
+                minor: 5,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn test_semver_parse_major_only() {
         let v = Semver::parse("3").unwrap();
-        assert_eq!(v, Semver { major: 3, minor: 0, patch: 0 });
+        assert_eq!(
+            v,
+            Semver {
+                major: 3,
+                minor: 0,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn test_semver_display() {
-        let v = Semver { major: 1, minor: 2, patch: 3 };
+        let v = Semver {
+            major: 1,
+            minor: 2,
+            patch: 3,
+        };
         assert_eq!(v.to_string(), "1.2.3");
     }
 
@@ -671,7 +706,8 @@ git = "https://example.com/repo"
 
     #[test]
     fn test_resolve_version_dep() {
-        let locked = resolve_dependency("http", &DependencySpec::Version("1.5.0".to_string())).unwrap();
+        let locked =
+            resolve_dependency("http", &DependencySpec::Version("1.5.0".to_string())).unwrap();
         assert_eq!(locked.name, "http");
         assert_eq!(locked.version, "1.5.0");
         assert_eq!(locked.source, Some("registry".to_string()));
@@ -685,11 +721,15 @@ git = "https://example.com/repo"
 
     #[test]
     fn test_resolve_git_dep() {
-        let locked = resolve_dependency("json", &DependencySpec::Detailed(DetailedDep {
-            version: Some("1.0.0".to_string()),
-            git: Some("https://github.com/example/json".to_string()),
-            path: None,
-        })).unwrap();
+        let locked = resolve_dependency(
+            "json",
+            &DependencySpec::Detailed(DetailedDep {
+                version: Some("1.0.0".to_string()),
+                git: Some("https://github.com/example/json".to_string()),
+                path: None,
+            }),
+        )
+        .unwrap();
         assert_eq!(locked.name, "json");
         assert_eq!(locked.version, "1.0.0");
         assert!(locked.source.as_ref().unwrap().starts_with("git+"));
@@ -697,11 +737,15 @@ git = "https://example.com/repo"
 
     #[test]
     fn test_resolve_path_dep() {
-        let locked = resolve_dependency("local", &DependencySpec::Detailed(DetailedDep {
-            version: None,
-            git: None,
-            path: Some("../local".to_string()),
-        })).unwrap();
+        let locked = resolve_dependency(
+            "local",
+            &DependencySpec::Detailed(DetailedDep {
+                version: None,
+                git: None,
+                path: Some("../local".to_string()),
+            }),
+        )
+        .unwrap();
         assert_eq!(locked.version, "0.0.0");
         assert!(locked.source.as_ref().unwrap().starts_with("path+"));
     }
@@ -734,6 +778,9 @@ git = "https://example.com/repo"
         let loaded: LockFile = toml::from_str(&fs::read_to_string(&lock_path).unwrap()).unwrap();
         assert_eq!(loaded.packages.len(), 2);
         assert_eq!(loaded.packages[0].name, "http");
-        assert_eq!(loaded.packages[1].source, Some("git+https://github.com/example/json".to_string()));
+        assert_eq!(
+            loaded.packages[1].source,
+            Some("git+https://github.com/example/json".to_string())
+        );
     }
 }

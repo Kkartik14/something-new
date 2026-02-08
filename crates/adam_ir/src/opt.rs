@@ -73,38 +73,34 @@ fn fold_binary(op: BinOp, left: &Constant, right: &Constant) -> Option<Constant>
         }
 
         // Float operations.
-        (Constant::Float(a), Constant::Float(b)) => {
-            match op {
-                BinOp::Add => Some(Constant::Float(a + b)),
-                BinOp::Sub => Some(Constant::Float(a - b)),
-                BinOp::Mul => Some(Constant::Float(a * b)),
-                BinOp::Div => {
-                    if *b != 0.0 {
-                        Some(Constant::Float(a / b))
-                    } else {
-                        None
-                    }
+        (Constant::Float(a), Constant::Float(b)) => match op {
+            BinOp::Add => Some(Constant::Float(a + b)),
+            BinOp::Sub => Some(Constant::Float(a - b)),
+            BinOp::Mul => Some(Constant::Float(a * b)),
+            BinOp::Div => {
+                if *b != 0.0 {
+                    Some(Constant::Float(a / b))
+                } else {
+                    None
                 }
-                BinOp::Eq => Some(Constant::Bool(a == b)),
-                BinOp::NotEq => Some(Constant::Bool(a != b)),
-                BinOp::Lt => Some(Constant::Bool(a < b)),
-                BinOp::Gt => Some(Constant::Bool(a > b)),
-                BinOp::LtEq => Some(Constant::Bool(a <= b)),
-                BinOp::GtEq => Some(Constant::Bool(a >= b)),
-                _ => None,
             }
-        }
+            BinOp::Eq => Some(Constant::Bool(a == b)),
+            BinOp::NotEq => Some(Constant::Bool(a != b)),
+            BinOp::Lt => Some(Constant::Bool(a < b)),
+            BinOp::Gt => Some(Constant::Bool(a > b)),
+            BinOp::LtEq => Some(Constant::Bool(a <= b)),
+            BinOp::GtEq => Some(Constant::Bool(a >= b)),
+            _ => None,
+        },
 
         // Boolean operations.
-        (Constant::Bool(a), Constant::Bool(b)) => {
-            match op {
-                BinOp::And => Some(Constant::Bool(*a && *b)),
-                BinOp::Or => Some(Constant::Bool(*a || *b)),
-                BinOp::Eq => Some(Constant::Bool(a == b)),
-                BinOp::NotEq => Some(Constant::Bool(a != b)),
-                _ => None,
-            }
-        }
+        (Constant::Bool(a), Constant::Bool(b)) => match op {
+            BinOp::And => Some(Constant::Bool(*a && *b)),
+            BinOp::Or => Some(Constant::Bool(*a || *b)),
+            BinOp::Eq => Some(Constant::Bool(a == b)),
+            BinOp::NotEq => Some(Constant::Bool(a != b)),
+            _ => None,
+        },
 
         _ => None,
     }
@@ -247,7 +243,9 @@ fn simplify_cfg_function(func: &mut IrFunction) {
 pub fn remove_nops(module: &mut IrModule) {
     for func in &mut module.functions {
         for block in &mut func.blocks {
-            block.instructions.retain(|i| !matches!(i, Instruction::Nop));
+            block
+                .instructions
+                .retain(|i| !matches!(i, Instruction::Nop));
         }
     }
 }
@@ -336,8 +334,11 @@ fn replace_operands_in_rvalue(
             replace_operand(b, copies);
         }
         RValue::ChanRecv(op) => replace_operand(op, copies),
-        RValue::Constant(_) | RValue::HeapAlloc(_) | RValue::ChanCreate(_, _)
-        | RValue::Ref(_) | RValue::MutRef(_) => {}
+        RValue::Constant(_)
+        | RValue::HeapAlloc(_)
+        | RValue::ChanCreate(_, _)
+        | RValue::Ref(_)
+        | RValue::MutRef(_) => {}
     }
 }
 
@@ -437,15 +438,15 @@ fn replace_const_operands_in_rvalue(
             replace_const_operand(b, constants);
         }
         RValue::ChanRecv(op) => replace_const_operand(op, constants),
-        RValue::Constant(_) | RValue::HeapAlloc(_) | RValue::ChanCreate(_, _)
-        | RValue::Ref(_) | RValue::MutRef(_) => {}
+        RValue::Constant(_)
+        | RValue::HeapAlloc(_)
+        | RValue::ChanCreate(_, _)
+        | RValue::Ref(_)
+        | RValue::MutRef(_) => {}
     }
 }
 
-fn replace_const_operand(
-    op: &mut Operand,
-    constants: &std::collections::HashMap<VarId, Constant>,
-) {
+fn replace_const_operand(op: &mut Operand, constants: &std::collections::HashMap<VarId, Constant>) {
     if let Operand::Var(var) = op {
         if let Some(c) = constants.get(var) {
             *op = Operand::Constant(c.clone());
@@ -494,8 +495,17 @@ pub fn function_inline(module: &mut IrModule) {
 
     // Phase 2: For each function, inline calls to inlineable functions.
     // We need to collect changes first, then apply (to avoid borrow issues).
-    let callee_data: HashMap<String, (Vec<IrParam>, Vec<Instruction>, Option<Operand>, Vec<IrLocal>)> =
-        inlineable.iter().map(|(name, &idx)| {
+    let callee_data: HashMap<
+        String,
+        (
+            Vec<IrParam>,
+            Vec<Instruction>,
+            Option<Operand>,
+            Vec<IrLocal>,
+        ),
+    > = inlineable
+        .iter()
+        .map(|(name, &idx)| {
             let func = &module.functions[idx];
             let ret_operand = if let Terminator::Return(op) = &func.blocks[0].terminator {
                 op.clone()
@@ -511,7 +521,8 @@ pub fn function_inline(module: &mut IrModule) {
                     func.locals.clone(),
                 ),
             )
-        }).collect();
+        })
+        .collect();
 
     for func in &mut module.functions {
         let mut max_var_id = func.locals.iter().map(|l| l.id).max().unwrap_or(0);
@@ -520,20 +531,33 @@ pub fn function_inline(module: &mut IrModule) {
             let mut new_instructions = Vec::new();
 
             for instr in block.instructions.drain(..) {
-                if let Instruction::Assign(dst, RValue::CallNamed(ref callee_name, ref args)) = instr {
-                    if let Some((params, callee_instrs, ret_op, callee_locals)) = callee_data.get(callee_name) {
+                if let Instruction::Assign(dst, RValue::CallNamed(ref callee_name, ref args)) =
+                    instr
+                {
+                    if let Some((params, callee_instrs, ret_op, callee_locals)) =
+                        callee_data.get(callee_name)
+                    {
                         // Build var remapping: param vars -> argument operands, local vars -> fresh vars.
                         let var_offset = max_var_id + 1;
 
                         // Map callee param indices to argument operands.
-                        let param_to_arg: HashMap<VarId, Operand> = callee_locals.iter()
+                        let param_to_arg: HashMap<VarId, Operand> = callee_locals
+                            .iter()
                             .enumerate()
                             .filter(|(i, _)| *i < params.len())
-                            .map(|(i, local)| (local.id, args.get(i).cloned().unwrap_or(Operand::Constant(Constant::Unit))))
+                            .map(|(i, local)| {
+                                (
+                                    local.id,
+                                    args.get(i)
+                                        .cloned()
+                                        .unwrap_or(Operand::Constant(Constant::Unit)),
+                                )
+                            })
                             .collect();
 
                         // Map callee local vars to fresh vars (offset by var_offset).
-                        let var_remap: HashMap<VarId, VarId> = callee_locals.iter()
+                        let var_remap: HashMap<VarId, VarId> = callee_locals
+                            .iter()
                             .filter(|l| !param_to_arg.contains_key(&l.id))
                             .map(|l| (l.id, l.id + var_offset))
                             .collect();
@@ -542,14 +566,16 @@ pub fn function_inline(module: &mut IrModule) {
 
                         // Clone and remap instructions.
                         for callee_instr in callee_instrs {
-                            let remapped = remap_instruction(callee_instr, &param_to_arg, &var_remap);
+                            let remapped =
+                                remap_instruction(callee_instr, &param_to_arg, &var_remap);
                             new_instructions.push(remapped);
                         }
 
                         // Map the return value to the destination.
                         if let Some(ret) = ret_op {
                             let remapped_ret = remap_operand(ret, &param_to_arg, &var_remap);
-                            new_instructions.push(Instruction::Assign(dst, RValue::Use(remapped_ret)));
+                            new_instructions
+                                .push(Instruction::Assign(dst, RValue::Use(remapped_ret)));
                         }
 
                         continue; // Skip original call instruction.
@@ -598,15 +624,21 @@ fn remap_rvalue(
         RValue::Constant(c) => RValue::Constant(c.clone()),
         RValue::Call(id, args) => RValue::Call(
             *id,
-            args.iter().map(|a| remap_operand(a, param_to_arg, var_remap)).collect(),
+            args.iter()
+                .map(|a| remap_operand(a, param_to_arg, var_remap))
+                .collect(),
         ),
         RValue::CallNamed(name, args) => RValue::CallNamed(
             name.clone(),
-            args.iter().map(|a| remap_operand(a, param_to_arg, var_remap)).collect(),
+            args.iter()
+                .map(|a| remap_operand(a, param_to_arg, var_remap))
+                .collect(),
         ),
         RValue::Aggregate(kind, args) => RValue::Aggregate(
             kind.clone(),
-            args.iter().map(|a| remap_operand(a, param_to_arg, var_remap)).collect(),
+            args.iter()
+                .map(|a| remap_operand(a, param_to_arg, var_remap))
+                .collect(),
         ),
         RValue::Field(op, idx) => RValue::Field(remap_operand(op, param_to_arg, var_remap), *idx),
         RValue::Index(a, b) => RValue::Index(
@@ -616,7 +648,9 @@ fn remap_rvalue(
         RValue::Ref(v) => RValue::Ref(var_remap.get(v).copied().unwrap_or(*v)),
         RValue::MutRef(v) => RValue::MutRef(var_remap.get(v).copied().unwrap_or(*v)),
         RValue::Deref(op) => RValue::Deref(remap_operand(op, param_to_arg, var_remap)),
-        RValue::Cast(op, ty) => RValue::Cast(remap_operand(op, param_to_arg, var_remap), ty.clone()),
+        RValue::Cast(op, ty) => {
+            RValue::Cast(remap_operand(op, param_to_arg, var_remap), ty.clone())
+        }
         RValue::HeapAlloc(ty) => RValue::HeapAlloc(ty.clone()),
         RValue::ChanCreate(ty, cap) => RValue::ChanCreate(ty.clone(), *cap),
         RValue::ChanSend(a, b) => RValue::ChanSend(

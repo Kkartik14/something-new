@@ -1,9 +1,9 @@
 //! Type checker test suite — 65+ tests covering inference, checking, and error detection.
 
-use adam_lexer::Lexer;
-use adam_parser::Parser;
 use crate::checker::TypeChecker;
 use crate::ty::*;
+use adam_lexer::Lexer;
+use adam_parser::Parser;
 
 // ============================================================
 // Helpers
@@ -69,35 +69,50 @@ fn test_infer_integer() {
     let result = typecheck_ok("fn main() {\n    x := 5\n}");
     // The integer literal 5 should be inferred as i32.
     // Look for the i32 type in expr_types.
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Expected i32 type for integer literal");
 }
 
 #[test]
 fn test_infer_float() {
     let result = typecheck_ok("fn main() {\n    x := 5.0\n}");
-    let has_f64 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::F64);
+    let has_f64 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::F64);
     assert!(has_f64, "Expected f64 type for float literal");
 }
 
 #[test]
 fn test_infer_string() {
     let result = typecheck_ok("fn main() {\n    x := \"hello\"\n}");
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
     assert!(has_string, "Expected String type for string literal");
 }
 
 #[test]
 fn test_infer_bool() {
     let result = typecheck_ok("fn main() {\n    x := true\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "Expected bool type for boolean literal");
 }
 
 #[test]
 fn test_infer_char() {
     let result = typecheck_ok("fn main() {\n    x := 'a'\n}");
-    let has_char = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Char);
+    let has_char = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Char);
     assert!(has_char, "Expected char type for char literal");
 }
 
@@ -128,9 +143,10 @@ fn test_infer_tuple() {
 #[test]
 fn test_infer_nil() {
     let result = typecheck_ok("fn main() {\n    x := nil\n}");
-    let has_optional = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Optional(_))
-    });
+    let has_optional = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Optional(_)));
     assert!(has_optional, "Expected ?T type for nil literal");
 }
 
@@ -162,14 +178,20 @@ fn test_explicit_type_string() {
 #[test]
 fn test_binary_add_i32() {
     let result = typecheck_ok("fn main() {\n    x := 1 + 2\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "1 + 2 should produce i32");
 }
 
 #[test]
 fn test_binary_add_f64() {
     let result = typecheck_ok("fn main() {\n    x := 1.0 + 2.0\n}");
-    let has_f64 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::F64);
+    let has_f64 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::F64);
     assert!(has_f64, "1.0 + 2.0 should produce f64");
 }
 
@@ -185,28 +207,40 @@ fn test_binary_mismatch() {
 #[test]
 fn test_binary_sub() {
     let result = typecheck_ok("fn main() {\n    x := 5 - 3\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "5 - 3 should produce i32");
 }
 
 #[test]
 fn test_binary_mul() {
     let result = typecheck_ok("fn main() {\n    x := 2 * 3\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "2 * 3 should produce i32");
 }
 
 #[test]
 fn test_binary_div() {
     let result = typecheck_ok("fn main() {\n    x := 10 / 2\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "10 / 2 should produce i32");
 }
 
 #[test]
 fn test_binary_mod() {
     let result = typecheck_ok("fn main() {\n    x := 10 % 3\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "10 % 3 should produce i32");
 }
 
@@ -217,35 +251,50 @@ fn test_binary_mod() {
 #[test]
 fn test_comparison_lt() {
     let result = typecheck_ok("fn main() {\n    x := 1 < 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 < 2 should produce bool");
 }
 
 #[test]
 fn test_comparison_gt() {
     let result = typecheck_ok("fn main() {\n    x := 1 > 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 > 2 should produce bool");
 }
 
 #[test]
 fn test_comparison_eq() {
     let result = typecheck_ok("fn main() {\n    x := 1 == 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 == 2 should produce bool");
 }
 
 #[test]
 fn test_logical_and() {
     let result = typecheck_ok("fn main() {\n    x := true && false\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "true && false should produce bool");
 }
 
 #[test]
 fn test_logical_or() {
     let result = typecheck_ok("fn main() {\n    x := true || false\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "true || false should produce bool");
 }
 
@@ -269,14 +318,20 @@ fn test_logical_non_bool() {
 #[test]
 fn test_unary_neg() {
     let result = typecheck_ok("fn main() {\n    x := -5\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "-5 should produce i32");
 }
 
 #[test]
 fn test_unary_not() {
     let result = typecheck_ok("fn main() {\n    x := !true\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "!true should produce bool");
 }
 
@@ -293,9 +348,9 @@ fn test_unary_neg_non_numeric() {
 #[test]
 fn test_unary_ref() {
     let result = typecheck_ok("fn main() {\n    x := 5\n    y := &x\n}");
-    let has_ref = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Ref(inner) if *result.ctx.ty(*inner) == Ty::I32)
-    });
+    let has_ref = result.expr_types.values().any(
+        |&id| matches!(result.ctx.ty(id), Ty::Ref(inner) if *result.ctx.ty(*inner) == Ty::I32),
+    );
     assert!(has_ref, "&x should produce &i32");
 }
 
@@ -311,7 +366,10 @@ fn main() {
     y := foo(5)
 }"#;
     let result = typecheck_ok(src);
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "foo(5) should produce i32");
 }
 
@@ -364,7 +422,10 @@ fn main() {
     x := c.get()
 }"#;
     let result = typecheck_ok(src);
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Counter.get() should produce i32");
 }
 
@@ -384,7 +445,10 @@ fn main() {
     val := p.x
 }"#;
     let result = typecheck_ok(src);
-    let has_f64 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::F64);
+    let has_f64 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::F64);
     assert!(has_f64, "p.x should produce f64");
 }
 
@@ -421,10 +485,14 @@ fn main() {
     p := Point { x: 1.0, y: 2.0 }
 }"#;
     let result = typecheck_ok(src);
-    let has_struct = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Struct(_))
-    });
-    assert!(has_struct, "Point struct literal should produce Struct type");
+    let has_struct = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Struct(_)));
+    assert!(
+        has_struct,
+        "Point struct literal should produce Struct type"
+    );
 }
 
 #[test]
@@ -506,8 +574,14 @@ fn test_match_basic() {
     }
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "match arms returning strings should produce String");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "match arms returning strings should produce String"
+    );
 }
 
 #[test]
@@ -569,7 +643,10 @@ fn main() {
     }
 }"#;
     let result = typecheck_ok(src);
-    assert!(result.errors.is_empty(), "Wildcard should cover remaining variants");
+    assert!(
+        result.errors.is_empty(),
+        "Wildcard should cover remaining variants"
+    );
 }
 
 // ============================================================
@@ -623,9 +700,10 @@ fn test_closure() {
     add := |a i32, b i32| a + b
 }"#;
     let result = typecheck_ok(src);
-    let has_fn = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Function(_))
-    });
+    let has_fn = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Function(_)));
     assert!(has_fn, "Closure should produce a Function type");
 }
 
@@ -693,9 +771,10 @@ fn main() {
     // The function body returns i32 which mismatches i32 ! String,
     // so there will be an error from the function definition.
     // But the call expression itself should produce a Result type.
-    let has_result = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Result(_, _))
-    });
+    let has_result = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Result(_, _)));
     assert!(has_result, "read() call should produce a Result type");
 }
 
@@ -722,9 +801,9 @@ fn test_chan_create() {
     ch := chan[i32]()
 }"#;
     let result = typecheck_ok(src);
-    let has_chan = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Channel(inner) if *result.ctx.ty(*inner) == Ty::I32)
-    });
+    let has_chan = result.expr_types.values().any(
+        |&id| matches!(result.ctx.ty(id), Ty::Channel(inner) if *result.ctx.ty(*inner) == Ty::I32),
+    );
     assert!(has_chan, "chan[i32]() should produce Channel(i32) type");
 }
 
@@ -771,7 +850,10 @@ fn test_index_array() {
 }"#;
     let result = typecheck_ok(src);
     // arr[0] should produce i32 (element type of [i32]).
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "arr[0] should produce i32");
 }
 
@@ -862,9 +944,10 @@ fn main() {
     s := Circle(5.0)
 }"#;
     let result = typecheck_ok(src);
-    let has_enum = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Enum(_))
-    });
+    let has_enum = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Enum(_)));
     assert!(has_enum, "Circle(5.0) should produce an Enum type");
 }
 
@@ -918,7 +1001,10 @@ fn test_string_interpolation() {
     msg := "hello {name}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
     assert!(has_string, "String interpolation should produce String");
 }
 
@@ -929,8 +1015,14 @@ fn test_string_interpolation_with_int() {
     msg := "value is {x}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "String interpolation with int should produce String");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "String interpolation with int should produce String"
+    );
 }
 
 #[test]
@@ -940,8 +1032,14 @@ fn test_string_interpolation_with_float() {
     msg := "pi is {x}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "String interpolation with float should produce String");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "String interpolation with float should produce String"
+    );
 }
 
 #[test]
@@ -951,8 +1049,14 @@ fn test_string_interpolation_with_bool() {
     msg := "flag is {b}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "String interpolation with bool should produce String");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "String interpolation with bool should produce String"
+    );
 }
 
 #[test]
@@ -975,8 +1079,14 @@ fn test_string_interpolation_multiple_parts() {
     msg := "x={x} y={y}"
 }"#;
     let result = typecheck_ok(src);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "Multi-part string interpolation should produce String");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "Multi-part string interpolation should produce String"
+    );
 }
 
 // ============================================================
@@ -1055,7 +1165,10 @@ fn test_chained_comparisons_with_logical() {
     z := x > 0 && y < 20
 }"#;
     let result = typecheck_ok(src);
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "Chained comparison should produce bool");
 }
 
@@ -1115,28 +1228,40 @@ fn main() {
 #[test]
 fn test_bool_literal_false() {
     let result = typecheck_ok("fn main() {\n    x := false\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "false should produce bool");
 }
 
 #[test]
 fn test_comparison_lteq() {
     let result = typecheck_ok("fn main() {\n    x := 1 <= 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 <= 2 should produce bool");
 }
 
 #[test]
 fn test_comparison_gteq() {
     let result = typecheck_ok("fn main() {\n    x := 1 >= 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 >= 2 should produce bool");
 }
 
 #[test]
 fn test_comparison_neq() {
     let result = typecheck_ok("fn main() {\n    x := 1 != 2\n}");
-    let has_bool = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::Bool);
+    let has_bool = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::Bool);
     assert!(has_bool, "1 != 2 should produce bool");
 }
 
@@ -1186,7 +1311,10 @@ fn test_chan_buffered() {
     let has_chan = result.expr_types.values().any(|&id| {
         matches!(result.ctx.ty(id), Ty::Channel(inner) if *result.ctx.ty(*inner) == Ty::String)
     });
-    assert!(has_chan, "chan[String](10) should produce Channel(String) type");
+    assert!(
+        has_chan,
+        "chan[String](10) should produce Channel(String) type"
+    );
 }
 
 #[test]
@@ -1195,10 +1323,14 @@ fn test_empty_array() {
     arr := []
 }"#;
     let result = typecheck_ok(src);
-    let has_array = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Array(_, None))
-    });
-    assert!(has_array, "Empty array literal should produce Array type with type var");
+    let has_array = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Array(_, None)));
+    assert!(
+        has_array,
+        "Empty array literal should produce Array type with type var"
+    );
 }
 
 #[test]
@@ -1299,10 +1431,14 @@ fn test_closure_no_type_annotations() {
     f := |x| x
 }"#;
     let result = typecheck_ok(src);
-    let has_fn = result.expr_types.values().any(|&id| {
-        matches!(result.ctx.ty(id), Ty::Function(_))
-    });
-    assert!(has_fn, "Closure without type annotations should produce Function type");
+    let has_fn = result
+        .expr_types
+        .values()
+        .any(|&id| matches!(result.ctx.ty(id), Ty::Function(_)));
+    assert!(
+        has_fn,
+        "Closure without type annotations should produce Function type"
+    );
 }
 
 #[test]
@@ -1311,7 +1447,10 @@ fn test_f64_arithmetic() {
     x := 1.5 * 2.5 + 3.0 - 0.5
 }"#;
     let result = typecheck_ok(src);
-    let has_f64 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::F64);
+    let has_f64 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::F64);
     assert!(has_f64, "f64 arithmetic should produce f64");
 }
 
@@ -1367,12 +1506,12 @@ fn regression_comparison_on_non_orderable_type() {
     // Bug: comparison operators (<, >, <=, >=) accepted any type including
     // String, bool, etc. instead of requiring numeric or char types.
     let result = typecheck("fn cmp(a String, b String) -> bool {\n    return a < b\n}");
+    assert!(error_count(&result) >= 1, "< on String must be an error");
     assert!(
-        error_count(&result) >= 1,
-        "< on String must be an error"
-    );
-    assert!(
-        result.errors.iter().any(|e| e.message.contains("comparison")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("comparison")),
         "error should mention comparison"
     );
 }
@@ -1398,7 +1537,10 @@ fn regression_field_access_on_non_struct() {
         "field access on i32 must be an error"
     );
     assert!(
-        result.errors.iter().any(|e| e.message.contains("field") || e.message.contains("no field")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("field") || e.message.contains("no field")),
         "error should mention field access"
     );
 }
@@ -1413,7 +1555,10 @@ fn regression_for_loop_over_non_iterable() {
         "iterating over i32 must be an error"
     );
     assert!(
-        result.errors.iter().any(|e| e.message.contains("iterate") || e.message.contains("iterable")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("iterate") || e.message.contains("iterable")),
         "error should mention iteration"
     );
 }
@@ -1428,7 +1573,10 @@ fn regression_method_on_unknown_type() {
         "calling nonexistent method on i32 must be an error"
     );
     assert!(
-        result.errors.iter().any(|e| e.message.contains("method") || e.message.contains("no method")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("method") || e.message.contains("no method")),
         "error should mention method"
     );
 }
@@ -1437,13 +1585,18 @@ fn regression_method_on_unknown_type() {
 fn regression_struct_literal_missing_fields() {
     // Bug: struct literal with missing fields was silently accepted.
     // Point { x: 1 } when Point has both x and y should be an error.
-    let result = typecheck("struct Point {\n    x i32\n    y i32\n}\nfn make() {\n    p := Point { x: 1 }\n}");
+    let result = typecheck(
+        "struct Point {\n    x i32\n    y i32\n}\nfn make() {\n    p := Point { x: 1 }\n}",
+    );
     assert!(
         error_count(&result) >= 1,
         "struct literal with missing field y must be an error"
     );
     assert!(
-        result.errors.iter().any(|e| e.message.contains("missing") && e.message.contains("y")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("missing") && e.message.contains("y")),
         "error should mention missing field y"
     );
 }
@@ -1470,30 +1623,46 @@ fn generic_identity_function() {
     // fn id[T](x T) -> T { x } — basic generic that returns its argument.
     let result = typecheck_ok("fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n}");
     // The call id(42) should infer T = i32, so the result should be i32.
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Expected i32 type inferred from id(42)");
 }
 
 #[test]
 fn generic_identity_with_string() {
     // Same generic identity but called with a String.
-    let result = typecheck_ok("fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(\"hello\")\n}");
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
-    assert!(has_string, "Expected String type inferred from id(\"hello\")");
+    let result =
+        typecheck_ok("fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(\"hello\")\n}");
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
+    assert!(
+        has_string,
+        "Expected String type inferred from id(\"hello\")"
+    );
 }
 
 #[test]
 fn generic_two_params_same_type() {
     // fn pick[T](a T, b T) -> T { a } — both params must be same type.
-    let result = typecheck_ok("fn pick[T](a T, b T) -> T {\n    a\n}\nfn main() {\n    x := pick(1, 2)\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let result =
+        typecheck_ok("fn pick[T](a T, b T) -> T {\n    a\n}\nfn main() {\n    x := pick(1, 2)\n}");
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Expected i32 from pick(1, 2)");
 }
 
 #[test]
 fn generic_two_params_mismatch() {
     // pick(1, "hello") should fail because T can't be both i32 and String.
-    let result = typecheck("fn pick[T](a T, b T) -> T {\n    a\n}\nfn main() {\n    x := pick(1, \"hello\")\n}");
+    let result = typecheck(
+        "fn pick[T](a T, b T) -> T {\n    a\n}\nfn main() {\n    x := pick(1, \"hello\")\n}",
+    );
     assert!(
         error_count(&result) >= 1,
         "pick(1, \"hello\") should produce a type mismatch error"
@@ -1503,8 +1672,13 @@ fn generic_two_params_mismatch() {
 #[test]
 fn generic_multiple_type_params() {
     // fn pair[A, B](a A, b B) -> A { a } — two independent type params.
-    let result = typecheck_ok("fn pair[A, B](a A, b B) -> A {\n    a\n}\nfn main() {\n    x := pair(42, \"hello\")\n}");
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let result = typecheck_ok(
+        "fn pair[A, B](a A, b B) -> A {\n    a\n}\nfn main() {\n    x := pair(42, \"hello\")\n}",
+    );
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Expected i32 from pair(42, \"hello\")");
 }
 
@@ -1513,10 +1687,16 @@ fn generic_multiple_call_sites() {
     // Each call site should instantiate independently.
     // id(42) infers T=i32, id("hello") infers T=String — both should succeed.
     let result = typecheck_ok(
-        "fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n    b := id(\"hello\")\n}"
+        "fn id[T](x T) -> T {\n    x\n}\nfn main() {\n    a := id(42)\n    b := id(\"hello\")\n}",
     );
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
-    let has_string = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::String);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_string = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::String);
     assert!(has_i32, "First call should infer i32");
     assert!(has_string, "Second call should infer String");
 }
@@ -1550,7 +1730,10 @@ fn trait_bound_satisfied() {
     let result = typecheck_ok(
         "trait Numeric {\n    fn zero() -> i32\n}\nimpl Numeric for i32 {\n    fn zero() -> i32 {\n        0\n    }\n}\nfn double[T: Numeric](x T) -> T {\n    x\n}\nfn main() {\n    a := double(42)\n}"
     );
-    let has_i32 = result.expr_types.values().any(|&id| *result.ctx.ty(id) == Ty::I32);
+    let has_i32 = result
+        .expr_types
+        .values()
+        .any(|&id| *result.ctx.ty(id) == Ty::I32);
     assert!(has_i32, "Expected i32 from double(42)");
 }
 
@@ -1565,7 +1748,10 @@ fn trait_bound_not_satisfied() {
         "Expected trait bound error for String not implementing Numeric"
     );
     assert!(
-        result.errors.iter().any(|e| e.message.contains("does not implement trait")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("does not implement trait")),
         "Error should mention trait bound violation: {:?}",
         result.errors
     );
@@ -1600,7 +1786,10 @@ fn trait_bound_arg_count_includes_fn_name() {
     // Improved error message should include the function name.
     let result = typecheck("fn add(a i32, b i32) -> i32 {\n    a\n}\nfn main() {\n    add(1)\n}");
     assert!(
-        result.errors.iter().any(|e| e.message.contains("add") && e.message.contains("2 arguments")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("add") && e.message.contains("2 arguments")),
         "Error should mention function name 'add': {:?}",
         result.errors
     );
@@ -1615,7 +1804,10 @@ fn error_undefined_variable_suggestion() {
     // Typo: "countr" when "counter" exists → should suggest "counter".
     let result = typecheck("fn main() {\n    counter := 5\n    x := countr\n}");
     assert!(
-        result.errors.iter().any(|e| e.message.contains("did you mean") && e.message.contains("counter")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("did you mean") && e.message.contains("counter")),
         "Error should suggest 'counter': {:?}",
         result.errors
     );
@@ -1626,7 +1818,10 @@ fn error_non_exhaustive_match_shows_type() {
     // Match on i32 without wildcard should mention the type.
     let result = typecheck("fn main() {\n    x := 5\n    match x {\n        1 => { 1 }\n    }\n}");
     assert!(
-        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("i32")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("non-exhaustive") && e.message.contains("i32")),
         "Error should mention type 'i32': {:?}",
         result.errors
     );
@@ -1677,7 +1872,10 @@ fn describe(o Opt) -> i32 {
 }"#;
     let result = typecheck_with_errors(src);
     assert!(
-        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("Some")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("non-exhaustive") && e.message.contains("Some")),
         "Should report missing Some(Square): {:?}",
         result.errors
     );
@@ -1739,7 +1937,10 @@ fn get(o Opt) -> i32 {
 }"#;
     let result = typecheck_with_errors(src);
     assert!(
-        result.errors.iter().any(|e| e.message.contains("non-exhaustive") && e.message.contains("None")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("non-exhaustive") && e.message.contains("None")),
         "Should report missing None: {:?}",
         result.errors
     );
@@ -1784,7 +1985,10 @@ fn non_exhaustive_bool_missing_false() {
 }"#;
     let result = typecheck_with_errors(src);
     assert!(
-        result.errors.iter().any(|e| e.message.contains("non-exhaustive")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("non-exhaustive")),
         "Should report non-exhaustive bool match: {:?}",
         result.errors
     );
@@ -1833,7 +2037,10 @@ fn process(r Res) -> i32 {
 }"#;
     let result = typecheck_with_errors(src);
     assert!(
-        result.errors.iter().any(|e| e.message.contains("non-exhaustive")),
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("non-exhaustive")),
         "Should report missing Ok(Some(Triangle)): {:?}",
         result.errors
     );

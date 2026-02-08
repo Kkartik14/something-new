@@ -1,7 +1,7 @@
 //! Document management — tracks open files and their analysis state.
 
+use crate::analysis::{analyze, AnalysisResult};
 use std::collections::HashMap;
-use crate::analysis::{AnalysisResult, analyze};
 
 /// An open document in the editor.
 #[derive(Debug)]

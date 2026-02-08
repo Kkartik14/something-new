@@ -170,8 +170,13 @@ mod tests {
 
     #[test]
     fn test_match_with_many_arms() {
-        let arms: Vec<String> = (0..100).map(|i| format!("    {} => {}", i, i * 2)).collect();
-        let source = format!("fn f(x: Int) -> Int {{\n    match x {{\n{}\n    }}\n}}", arms.join("\n"));
+        let arms: Vec<String> = (0..100)
+            .map(|i| format!("    {} => {}", i, i * 2))
+            .collect();
+        let source = format!(
+            "fn f(x: Int) -> Int {{\n    match x {{\n{}\n    }}\n}}",
+            arms.join("\n")
+        );
         let result = parse(&source);
         let _ = result;
     }

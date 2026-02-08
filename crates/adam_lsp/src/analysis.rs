@@ -33,7 +33,10 @@ impl Range {
 
     pub fn point(line: u32, character: u32) -> Self {
         let pos = Position::new(line, character);
-        Self { start: pos, end: pos }
+        Self {
+            start: pos,
+            end: pos,
+        }
     }
 }
 
@@ -87,7 +90,9 @@ pub struct AnalysisResult {
 
 impl AnalysisResult {
     pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| d.severity == DiagnosticSeverity::Error)
+        self.diagnostics
+            .iter()
+            .any(|d| d.severity == DiagnosticSeverity::Error)
     }
 }
 
@@ -193,8 +198,16 @@ pub fn analyze(source: &str) -> AnalysisResult {
     // Phase 5: Borrow check.
     let borrow_result = adam_borrow::BorrowChecker::new().check(
         &ast,
-        if resolve_result.errors.is_empty() { Some(&resolve_result) } else { None },
-        if type_result.errors.is_empty() { Some(&type_result) } else { None },
+        if resolve_result.errors.is_empty() {
+            Some(&resolve_result)
+        } else {
+            None
+        },
+        if type_result.errors.is_empty() {
+            Some(&type_result)
+        } else {
+            None
+        },
     );
     for err in &borrow_result.errors {
         diagnostics.push(Diagnostic::error(
@@ -296,9 +309,7 @@ mod tests {
     #[test]
     fn test_analysis_has_errors() {
         let result = AnalysisResult {
-            diagnostics: vec![
-                Diagnostic::error(Range::point(0, 0), "err", "test"),
-            ],
+            diagnostics: vec![Diagnostic::error(Range::point(0, 0), "err", "test")],
             tokens: vec![],
             ast: None,
             resolve_result: None,
@@ -310,9 +321,7 @@ mod tests {
     #[test]
     fn test_analysis_no_errors() {
         let result = AnalysisResult {
-            diagnostics: vec![
-                Diagnostic::warning(Range::point(0, 0), "warn", "test"),
-            ],
+            diagnostics: vec![Diagnostic::warning(Range::point(0, 0), "warn", "test")],
             tokens: vec![],
             ast: None,
             resolve_result: None,

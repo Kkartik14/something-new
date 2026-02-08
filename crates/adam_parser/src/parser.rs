@@ -1,7 +1,7 @@
 //! Parser infrastructure — token navigation, error handling, synchronization.
 
-use adam_lexer::{Token, TokenKind, Span as LexSpan};
-use adam_ast::common::{Span, Ident};
+use adam_ast::common::{Ident, Span};
+use adam_lexer::{Span as LexSpan, Token, TokenKind};
 
 /// Convert lexer span to AST span.
 pub(crate) fn span(lex: LexSpan) -> Span {
@@ -26,7 +26,11 @@ impl ParseError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}..{}] {}", self.span.start, self.span.end, self.message)
+        write!(
+            f,
+            "[{}..{}] {}",
+            self.span.start, self.span.end, self.message
+        )
     }
 }
 
@@ -154,11 +158,7 @@ impl Parser {
         if self.current().kind == kind {
             Ok(self.advance())
         } else {
-            Err(self.error_at_current(&format!(
-                "expected {}, found {}",
-                kind,
-                self.current().kind
-            )))
+            Err(self.error_at_current(&format!("expected {}, found {}", kind, self.current().kind)))
         }
     }
 

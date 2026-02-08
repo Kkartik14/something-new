@@ -55,7 +55,8 @@ pub fn resolve_multi(
         for item in &mod_ast.items {
             if let Some((name, vis)) = item_name_and_visibility(&item.node) {
                 if vis == Visibility::Public {
-                    resolver.module_exports
+                    resolver
+                        .module_exports
                         .entry(mod_path.clone())
                         .or_default()
                         .push(name.to_string());
@@ -153,9 +154,9 @@ impl Resolver {
         };
         self.declarations.push(decl);
 
-        if let Err(existing_id) =
-            self.scope_tree
-                .declare(self.current_scope, name.to_string(), id)
+        if let Err(existing_id) = self
+            .scope_tree
+            .declare(self.current_scope, name.to_string(), id)
         {
             let prev_span = self.declarations[existing_id as usize].span;
             self.errors.push(ResolveError::new(
@@ -238,11 +239,7 @@ impl Resolver {
                 self.declare(&e.name.name, DeclKind::Enum, e.name.span);
                 // Also declare variant names at module level.
                 for variant in &e.variants {
-                    self.declare(
-                        &variant.name.name,
-                        DeclKind::EnumVariant,
-                        variant.name.span,
-                    );
+                    self.declare(&variant.name.name, DeclKind::EnumVariant, variant.name.span);
                 }
             }
             Item::Trait(t) => {
@@ -421,11 +418,7 @@ impl Resolver {
 
         // Declare view fields (@state, @prop, @binding).
         for field in &view.fields {
-            self.declare(
-                &field.name.name,
-                DeclKind::ViewField,
-                field.name.span,
-            );
+            self.declare(&field.name.name, DeclKind::ViewField, field.name.span);
             self.resolve_type(&field.ty.node);
             if let Some(default) = &field.default {
                 self.resolve_expr(&default.node);
@@ -478,7 +471,9 @@ impl Resolver {
                 if let Some(exports) = self.module_exports.get(&mod_path).cloned() {
                     if let Some(&mod_scope) = self.module_scopes.get(&mod_path) {
                         for export_name in &exports {
-                            if let Some(decl_id) = self.scope_tree.lookup_local(mod_scope, export_name) {
+                            if let Some(decl_id) =
+                                self.scope_tree.lookup_local(mod_scope, export_name)
+                            {
                                 let kind = self.declarations[decl_id as usize].kind.clone();
                                 let span = self.declarations[decl_id as usize].span;
                                 self.declare(export_name, kind, span);

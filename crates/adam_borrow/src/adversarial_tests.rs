@@ -31,11 +31,7 @@ fn borrow_check(src: &str) -> BorrowCheckResult {
     let resolve_result = resolve(&parse_result.ast);
     let type_result = TypeChecker::new().check(&parse_result.ast);
 
-    BorrowChecker::new().check(
-        &parse_result.ast,
-        Some(&resolve_result),
-        Some(&type_result),
-    )
+    BorrowChecker::new().check(&parse_result.ast, Some(&resolve_result), Some(&type_result))
 }
 
 fn assert_no_errors(src: &str) {
@@ -73,10 +69,7 @@ fn assert_error_count(src: &str, n: usize) -> BorrowCheckResult {
 }
 
 fn assert_error_contains(result: &BorrowCheckResult, substr: &str) {
-    let has = result
-        .errors
-        .iter()
-        .any(|e| e.message.contains(substr));
+    let has = result.errors.iter().any(|e| e.message.contains(substr));
     assert!(
         has,
         "no error message contains '{}'; errors: {:?}",
@@ -310,9 +303,11 @@ fn adversarial_05_closure_captures_non_copy_in_loop() {
     // The closure captures s (non-Copy). In a loop, the second iteration
     // would capture an already-moved value. This should be an error.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Closure captures of non-Copy variables in a loop \
+        panic!(
+            "BUG FOUND: Closure captures of non-Copy variables in a loop \
                 are not detected. The variable is captured (moved) on the \
-                first iteration but the checker doesn't track this.");
+                first iteration but the checker doesn't track this."
+        );
     }
 }
 
@@ -330,9 +325,11 @@ fn adversarial_05b_closure_captures_then_use_after() {
     );
     // s is captured by the closure — it should be moved.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Closure captures of non-Copy variables do not \
+        panic!(
+            "BUG FOUND: Closure captures of non-Copy variables do not \
                 mark the variable as moved from the outer scope. \
-                Variable 's' used after being captured by closure.");
+                Variable 's' used after being captured by closure."
+        );
     }
 }
 
@@ -677,11 +674,13 @@ fn adversarial_14b_mut_borrow_then_move() {
     // s is mutably borrowed by modify(). Then consume() tries to take
     // ownership (move). This should be an error — can't move a borrowed value.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: After a mutable borrow, the variable can still \
+        panic!(
+            "BUG FOUND: After a mutable borrow, the variable can still \
                 be moved via an own-parameter call. check_var_use only \
                 checks for Moved state, not MutBorrowed state. The \
                 own-parameter code path also doesn't check for active borrows \
-                before marking the variable as moved.");
+                before marking the variable as moved."
+        );
     }
 }
 
@@ -711,12 +710,14 @@ fn adversarial_15_borrow_and_move_in_same_call() {
     // This should be an error — can't borrow and move the same value
     // in the same expression.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Borrowing and moving the same variable in the \
+        panic!(
+            "BUG FOUND: Borrowing and moving the same variable in the \
                 same function call (different arguments) is not detected. \
                 The first argument borrows s, then the second argument \
                 moves s, but no error is raised because the Own path \
                 in check_call doesn't check for active borrows before \
-                calling mark_moved.");
+                calling mark_moved."
+        );
     }
 }
 
@@ -761,10 +762,12 @@ fn adversarial_16_unknown_fn_defaults_borrow() {
     // but the checker defaults to Borrow so it won't catch it.
     // If this passes with no errors, it's a real bug.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Unknown function calls default to Borrow, \
+        panic!(
+            "BUG FOUND: Unknown function calls default to Borrow, \
                 allowing use of potentially moved values after the call. \
                 The checker should be conservative and assume ownership transfer \
-                for unknown functions with non-Copy arguments.");
+                for unknown functions with non-Copy arguments."
+        );
     }
 }
 
@@ -785,9 +788,11 @@ fn adversarial_16b_closure_does_not_move_captures() {
     // s is captured by the closure — it should be moved.
     // If the checker allows this (no errors), it's a bug.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Closure captures of non-Copy variables do not \
+        panic!(
+            "BUG FOUND: Closure captures of non-Copy variables do not \
                 mark the variable as moved from the outer scope. \
-                The variable can be used after being captured.");
+                The variable can be used after being captured."
+        );
     }
 }
 
@@ -813,9 +818,11 @@ fn adversarial_16c_method_call_receiver_not_moved() {
     // o.consume_self() should move o (since it takes own self).
     // If the checker allows using o after, it's a bug.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Method calls with `own self` do not move \
+        panic!(
+            "BUG FOUND: Method calls with `own self` do not move \
                 the receiver. The variable can be used after the method \
-                consumes it.");
+                consumes it."
+        );
     }
 }
 
@@ -838,9 +845,11 @@ fn adversarial_16d_assign_to_field_of_immutable() {
     );
     // p is immutable, so p.x = 5 should be an error.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Assignment to a field of an immutable variable \
+        panic!(
+            "BUG FOUND: Assignment to a field of an immutable variable \
                 is not caught. The checker only validates mutability for \
-                direct Identifier assignments, not FieldAccess targets.");
+                direct Identifier assignments, not FieldAccess targets."
+        );
     }
 }
 
@@ -888,10 +897,13 @@ fn adversarial_16f_loop_reassign_before_move() {
     // before each consume. But the checker likely flags it.
     if !result.errors.is_empty() {
         let msgs: Vec<_> = result.errors.iter().map(|e| e.to_string()).collect();
-        panic!("BUG FOUND (false positive): Reassignment inside loop before \
+        panic!(
+            "BUG FOUND (false positive): Reassignment inside loop before \
                 move is still flagged as error. The checker does not account \
                 for re-initialization within loop bodies.\n\
-                Errors: {}", msgs.join("; "));
+                Errors: {}",
+            msgs.join("; ")
+        );
     }
 }
 
@@ -1039,7 +1051,11 @@ fn adversarial_16n_different_vars_moved_in_branches() {
         result.errors.len() >= 2,
         "expected at least 2 errors (both a and b moved), got {}: {:?}",
         result.errors.len(),
-        result.errors.iter().map(|e| e.message.clone()).collect::<Vec<_>>()
+        result
+            .errors
+            .iter()
+            .map(|e| e.message.clone())
+            .collect::<Vec<_>>()
     );
 }
 
@@ -1057,9 +1073,11 @@ fn adversarial_16o_assign_to_index_of_immutable() {
     );
     // arr is immutable, so arr[0] = 99 should be an error.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Assignment to index of immutable variable \
+        panic!(
+            "BUG FOUND: Assignment to index of immutable variable \
                 is not caught. The checker only validates mutability \
-                for direct Identifier assignments, not Index targets.");
+                for direct Identifier assignments, not Index targets."
+        );
     }
 }
 
@@ -1099,10 +1117,12 @@ fn adversarial_16q_move_in_while_condition() {
     // The condition moves s on each evaluation. On the second iteration,
     // the condition would use-after-move. This should be an error.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: Move in while condition is not detected as a \
+        panic!(
+            "BUG FOUND: Move in while condition is not detected as a \
                 loop-iteration error. The condition is evaluated before \
                 the loop body snapshot, so re-evaluation on the next \
-                iteration would use a moved value.");
+                iteration would use a moved value."
+        );
     }
 }
 
@@ -1127,9 +1147,11 @@ fn adversarial_16r_for_loop_iterable_move() {
     // items is consumed by the for loop (iterated over and consumed).
     // Using items after the loop should be an error.
     if result.errors.is_empty() {
-        panic!("BUG FOUND: For-loop iterable (non-Copy variable) is not \
+        panic!(
+            "BUG FOUND: For-loop iterable (non-Copy variable) is not \
                 moved/consumed by the loop. The variable remains usable \
-                after the for loop, even though the loop consumed it.");
+                after the for loop, even though the loop consumed it."
+        );
     }
 }
 

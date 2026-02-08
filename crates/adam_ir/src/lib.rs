@@ -15,14 +15,14 @@
 
 pub mod ir;
 pub mod lower;
+pub mod opt;
 pub mod print;
 pub mod verify;
-pub mod opt;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod adversarial_tests;
+#[cfg(test)]
+mod tests;
 
 pub use ir::*;
 pub use lower::lower_module;

@@ -5,9 +5,9 @@ use adam_parser::Parser;
 
 use crate::ir::*;
 use crate::lower::lower_module;
-use crate::print::{print_module, print_function};
-use crate::verify::{verify_module, verify_function_standalone};
 use crate::opt;
+use crate::print::{print_function, print_module};
+use crate::verify::{verify_function_standalone, verify_module};
 
 // ================================================================
 // Test helpers
@@ -16,10 +16,18 @@ use crate::opt;
 /// Lex, parse, and lower source code to an IR module.
 fn lower(src: &str) -> IrModule {
     let lex_result = Lexer::new(src).tokenize();
-    assert!(lex_result.errors.is_empty(), "lex errors: {:?}", lex_result.errors);
+    assert!(
+        lex_result.errors.is_empty(),
+        "lex errors: {:?}",
+        lex_result.errors
+    );
 
     let parse_result = Parser::new(lex_result.tokens).parse();
-    assert!(parse_result.errors.is_empty(), "parse errors: {:?}", parse_result.errors);
+    assert!(
+        parse_result.errors.is_empty(),
+        "parse errors: {:?}",
+        parse_result.errors
+    );
 
     lower_module(&parse_result.ast)
 }
@@ -43,15 +51,19 @@ fn first_fn(module: &IrModule) -> &IrFunction {
 
 #[test]
 fn lower_hello_world() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     print("Hello, World!")
-}"#);
+}"#,
+    );
     assert_eq!(module.functions.len(), 1);
     let f = first_fn(&module);
     assert_eq!(f.name, "main");
     assert!(!f.blocks.is_empty());
     assert!(!module.string_literals.is_empty());
-    assert!(module.string_literals.contains(&"Hello, World!".to_string()));
+    assert!(module
+        .string_literals
+        .contains(&"Hello, World!".to_string()));
 }
 
 #[test]
@@ -65,12 +77,18 @@ fn lower_arithmetic() {
     assert!(!entry.instructions.is_empty());
 
     // Verify there's an Add and a Mul operation.
-    let has_add = entry.instructions.iter().any(|i| matches!(
-        i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _))
-    ));
-    let has_mul = entry.instructions.iter().any(|i| matches!(
-        i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Mul, _, _))
-    ));
+    let has_add = entry.instructions.iter().any(|i| {
+        matches!(
+            i,
+            Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _))
+        )
+    });
+    let has_mul = entry.instructions.iter().any(|i| {
+        matches!(
+            i,
+            Instruction::Assign(_, RValue::BinaryOp(BinOp::Mul, _, _))
+        )
+    });
     assert!(has_add, "should have an add instruction");
     assert!(has_mul, "should have a mul instruction");
 }
@@ -81,11 +99,18 @@ fn lower_if_else() {
     let f = first_fn(&module);
 
     // Should have branch terminator.
-    let has_branch = f.blocks.iter().any(|b| matches!(b.terminator, Terminator::Branch(_, _, _)));
+    let has_branch = f
+        .blocks
+        .iter()
+        .any(|b| matches!(b.terminator, Terminator::Branch(_, _, _)));
     assert!(has_branch, "if/else should produce a branch terminator");
 
     // Should have at least 4 blocks: entry, then, else, merge.
-    assert!(f.blocks.len() >= 4, "if/else should create at least 4 blocks, got {}", f.blocks.len());
+    assert!(
+        f.blocks.len() >= 4,
+        "if/else should create at least 4 blocks, got {}",
+        f.blocks.len()
+    );
 }
 
 #[test]
@@ -94,7 +119,10 @@ fn lower_match() {
     let f = first_fn(&module);
 
     // Should have a switch terminator.
-    let has_switch = f.blocks.iter().any(|b| matches!(b.terminator, Terminator::Switch(_, _, _)));
+    let has_switch = f
+        .blocks
+        .iter()
+        .any(|b| matches!(b.terminator, Terminator::Switch(_, _, _)));
     assert!(has_switch, "match should produce a switch terminator");
 }
 
@@ -104,13 +132,18 @@ fn lower_for_loop() {
     let f = first_fn(&module);
 
     // For loop should produce multiple blocks with back-edge.
-    assert!(f.blocks.len() >= 3, "for loop should create header/body/exit blocks");
+    assert!(
+        f.blocks.len() >= 3,
+        "for loop should create header/body/exit blocks"
+    );
 
     // Check there's a goto back to the header (back-edge).
     let has_backedge = f.blocks.iter().any(|b| {
         if let Terminator::Goto(target) = &b.terminator {
             // A goto to an earlier block is a back-edge.
-            f.blocks.iter().any(|earlier| earlier.id == *target && earlier.id < b.id)
+            f.blocks
+                .iter()
+                .any(|earlier| earlier.id == *target && earlier.id < b.id)
         } else {
             false
         }
@@ -124,7 +157,10 @@ fn lower_while_loop() {
     let f = first_fn(&module);
 
     // While loop should have a branch in the header.
-    let has_branch = f.blocks.iter().any(|b| matches!(b.terminator, Terminator::Branch(_, _, _)));
+    let has_branch = f
+        .blocks
+        .iter()
+        .any(|b| matches!(b.terminator, Terminator::Branch(_, _, _)));
     assert!(has_branch, "while loop should have a conditional branch");
 }
 
@@ -134,7 +170,10 @@ fn lower_loop() {
     let f = first_fn(&module);
 
     // Loop should have a goto as a back-edge.
-    assert!(f.blocks.len() >= 2, "loop should create header and exit blocks");
+    assert!(
+        f.blocks.len() >= 2,
+        "loop should create header and exit blocks"
+    );
 }
 
 #[test]
@@ -145,9 +184,9 @@ fn lower_function_call() {
     let main_fn = module.functions.iter().find(|f| f.name == "main").unwrap();
     // Should have a Call instruction.
     let has_call = main_fn.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Call(_, _))
-        ))
+        b.instructions
+            .iter()
+            .any(|i| matches!(i, Instruction::Assign(_, RValue::Call(_, _))))
     });
     assert!(has_call, "should have a call instruction for add()");
 }
@@ -155,27 +194,39 @@ fn lower_function_call() {
 #[test]
 fn lower_struct_create() {
     let module = lower("struct Point {\n    x i32\n    y i32\n}\nfn make_point() -> Point {\n    p := Point { x: 10, y: 20 }\n    return p\n}");
-    let f = module.functions.iter().find(|f| f.name == "make_point").unwrap();
+    let f = module
+        .functions
+        .iter()
+        .find(|f| f.name == "make_point")
+        .unwrap();
 
     // Should have an Aggregate instruction.
     let has_aggregate = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Aggregate(AggregateKind::Struct(_), _))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Aggregate(AggregateKind::Struct(_), _))
+            )
+        })
     });
-    assert!(has_aggregate, "struct literal should produce an Aggregate instruction");
+    assert!(
+        has_aggregate,
+        "struct literal should produce an Aggregate instruction"
+    );
 }
 
 #[test]
 fn lower_field_access() {
-    let module = lower("struct Point {\n    x i32\n    y i32\n}\nfn get_x(p Point) -> i32 {\n    return p.x\n}");
+    let module = lower(
+        "struct Point {\n    x i32\n    y i32\n}\nfn get_x(p Point) -> i32 {\n    return p.x\n}",
+    );
     let f = module.functions.iter().find(|f| f.name == "get_x").unwrap();
 
     // Should have a Field instruction.
     let has_field = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Field(_, _))
-        ))
+        b.instructions
+            .iter()
+            .any(|i| matches!(i, Instruction::Assign(_, RValue::Field(_, _))))
     });
     assert!(has_field, "field access should produce a Field instruction");
 }
@@ -190,11 +241,15 @@ fn lower_closure_basic() {
 
 #[test]
 fn lower_spawn() {
-    let module = lower("fn concurrent() {\n    spawn {\n        print(\"hello from task\")\n    }\n}");
+    let module =
+        lower("fn concurrent() {\n    spawn {\n        print(\"hello from task\")\n    }\n}");
     let f = first_fn(&module);
 
     // Should have a spawn terminator.
-    let has_spawn = f.blocks.iter().any(|b| matches!(b.terminator, Terminator::Spawn(_, _)));
+    let has_spawn = f
+        .blocks
+        .iter()
+        .any(|b| matches!(b.terminator, Terminator::Spawn(_, _)));
     assert!(has_spawn, "spawn should produce a Spawn terminator");
 }
 
@@ -205,9 +260,9 @@ fn lower_channel() {
 
     // Should have a ChanCreate instruction.
     let has_chan = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::ChanCreate(_, _))
-        ))
+        b.instructions
+            .iter()
+            .any(|i| matches!(i, Instruction::Assign(_, RValue::ChanCreate(_, _))))
     });
     assert!(has_chan, "chan[] should produce a ChanCreate instruction");
 }
@@ -223,7 +278,10 @@ fn lower_bool_literal() {
     let module = lower("fn flag() -> bool {\n    return true\n}");
     let f = first_fn(&module);
     let has_bool = f.blocks.iter().any(|b| {
-        matches!(&b.terminator, Terminator::Return(Some(Operand::Constant(Constant::Bool(true)))))
+        matches!(
+            &b.terminator,
+            Terminator::Return(Some(Operand::Constant(Constant::Bool(true))))
+        )
     });
     assert!(has_bool, "should return a bool constant true");
 }
@@ -233,9 +291,9 @@ fn lower_unary_neg() {
     let module = lower("fn negate(x i32) -> i32 {\n    return -x\n}");
     let f = first_fn(&module);
     let has_neg = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::UnaryOp(UnOp::Neg, _))
-        ))
+        b.instructions
+            .iter()
+            .any(|i| matches!(i, Instruction::Assign(_, RValue::UnaryOp(UnOp::Neg, _))))
     });
     assert!(has_neg, "should have a Neg unary operation");
 }
@@ -245,9 +303,12 @@ fn lower_array_literal() {
     let module = lower("fn make_array() {\n    arr := [1, 2, 3]\n}");
     let f = first_fn(&module);
     let has_array = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Aggregate(AggregateKind::Array, _))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Aggregate(AggregateKind::Array, _))
+            )
+        })
     });
     assert!(has_array, "array literal should produce an Array aggregate");
 }
@@ -257,16 +318,21 @@ fn lower_tuple_literal() {
     let module = lower("fn make_tuple() {\n    t := (1, 2, 3)\n}");
     let f = first_fn(&module);
     let has_tuple = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Aggregate(AggregateKind::Tuple, _))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Aggregate(AggregateKind::Tuple, _))
+            )
+        })
     });
     assert!(has_tuple, "tuple literal should produce a Tuple aggregate");
 }
 
 #[test]
 fn lower_multiple_functions() {
-    let module = lower("fn foo() -> i32 { return 1 }\nfn bar() -> i32 { return 2 }\nfn baz() -> i32 { return 3 }");
+    let module = lower(
+        "fn foo() -> i32 { return 1 }\nfn bar() -> i32 { return 2 }\nfn baz() -> i32 { return 3 }",
+    );
     assert_eq!(module.functions.len(), 3);
     assert_eq!(module.functions[0].name, "foo");
     assert_eq!(module.functions[1].name, "bar");
@@ -278,7 +344,11 @@ fn lower_nested_if() {
     let module = lower("fn nested(x i32) -> i32 {\n    if x > 10 {\n        if x > 20 {\n            return 3\n        } else {\n            return 2\n        }\n    } else {\n        return 1\n    }\n}");
     let f = first_fn(&module);
     // Nested if should create many blocks.
-    assert!(f.blocks.len() >= 6, "nested if should create many blocks, got {}", f.blocks.len());
+    assert!(
+        f.blocks.len() >= 6,
+        "nested if should create many blocks, got {}",
+        f.blocks.len()
+    );
 }
 
 #[test]
@@ -286,15 +356,25 @@ fn lower_break_continue() {
     let module = lower("fn with_break() {\n    x := 0\n    while true {\n        if x > 5 {\n            break\n        }\n        x = x + 1\n        continue\n    }\n}");
     let f = first_fn(&module);
     // break and continue should produce Goto terminators.
-    let goto_count = f.blocks.iter().filter(|b| matches!(b.terminator, Terminator::Goto(_))).count();
-    assert!(goto_count >= 2, "break/continue should produce goto terminators");
+    let goto_count = f
+        .blocks
+        .iter()
+        .filter(|b| matches!(b.terminator, Terminator::Goto(_)))
+        .count();
+    assert!(
+        goto_count >= 2,
+        "break/continue should produce goto terminators"
+    );
 }
 
 #[test]
 fn lower_return_unit() {
     let module = lower("fn noop() {\n    return\n}");
     let f = first_fn(&module);
-    let has_return = f.blocks.iter().any(|b| matches!(b.terminator, Terminator::Return(_)));
+    let has_return = f
+        .blocks
+        .iter()
+        .any(|b| matches!(b.terminator, Terminator::Return(_)));
     assert!(has_return, "should have a return terminator");
 }
 
@@ -304,13 +384,17 @@ fn lower_comparison_ops() {
     let f = first_fn(&module);
     let entry = &f.blocks[0];
 
-    let ops: Vec<BinOp> = entry.instructions.iter().filter_map(|i| {
-        if let Instruction::Assign(_, RValue::BinaryOp(op, _, _)) = i {
-            Some(*op)
-        } else {
-            None
-        }
-    }).collect();
+    let ops: Vec<BinOp> = entry
+        .instructions
+        .iter()
+        .filter_map(|i| {
+            if let Instruction::Assign(_, RValue::BinaryOp(op, _, _)) = i {
+                Some(*op)
+            } else {
+                None
+            }
+        })
+        .collect();
 
     assert!(ops.contains(&BinOp::Eq));
     assert!(ops.contains(&BinOp::NotEq));
@@ -325,9 +409,12 @@ fn lower_assign_existing_var() {
     let module = lower("fn mutate() {\n    mut x := 5\n    x = 10\n}");
     let f = first_fn(&module);
     // The variable should be assigned twice.
-    let assign_count = f.blocks.iter().flat_map(|b| &b.instructions).filter(|i| {
-        matches!(i, Instruction::Assign(_, _))
-    }).count();
+    let assign_count = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .filter(|i| matches!(i, Instruction::Assign(_, _)))
+        .count();
     assert!(assign_count >= 2, "should have at least 2 assignments");
 }
 
@@ -343,9 +430,12 @@ fn opt_const_fold_add() {
 
     // After folding, the add should become a constant 5.
     let has_const_5 = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Constant(Constant::Int(5)))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Int(5)))
+            )
+        })
     });
     assert!(has_const_5, "constant fold should produce const 5 from 2+3");
 }
@@ -357,11 +447,17 @@ fn opt_const_fold_mul() {
     let f = first_fn(&module);
 
     let has_const_21 = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Constant(Constant::Int(21)))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Int(21)))
+            )
+        })
     });
-    assert!(has_const_21, "constant fold should produce const 21 from 3*7");
+    assert!(
+        has_const_21,
+        "constant fold should produce const 21 from 3*7"
+    );
 }
 
 #[test]
@@ -371,11 +467,17 @@ fn opt_const_fold_bool() {
     let f = first_fn(&module);
 
     let has_const_false = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Constant(Constant::Bool(false)))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Bool(false)))
+            )
+        })
     });
-    assert!(has_const_false, "constant fold should produce false from true && false");
+    assert!(
+        has_const_false,
+        "constant fold should produce false from true && false"
+    );
 }
 
 #[test]
@@ -385,11 +487,17 @@ fn opt_const_fold_comparison() {
     let f = first_fn(&module);
 
     let has_const_true = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Constant(Constant::Bool(true)))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Bool(true)))
+            )
+        })
     });
-    assert!(has_const_true, "constant fold should produce true from 5 > 3");
+    assert!(
+        has_const_true,
+        "constant fold should produce true from 5 > 3"
+    );
 }
 
 #[test]
@@ -423,7 +531,11 @@ fn opt_dead_code_basic() {
 
     assert_eq!(module.functions[0].blocks.len(), 2);
     opt::dead_code(&mut module);
-    assert_eq!(module.functions[0].blocks.len(), 1, "dead block should be removed");
+    assert_eq!(
+        module.functions[0].blocks.len(),
+        1,
+        "dead block should be removed"
+    );
     assert_eq!(module.functions[0].blocks[0].id, 0);
 }
 
@@ -438,22 +550,26 @@ fn opt_simplify_cfg_merge() {
             return_type: IrType::Unit,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 1,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                },
             ],
             blocks: vec![
                 BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::Constant(Constant::Int(1))),
-                    ],
+                    instructions: vec![Instruction::Assign(0, RValue::Constant(Constant::Int(1)))],
                     terminator: Terminator::Goto(1),
                 },
                 BasicBlock {
                     id: 1,
-                    instructions: vec![
-                        Instruction::Assign(1, RValue::Constant(Constant::Int(2))),
-                    ],
+                    instructions: vec![Instruction::Assign(1, RValue::Constant(Constant::Int(2)))],
                     terminator: Terminator::Return(Some(Operand::Var(1))),
                 },
             ],
@@ -465,7 +581,11 @@ fn opt_simplify_cfg_merge() {
 
     assert_eq!(module.functions[0].blocks.len(), 2);
     opt::simplify_cfg(&mut module);
-    assert_eq!(module.functions[0].blocks.len(), 1, "blocks should be merged");
+    assert_eq!(
+        module.functions[0].blocks.len(),
+        1,
+        "blocks should be merged"
+    );
     assert_eq!(module.functions[0].blocks[0].instructions.len(), 2);
 }
 
@@ -492,19 +612,27 @@ fn opt_remove_nops() {
 
     assert_eq!(module.functions[0].blocks[0].instructions.len(), 3);
     opt::remove_nops(&mut module);
-    assert_eq!(module.functions[0].blocks[0].instructions.len(), 0, "nops should be removed");
+    assert_eq!(
+        module.functions[0].blocks[0].instructions.len(),
+        0,
+        "nops should be removed"
+    );
 }
 
 #[test]
 fn opt_full_pipeline() {
-    let mut module = lower("fn calculate() -> i32 {\n    x := 2 + 3\n    y := 10 * 2\n    return x\n}");
+    let mut module =
+        lower("fn calculate() -> i32 {\n    x := 2 + 3\n    y := 10 * 2\n    return x\n}");
     opt::optimize(&mut module);
     let f = first_fn(&module);
     // After optimization, constant operations should be folded.
     let has_const = f.blocks.iter().any(|b| {
-        b.instructions.iter().any(|i| matches!(
-            i, Instruction::Assign(_, RValue::Constant(Constant::Int(_)))
-        ))
+        b.instructions.iter().any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::Constant(Constant::Int(_)))
+            )
+        })
     });
     assert!(has_const, "optimization pipeline should fold constants");
 }
@@ -524,8 +652,16 @@ fn opt_copy_prop_simple() {
             return_type: IrType::I64,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 1,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                },
             ],
             blocks: vec![BasicBlock {
                 id: 0,
@@ -563,8 +699,16 @@ fn opt_copy_prop_no_prop_after_reassign() {
             return_type: IrType::I64,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 1,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                },
             ],
             blocks: vec![BasicBlock {
                 id: 0,
@@ -613,8 +757,16 @@ fn opt_const_prop_simple() {
             return_type: IrType::I64,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 1,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                },
             ],
             blocks: vec![BasicBlock {
                 id: 0,
@@ -624,7 +776,7 @@ fn opt_const_prop_simple() {
                         1,
                         RValue::BinaryOp(
                             BinOp::Add,
-                            Operand::Var(0),       // x
+                            Operand::Var(0), // x
                             Operand::Constant(Constant::Int(1)),
                         ),
                     ),
@@ -641,7 +793,9 @@ fn opt_const_prop_simple() {
 
     // After const prop, the BinaryOp should have Constant(5) instead of Var(0).
     let f = &module.functions[0];
-    if let Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, lhs, _)) = &f.blocks[0].instructions[1] {
+    if let Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, lhs, _)) =
+        &f.blocks[0].instructions[1]
+    {
         assert!(
             matches!(lhs, Operand::Constant(Constant::Int(5))),
             "const prop should replace Var(0) with Constant(5), got {:?}",
@@ -663,8 +817,16 @@ fn opt_const_prop_then_fold() {
             return_type: IrType::I64,
             entry: 0,
             locals: vec![
-                IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                IrLocal { id: 1, name: "y".into(), ty: IrType::I64 },
+                IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                },
+                IrLocal {
+                    id: 1,
+                    name: "y".into(),
+                    ty: IrType::I64,
+                },
             ],
             blocks: vec![BasicBlock {
                 id: 0,
@@ -693,7 +855,10 @@ fn opt_const_prop_then_fold() {
 
     let f = &module.functions[0];
     let has_6 = f.blocks[0].instructions.iter().any(|i| {
-        matches!(i, Instruction::Assign(1, RValue::Constant(Constant::Int(6))))
+        matches!(
+            i,
+            Instruction::Assign(1, RValue::Constant(Constant::Int(6)))
+        )
     });
     assert!(has_6, "const prop + fold should produce y = 6");
 }
@@ -706,7 +871,11 @@ fn opt_const_prop_then_fold() {
 fn verify_valid_module() {
     let module = lower("fn main() {\n    x := 5\n    print(x)\n}");
     let result = verify_module(&module);
-    assert!(result.is_ok(), "simple valid module should verify: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "simple valid module should verify: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -730,7 +899,10 @@ fn verify_invalid_goto_target() {
         struct_defs: vec![],
     };
     let result = verify_module(&module);
-    assert!(!result.is_ok(), "invalid goto target should fail verification");
+    assert!(
+        !result.is_ok(),
+        "invalid goto target should fail verification"
+    );
     assert!(result.errors[0].message.contains("999"));
 }
 
@@ -760,7 +932,10 @@ fn verify_invalid_branch_target() {
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
-    assert!(result.errors.len() >= 2, "should report errors for both targets");
+    assert!(
+        result.errors.len() >= 2,
+        "should report errors for both targets"
+    );
 }
 
 #[test]
@@ -792,7 +967,10 @@ fn verify_duplicate_block_id() {
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
-    assert!(result.errors.iter().any(|e| e.message.contains("duplicate block")));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.message.contains("duplicate block")));
 }
 
 #[test]
@@ -817,7 +995,10 @@ fn verify_missing_entry() {
     };
     let result = verify_module(&module);
     assert!(!result.is_ok());
-    assert!(result.errors.iter().any(|e| e.message.contains("entry block")));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.message.contains("entry block")));
 }
 
 #[test]
@@ -847,7 +1028,10 @@ fn verify_function_standalone_api() {
 fn print_basic_function() {
     let module = lower("fn main() {\n    x := 5\n}");
     let output = print_module(&module);
-    assert!(output.contains("fn @main"), "output should contain function name");
+    assert!(
+        output.contains("fn @main"),
+        "output should contain function name"
+    );
     assert!(output.contains("bb0:"), "output should contain block label");
     assert!(output.contains("return"), "output should contain return");
 }
@@ -866,8 +1050,14 @@ fn print_function_with_params() {
 fn print_string_literals() {
     let module = lower("fn greet() {\n    msg := \"Hello\"\n}");
     let output = print_module(&module);
-    assert!(output.contains("string literals"), "should show string literal table");
-    assert!(output.contains("Hello"), "should contain the string literal");
+    assert!(
+        output.contains("string literals"),
+        "should show string literal table"
+    );
+    assert!(
+        output.contains("Hello"),
+        "should contain the string literal"
+    );
 }
 
 #[test]
@@ -909,7 +1099,11 @@ fn integration_full_pipeline() {
 
     // Verify after optimization.
     let result = verify_module(&module);
-    assert!(result.is_ok(), "post-opt verify failed: {:?}", result.errors);
+    assert!(
+        result.is_ok(),
+        "post-opt verify failed: {:?}",
+        result.errors
+    );
 
     // Print.
     let output = print_module(&module);
@@ -963,9 +1157,10 @@ fn regression_const_fold_negate_i64_min_no_panic() {
     // The negation should NOT be folded (since result would overflow).
     // It should remain as a UnaryOp.
     let f = first_fn(&module);
-    let still_unary = f.blocks[0].instructions.iter().any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::UnaryOp(UnOp::Neg, _)))
-    });
+    let still_unary = f.blocks[0]
+        .instructions
+        .iter()
+        .any(|i| matches!(i, Instruction::Assign(_, RValue::UnaryOp(UnOp::Neg, _))));
     assert!(
         still_unary,
         "negation of i64::MIN should not be folded (overflow)"
@@ -987,14 +1182,20 @@ fn regression_spawn_continuation_survives_dce() {
 
     // The spawn should produce Spawn(target, continuation).
     let f = first_fn(&module);
-    let has_spawn = f.blocks.iter().any(|b| matches!(&b.terminator, Terminator::Spawn(_, _)));
+    let has_spawn = f
+        .blocks
+        .iter()
+        .any(|b| matches!(&b.terminator, Terminator::Spawn(_, _)));
     assert!(has_spawn, "should have Spawn terminator with two targets");
 
     // After DCE, the return 42 block must survive.
     opt::dead_code(&mut module);
     let f = first_fn(&module);
     let has_return_42 = f.blocks.iter().any(|b| {
-        matches!(&b.terminator, Terminator::Return(Some(Operand::Constant(Constant::Int(42)))))
+        matches!(
+            &b.terminator,
+            Terminator::Return(Some(Operand::Constant(Constant::Int(42))))
+        )
     });
     assert!(
         has_return_42,
@@ -1054,31 +1255,44 @@ fn count_drops(func: &IrFunction) -> usize {
 
 #[test]
 fn drop_emitted_for_string_variable() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     s := "hello"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
     let drops = count_drops(f);
-    assert!(drops > 0, "expected Drop instructions for String variable, found {}", drops);
+    assert!(
+        drops > 0,
+        "expected Drop instructions for String variable, found {}",
+        drops
+    );
 }
 
 #[test]
 fn no_drop_for_integer_variable() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     x := 42
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
     let drops = count_drops(f);
-    assert_eq!(drops, 0, "integer variables should not produce Drop instructions");
+    assert_eq!(
+        drops, 0,
+        "integer variables should not produce Drop instructions"
+    );
 }
 
 #[test]
 fn drop_emitted_in_nested_block() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     if true {
         s := "inner"
     }
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
     let drops = count_drops(f);
     assert!(drops > 0, "expected Drop for String in nested block");
@@ -1086,14 +1300,20 @@ fn drop_emitted_in_nested_block() {
 
 #[test]
 fn multiple_drops_for_multiple_strings() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     a := "one"
     b := "two"
     c := "three"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
     let drops = count_drops(f);
-    assert!(drops >= 3, "expected at least 3 Drops for 3 String variables, found {}", drops);
+    assert!(
+        drops >= 3,
+        "expected at least 3 Drops for 3 String variables, found {}",
+        drops
+    );
 }
 
 // ================================================================
@@ -1102,74 +1322,101 @@ fn multiple_drops_for_multiple_strings() {
 
 #[test]
 fn lower_string_interpolation_with_int() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     x := 42
     msg := "value is {x}"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
 
     // Should have a __int_to_string call for the int interpolation.
     let has_int_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
     });
-    assert!(has_int_to_str, "int interpolation should emit __int_to_string call");
+    assert!(
+        has_int_to_str,
+        "int interpolation should emit __int_to_string call"
+    );
 
     // Should also have __str_concat calls.
     let has_concat = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__str_concat")
     });
-    assert!(has_concat, "string interpolation should emit __str_concat calls");
+    assert!(
+        has_concat,
+        "string interpolation should emit __str_concat calls"
+    );
 }
 
 #[test]
 fn lower_string_interpolation_with_bool() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     b := true
     msg := "flag is {b}"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
 
     let has_bool_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__bool_to_string")
     });
-    assert!(has_bool_to_str, "bool interpolation should emit __bool_to_string call");
+    assert!(
+        has_bool_to_str,
+        "bool interpolation should emit __bool_to_string call"
+    );
 }
 
 #[test]
 fn lower_string_interpolation_string_no_conversion() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     name := "world"
     msg := "hello {name}"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
 
     // String interpolation of a string var should NOT emit __int_to_string etc.
     let has_int_to_str = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
     });
-    assert!(!has_int_to_str, "string interpolation of String var should not emit __int_to_string");
+    assert!(
+        !has_int_to_str,
+        "string interpolation of String var should not emit __int_to_string"
+    );
 
     // Should still have __str_concat.
     let has_concat = f.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__str_concat")
     });
-    assert!(has_concat, "string interpolation should emit __str_concat calls");
+    assert!(
+        has_concat,
+        "string interpolation should emit __str_concat calls"
+    );
 }
 
 #[test]
 fn lower_string_interpolation_multi_type() {
-    let module = lower(r#"fn main() {
+    let module = lower(
+        r#"fn main() {
     x := 1
     y := 2
     msg := "x={x} y={y}"
-}"#);
+}"#,
+    );
     let f = first_fn(&module);
 
     // Should have at least 2 __int_to_string calls (one for x, one for y).
     let int_to_str_count = f.blocks.iter().flat_map(|b| &b.instructions).filter(|i| {
         matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "__int_to_string")
     }).count();
-    assert!(int_to_str_count >= 2, "multi-int interpolation should emit at least 2 __int_to_string calls, got {}", int_to_str_count);
+    assert!(
+        int_to_str_count >= 2,
+        "multi-int interpolation should emit at least 2 __int_to_string calls, got {}",
+        int_to_str_count
+    );
 }
 
 // ================================================================
@@ -1185,25 +1432,40 @@ fn opt_inline_simple_function() {
                 id: 0,
                 name: "add".into(),
                 params: vec![
-                    IrParam { name: "a".into(), ty: IrType::I64 },
-                    IrParam { name: "b".into(), ty: IrType::I64 },
+                    IrParam {
+                        name: "a".into(),
+                        ty: IrType::I64,
+                    },
+                    IrParam {
+                        name: "b".into(),
+                        ty: IrType::I64,
+                    },
                 ],
                 return_type: IrType::I64,
                 entry: 0,
                 locals: vec![
-                    IrLocal { id: 0, name: "a".into(), ty: IrType::I64 },
-                    IrLocal { id: 1, name: "b".into(), ty: IrType::I64 },
-                    IrLocal { id: 2, name: "result".into(), ty: IrType::I64 },
+                    IrLocal {
+                        id: 0,
+                        name: "a".into(),
+                        ty: IrType::I64,
+                    },
+                    IrLocal {
+                        id: 1,
+                        name: "b".into(),
+                        ty: IrType::I64,
+                    },
+                    IrLocal {
+                        id: 2,
+                        name: "result".into(),
+                        ty: IrType::I64,
+                    },
                 ],
                 blocks: vec![BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(2, RValue::BinaryOp(
-                            BinOp::Add,
-                            Operand::Var(0),
-                            Operand::Var(1),
-                        )),
-                    ],
+                    instructions: vec![Instruction::Assign(
+                        2,
+                        RValue::BinaryOp(BinOp::Add, Operand::Var(0), Operand::Var(1)),
+                    )],
                     terminator: Terminator::Return(Some(Operand::Var(2))),
                 }],
             },
@@ -1213,17 +1475,23 @@ fn opt_inline_simple_function() {
                 params: vec![],
                 return_type: IrType::I64,
                 entry: 0,
-                locals: vec![
-                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
-                ],
+                locals: vec![IrLocal {
+                    id: 0,
+                    name: "res".into(),
+                    ty: IrType::I64,
+                }],
                 blocks: vec![BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::CallNamed(
+                    instructions: vec![Instruction::Assign(
+                        0,
+                        RValue::CallNamed(
                             "add".into(),
-                            vec![Operand::Constant(Constant::Int(3)), Operand::Constant(Constant::Int(4))],
-                        )),
-                    ],
+                            vec![
+                                Operand::Constant(Constant::Int(3)),
+                                Operand::Constant(Constant::Int(4)),
+                            ],
+                        ),
+                    )],
                     terminator: Terminator::Return(Some(Operand::Var(0))),
                 }],
             },
@@ -1237,15 +1505,23 @@ fn opt_inline_simple_function() {
 
     // The main function should no longer have a CallNamed to "add".
     let main_fn = &module.functions[1];
-    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "add")
-    });
+    let has_call =
+        main_fn.blocks.iter().flat_map(|b| &b.instructions).any(
+            |i| matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "add"),
+        );
     assert!(!has_call, "add() call should have been inlined");
 
     // Should have a BinaryOp(Add, ...) instruction in main instead.
-    let has_add = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _)))
-    });
+    let has_add = main_fn
+        .blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(_, RValue::BinaryOp(BinOp::Add, _, _))
+            )
+        });
     assert!(has_add, "inlined add body should contain BinaryOp::Add");
 }
 
@@ -1257,23 +1533,44 @@ fn opt_inline_recursive_not_inlined() {
             IrFunction {
                 id: 0,
                 name: "factorial".into(),
-                params: vec![IrParam { name: "n".into(), ty: IrType::I64 }],
+                params: vec![IrParam {
+                    name: "n".into(),
+                    ty: IrType::I64,
+                }],
                 return_type: IrType::I64,
                 entry: 0,
                 locals: vec![
-                    IrLocal { id: 0, name: "n".into(), ty: IrType::I64 },
-                    IrLocal { id: 1, name: "tmp".into(), ty: IrType::I64 },
-                    IrLocal { id: 2, name: "rec".into(), ty: IrType::I64 },
+                    IrLocal {
+                        id: 0,
+                        name: "n".into(),
+                        ty: IrType::I64,
+                    },
+                    IrLocal {
+                        id: 1,
+                        name: "tmp".into(),
+                        ty: IrType::I64,
+                    },
+                    IrLocal {
+                        id: 2,
+                        name: "rec".into(),
+                        ty: IrType::I64,
+                    },
                 ],
                 blocks: vec![BasicBlock {
                     id: 0,
                     instructions: vec![
-                        Instruction::Assign(1, RValue::BinaryOp(
-                            BinOp::Sub, Operand::Var(0), Operand::Constant(Constant::Int(1)),
-                        )),
-                        Instruction::Assign(2, RValue::CallNamed(
-                            "factorial".into(), vec![Operand::Var(1)],
-                        )),
+                        Instruction::Assign(
+                            1,
+                            RValue::BinaryOp(
+                                BinOp::Sub,
+                                Operand::Var(0),
+                                Operand::Constant(Constant::Int(1)),
+                            ),
+                        ),
+                        Instruction::Assign(
+                            2,
+                            RValue::CallNamed("factorial".into(), vec![Operand::Var(1)]),
+                        ),
                     ],
                     terminator: Terminator::Return(Some(Operand::Var(2))),
                 }],
@@ -1284,16 +1581,20 @@ fn opt_inline_recursive_not_inlined() {
                 params: vec![],
                 return_type: IrType::I64,
                 entry: 0,
-                locals: vec![
-                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
-                ],
+                locals: vec![IrLocal {
+                    id: 0,
+                    name: "res".into(),
+                    ty: IrType::I64,
+                }],
                 blocks: vec![BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::CallNamed(
-                            "factorial".into(), vec![Operand::Constant(Constant::Int(5))],
-                        )),
-                    ],
+                    instructions: vec![Instruction::Assign(
+                        0,
+                        RValue::CallNamed(
+                            "factorial".into(),
+                            vec![Operand::Constant(Constant::Int(5))],
+                        ),
+                    )],
                     terminator: Terminator::Return(Some(Operand::Var(0))),
                 }],
             },
@@ -1308,9 +1609,9 @@ fn opt_inline_recursive_not_inlined() {
     // factorial is recursive, so it should NOT be inlineable.
     // The call in main should still be there.
     let main_fn = &module.functions[1];
-    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "factorial")
-    });
+    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(
+        |i| matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "factorial"),
+    );
     assert!(has_call, "recursive function should NOT be inlined");
 }
 
@@ -1321,9 +1622,17 @@ fn opt_inline_large_function_not_inlined() {
         .map(|i| Instruction::Assign(i + 1, RValue::Constant(Constant::Int(i as i64))))
         .collect();
 
-    let mut locals: Vec<IrLocal> = vec![IrLocal { id: 0, name: "x".into(), ty: IrType::I64 }];
+    let mut locals: Vec<IrLocal> = vec![IrLocal {
+        id: 0,
+        name: "x".into(),
+        ty: IrType::I64,
+    }];
     for i in 0..21u32 {
-        locals.push(IrLocal { id: i + 1, name: format!("t{}", i), ty: IrType::I64 });
+        locals.push(IrLocal {
+            id: i + 1,
+            name: format!("t{}", i),
+            ty: IrType::I64,
+        });
     }
 
     let mut module = IrModule {
@@ -1331,7 +1640,10 @@ fn opt_inline_large_function_not_inlined() {
             IrFunction {
                 id: 0,
                 name: "big".into(),
-                params: vec![IrParam { name: "x".into(), ty: IrType::I64 }],
+                params: vec![IrParam {
+                    name: "x".into(),
+                    ty: IrType::I64,
+                }],
                 return_type: IrType::I64,
                 entry: 0,
                 locals,
@@ -1347,16 +1659,17 @@ fn opt_inline_large_function_not_inlined() {
                 params: vec![],
                 return_type: IrType::I64,
                 entry: 0,
-                locals: vec![
-                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
-                ],
+                locals: vec![IrLocal {
+                    id: 0,
+                    name: "res".into(),
+                    ty: IrType::I64,
+                }],
                 blocks: vec![BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::CallNamed(
-                            "big".into(), vec![Operand::Constant(Constant::Int(1))],
-                        )),
-                    ],
+                    instructions: vec![Instruction::Assign(
+                        0,
+                        RValue::CallNamed("big".into(), vec![Operand::Constant(Constant::Int(1))]),
+                    )],
                     terminator: Terminator::Return(Some(Operand::Var(0))),
                 }],
             },
@@ -1370,9 +1683,10 @@ fn opt_inline_large_function_not_inlined() {
 
     // big() has >= 20 instructions, should NOT be inlined.
     let main_fn = &module.functions[1];
-    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "big")
-    });
+    let has_call =
+        main_fn.blocks.iter().flat_map(|b| &b.instructions).any(
+            |i| matches!(i, Instruction::Assign(_, RValue::CallNamed(name, _)) if name == "big"),
+        );
     assert!(has_call, "large function should NOT be inlined");
 }
 
@@ -1384,12 +1698,17 @@ fn opt_inline_param_substitution() {
             IrFunction {
                 id: 0,
                 name: "identity".into(),
-                params: vec![IrParam { name: "x".into(), ty: IrType::I64 }],
+                params: vec![IrParam {
+                    name: "x".into(),
+                    ty: IrType::I64,
+                }],
                 return_type: IrType::I64,
                 entry: 0,
-                locals: vec![
-                    IrLocal { id: 0, name: "x".into(), ty: IrType::I64 },
-                ],
+                locals: vec![IrLocal {
+                    id: 0,
+                    name: "x".into(),
+                    ty: IrType::I64,
+                }],
                 blocks: vec![BasicBlock {
                     id: 0,
                     instructions: vec![],
@@ -1402,16 +1721,20 @@ fn opt_inline_param_substitution() {
                 params: vec![],
                 return_type: IrType::I64,
                 entry: 0,
-                locals: vec![
-                    IrLocal { id: 0, name: "res".into(), ty: IrType::I64 },
-                ],
+                locals: vec![IrLocal {
+                    id: 0,
+                    name: "res".into(),
+                    ty: IrType::I64,
+                }],
                 blocks: vec![BasicBlock {
                     id: 0,
-                    instructions: vec![
-                        Instruction::Assign(0, RValue::CallNamed(
-                            "identity".into(), vec![Operand::Constant(Constant::Int(42))],
-                        )),
-                    ],
+                    instructions: vec![Instruction::Assign(
+                        0,
+                        RValue::CallNamed(
+                            "identity".into(),
+                            vec![Operand::Constant(Constant::Int(42))],
+                        ),
+                    )],
                     terminator: Terminator::Return(Some(Operand::Var(0))),
                 }],
             },
@@ -1425,14 +1748,26 @@ fn opt_inline_param_substitution() {
 
     // After inlining identity(42), res should be assigned Use(Constant(42))
     let main_fn = &module.functions[1];
-    let has_const_42 = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(0, RValue::Use(Operand::Constant(Constant::Int(42)))))
-    });
-    assert!(has_const_42, "inlined identity(42) should produce Assign(res, Use(Constant(42)))");
+    let has_const_42 = main_fn
+        .blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .any(|i| {
+            matches!(
+                i,
+                Instruction::Assign(0, RValue::Use(Operand::Constant(Constant::Int(42))))
+            )
+        });
+    assert!(
+        has_const_42,
+        "inlined identity(42) should produce Assign(res, Use(Constant(42)))"
+    );
 
     // Should NOT have a CallNamed anymore.
-    let has_call = main_fn.blocks.iter().flat_map(|b| &b.instructions).any(|i| {
-        matches!(i, Instruction::Assign(_, RValue::CallNamed(..)))
-    });
+    let has_call = main_fn
+        .blocks
+        .iter()
+        .flat_map(|b| &b.instructions)
+        .any(|i| matches!(i, Instruction::Assign(_, RValue::CallNamed(..))));
     assert!(!has_call, "identity call should be fully inlined");
 }

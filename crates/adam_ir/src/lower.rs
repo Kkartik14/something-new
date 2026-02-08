@@ -36,10 +36,14 @@ pub fn lower_module(ast: &SourceFile) -> IrModule {
                 lowerer.struct_names.push(s.name.name.clone());
                 lowerer.struct_defs.push(IrStructDef {
                     name: s.name.name.clone(),
-                    fields: s.fields.iter().map(|f| IrStructField {
-                        name: f.name.name.clone(),
-                        ty: lowerer.lower_type(&f.ty.node),
-                    }).collect(),
+                    fields: s
+                        .fields
+                        .iter()
+                        .map(|f| IrStructField {
+                            name: f.name.name.clone(),
+                            ty: lowerer.lower_type(&f.ty.node),
+                        })
+                        .collect(),
                 });
             }
             Item::Enum(e) => {
@@ -197,10 +201,20 @@ impl Lowerer {
     fn is_copy_type(ty: &IrType) -> bool {
         matches!(
             ty,
-            IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
-                | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64
-                | IrType::F32 | IrType::F64
-                | IrType::Bool | IrType::Char | IrType::Unit | IrType::Void
+            IrType::I8
+                | IrType::I16
+                | IrType::I32
+                | IrType::I64
+                | IrType::U8
+                | IrType::U16
+                | IrType::U32
+                | IrType::U64
+                | IrType::F32
+                | IrType::F64
+                | IrType::Bool
+                | IrType::Char
+                | IrType::Unit
+                | IrType::Void
         )
     }
 
@@ -253,11 +267,15 @@ impl Lowerer {
     fn lower_function(&mut self, func: &FnDef) -> IrFunction {
         self.reset_function_state();
 
-        let fn_id = self.fn_ids.get(&func.name.name).copied().unwrap_or_else(|| {
-            let id = self.next_fn_id;
-            self.next_fn_id += 1;
-            id
-        });
+        let fn_id = self
+            .fn_ids
+            .get(&func.name.name)
+            .copied()
+            .unwrap_or_else(|| {
+                let id = self.next_fn_id;
+                self.next_fn_id += 1;
+                id
+            });
 
         // Create entry block.
         let entry = self.new_block();
@@ -289,7 +307,9 @@ impl Lowerer {
             let blk = self.current_block as usize;
             if blk < self.blocks.len() {
                 if matches!(self.blocks[blk].terminator, Terminator::Unreachable) {
-                    self.set_terminator(Terminator::Return(Some(Operand::Constant(Constant::Unit))));
+                    self.set_terminator(Terminator::Return(Some(Operand::Constant(
+                        Constant::Unit,
+                    ))));
                 }
             }
         } else {
@@ -396,14 +416,20 @@ impl Lowerer {
         // Patch then exit.
         self.switch_to(then_exit);
         self.emit(Instruction::Assign(result_var, RValue::Use(then_result)));
-        if matches!(self.blocks[then_exit as usize].terminator, Terminator::Unreachable) {
+        if matches!(
+            self.blocks[then_exit as usize].terminator,
+            Terminator::Unreachable
+        ) {
             self.set_terminator(Terminator::Goto(merge_block));
         }
 
         // Patch else exit.
         self.switch_to(else_exit);
         self.emit(Instruction::Assign(result_var, RValue::Use(else_result)));
-        if matches!(self.blocks[else_exit as usize].terminator, Terminator::Unreachable) {
+        if matches!(
+            self.blocks[else_exit as usize].terminator,
+            Terminator::Unreachable
+        ) {
             self.set_terminator(Terminator::Goto(merge_block));
         }
 
@@ -461,7 +487,10 @@ impl Lowerer {
                 self.push_scope();
                 if let Pattern::Binding(ident) = &arm.pattern.node {
                     let bind_var = self.fresh_var(&ident.name, IrType::I64);
-                    self.emit(Instruction::Assign(bind_var, RValue::Use(scrutinee.clone())));
+                    self.emit(Instruction::Assign(
+                        bind_var,
+                        RValue::Use(scrutinee.clone()),
+                    ));
                     self.define_var(&ident.name, bind_var);
                 }
             }
@@ -469,7 +498,10 @@ impl Lowerer {
             self.emit(Instruction::Assign(result_var, RValue::Use(arm_result)));
             self.pop_scope();
 
-            if matches!(self.blocks[self.current_block as usize].terminator, Terminator::Unreachable) {
+            if matches!(
+                self.blocks[self.current_block as usize].terminator,
+                Terminator::Unreachable
+            ) {
                 self.set_terminator(Terminator::Goto(merge_block));
             }
         }
@@ -477,7 +509,10 @@ impl Lowerer {
         // Emit switch terminator on the original block.
         // We need to find the block that had the scrutinee.
         // The switch is in the block just before the first arm block.
-        let switch_block = cases.first().map(|(_, b)| b - 1).unwrap_or(self.current_block);
+        let switch_block = cases
+            .first()
+            .map(|(_, b)| b - 1)
+            .unwrap_or(self.current_block);
         self.switch_to(switch_block);
         if !cases.is_empty() {
             self.set_terminator(Terminator::Switch(scrutinee, cases, default_block));
@@ -515,7 +550,10 @@ impl Lowerer {
         self.emit(Instruction::Assign(iter_var, RValue::Use(iterable.clone())));
 
         let idx_var = self.fresh_var("_idx", IrType::I64);
-        self.emit(Instruction::Assign(idx_var, RValue::Constant(Constant::Int(0))));
+        self.emit(Instruction::Assign(
+            idx_var,
+            RValue::Constant(Constant::Int(0)),
+        ));
 
         self.set_terminator(Terminator::Goto(header_block));
 
@@ -525,13 +563,13 @@ impl Lowerer {
         // Simplified: we create a comparison that the codegen will handle.
         self.emit(Instruction::Assign(
             cond_var,
-            RValue::BinaryOp(
-                BinOp::Lt,
-                Operand::Var(idx_var),
-                iterable.clone(),
-            ),
+            RValue::BinaryOp(BinOp::Lt, Operand::Var(idx_var), iterable.clone()),
         ));
-        self.set_terminator(Terminator::Branch(Operand::Var(cond_var), body_block, exit_block));
+        self.set_terminator(Terminator::Branch(
+            Operand::Var(cond_var),
+            body_block,
+            exit_block,
+        ));
 
         // Body block.
         self.switch_to(body_block);
@@ -552,14 +590,24 @@ impl Lowerer {
         let inc_var = self.fresh_tmp();
         self.emit(Instruction::Assign(
             inc_var,
-            RValue::BinaryOp(BinOp::Add, Operand::Var(idx_var), Operand::Constant(Constant::Int(1))),
+            RValue::BinaryOp(
+                BinOp::Add,
+                Operand::Var(idx_var),
+                Operand::Constant(Constant::Int(1)),
+            ),
         ));
-        self.emit(Instruction::Assign(idx_var, RValue::Use(Operand::Var(inc_var))));
+        self.emit(Instruction::Assign(
+            idx_var,
+            RValue::Use(Operand::Var(inc_var)),
+        ));
 
         self.loop_stack.pop();
         self.pop_scope();
 
-        if matches!(self.blocks[self.current_block as usize].terminator, Terminator::Unreachable) {
+        if matches!(
+            self.blocks[self.current_block as usize].terminator,
+            Terminator::Unreachable
+        ) {
             self.set_terminator(Terminator::Goto(header_block));
         }
 
@@ -586,7 +634,10 @@ impl Lowerer {
         self.loop_stack.pop();
         self.pop_scope();
 
-        if matches!(self.blocks[self.current_block as usize].terminator, Terminator::Unreachable) {
+        if matches!(
+            self.blocks[self.current_block as usize].terminator,
+            Terminator::Unreachable
+        ) {
             self.set_terminator(Terminator::Goto(header_block));
         }
 
@@ -606,7 +657,10 @@ impl Lowerer {
         self.loop_stack.pop();
         self.pop_scope();
 
-        if matches!(self.blocks[self.current_block as usize].terminator, Terminator::Unreachable) {
+        if matches!(
+            self.blocks[self.current_block as usize].terminator,
+            Terminator::Unreachable
+        ) {
             self.set_terminator(Terminator::Goto(header_block));
         }
 
@@ -644,9 +698,18 @@ impl Lowerer {
                             let expr_ty = self.infer_expr_type(&expr.node);
                             match expr_ty {
                                 IrType::String => raw,
-                                IrType::I8 | IrType::I16 | IrType::I32 | IrType::I64
-                                | IrType::U8 | IrType::U16 | IrType::U32 | IrType::U64 => {
-                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                IrType::I8
+                                | IrType::I16
+                                | IrType::I32
+                                | IrType::I64
+                                | IrType::U8
+                                | IrType::U16
+                                | IrType::U32
+                                | IrType::U64 => {
+                                    let tmp = self.fresh_var(
+                                        format!("_tostr{}", self.next_var),
+                                        IrType::String,
+                                    );
                                     self.emit(Instruction::Assign(
                                         tmp,
                                         RValue::CallNamed("__int_to_string".to_string(), vec![raw]),
@@ -654,32 +717,53 @@ impl Lowerer {
                                     Operand::Var(tmp)
                                 }
                                 IrType::F32 | IrType::F64 => {
-                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    let tmp = self.fresh_var(
+                                        format!("_tostr{}", self.next_var),
+                                        IrType::String,
+                                    );
                                     self.emit(Instruction::Assign(
                                         tmp,
-                                        RValue::CallNamed("__float_to_string".to_string(), vec![raw]),
+                                        RValue::CallNamed(
+                                            "__float_to_string".to_string(),
+                                            vec![raw],
+                                        ),
                                     ));
                                     Operand::Var(tmp)
                                 }
                                 IrType::Bool => {
-                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    let tmp = self.fresh_var(
+                                        format!("_tostr{}", self.next_var),
+                                        IrType::String,
+                                    );
                                     self.emit(Instruction::Assign(
                                         tmp,
-                                        RValue::CallNamed("__bool_to_string".to_string(), vec![raw]),
+                                        RValue::CallNamed(
+                                            "__bool_to_string".to_string(),
+                                            vec![raw],
+                                        ),
                                     ));
                                     Operand::Var(tmp)
                                 }
                                 IrType::Char => {
-                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    let tmp = self.fresh_var(
+                                        format!("_tostr{}", self.next_var),
+                                        IrType::String,
+                                    );
                                     self.emit(Instruction::Assign(
                                         tmp,
-                                        RValue::CallNamed("__char_to_string".to_string(), vec![raw]),
+                                        RValue::CallNamed(
+                                            "__char_to_string".to_string(),
+                                            vec![raw],
+                                        ),
                                     ));
                                     Operand::Var(tmp)
                                 }
                                 _ => {
                                     // For other types, attempt int_to_string as fallback
-                                    let tmp = self.fresh_var(format!("_tostr{}", self.next_var), IrType::String);
+                                    let tmp = self.fresh_var(
+                                        format!("_tostr{}", self.next_var),
+                                        IrType::String,
+                                    );
                                     self.emit(Instruction::Assign(
                                         tmp,
                                         RValue::CallNamed("__int_to_string".to_string(), vec![raw]),
@@ -692,7 +776,8 @@ impl Lowerer {
                     result = Some(match result {
                         None => operand,
                         Some(prev) => {
-                            let tmp = self.fresh_var(format!("_concat{}", self.next_var), IrType::String);
+                            let tmp =
+                                self.fresh_var(format!("_concat{}", self.next_var), IrType::String);
                             self.emit(Instruction::Assign(
                                 tmp,
                                 RValue::CallNamed("__str_concat".to_string(), vec![prev, operand]),
@@ -794,7 +879,8 @@ impl Lowerer {
 
             // ---- Function call ----
             Expr::Call(call) => {
-                let args: Vec<Operand> = call.args.iter().map(|a| self.lower_expr(&a.node)).collect();
+                let args: Vec<Operand> =
+                    call.args.iter().map(|a| self.lower_expr(&a.node)).collect();
 
                 // Determine the callee.
                 let tmp = self.fresh_tmp();
@@ -815,16 +901,16 @@ impl Lowerer {
                             .map(|s| s.name.as_str())
                             .collect::<Vec<_>>()
                             .join(".");
-                        self.emit(Instruction::Assign(
-                            tmp,
-                            RValue::CallNamed(name, args),
-                        ));
+                        self.emit(Instruction::Assign(tmp, RValue::CallNamed(name, args)));
                     }
                     _ => {
                         let callee = self.lower_expr(&call.callee.node);
                         self.emit(Instruction::Assign(
                             tmp,
-                            RValue::CallNamed(format!("__indirect_call"), vec![callee].into_iter().chain(args).collect()),
+                            RValue::CallNamed(
+                                format!("__indirect_call"),
+                                vec![callee].into_iter().chain(args).collect(),
+                            ),
                         ));
                     }
                 }
@@ -882,7 +968,8 @@ impl Lowerer {
 
             // ---- Array literal ----
             Expr::ArrayLiteral(elems) => {
-                let operands: Vec<Operand> = elems.iter().map(|e| self.lower_expr(&e.node)).collect();
+                let operands: Vec<Operand> =
+                    elems.iter().map(|e| self.lower_expr(&e.node)).collect();
                 let tmp = self.fresh_tmp();
                 self.emit(Instruction::Assign(
                     tmp,
@@ -893,7 +980,8 @@ impl Lowerer {
 
             // ---- Tuple literal ----
             Expr::TupleLiteral(elems) => {
-                let operands: Vec<Operand> = elems.iter().map(|e| self.lower_expr(&e.node)).collect();
+                let operands: Vec<Operand> =
+                    elems.iter().map(|e| self.lower_expr(&e.node)).collect();
                 let tmp = self.fresh_tmp();
                 self.emit(Instruction::Assign(
                     tmp,
@@ -903,19 +991,13 @@ impl Lowerer {
             }
 
             // ---- Block expression ----
-            Expr::Block(block) => {
-                self.lower_block_as_expr(block)
-            }
+            Expr::Block(block) => self.lower_block_as_expr(block),
 
             // ---- If expression ----
-            Expr::If(if_expr) => {
-                self.lower_if(if_expr)
-            }
+            Expr::If(if_expr) => self.lower_if(if_expr),
 
             // ---- Match expression ----
-            Expr::Match(match_expr) => {
-                self.lower_match(match_expr)
-            }
+            Expr::Match(match_expr) => self.lower_match(match_expr),
 
             // ---- Closure ----
             Expr::Closure(closure) => {
@@ -965,7 +1047,11 @@ impl Lowerer {
                             tmp,
                             RValue::CallNamed(
                                 "__field_set".to_string(),
-                                vec![obj, Operand::Constant(Constant::Int(field_idx as i64)), value],
+                                vec![
+                                    obj,
+                                    Operand::Constant(Constant::Int(field_idx as i64)),
+                                    value,
+                                ],
                             ),
                         ));
                         Operand::Var(tmp)
@@ -976,10 +1062,7 @@ impl Lowerer {
                         let tmp = self.fresh_tmp();
                         self.emit(Instruction::Assign(
                             tmp,
-                            RValue::CallNamed(
-                                "__index_set".to_string(),
-                                vec![obj, index, value],
-                            ),
+                            RValue::CallNamed("__index_set".to_string(), vec![obj, index, value]),
                         ));
                         Operand::Var(tmp)
                     }
@@ -1046,9 +1129,7 @@ impl Lowerer {
             }
 
             // ---- Select ----
-            Expr::Select(sel) => {
-                self.lower_select(sel)
-            }
+            Expr::Select(sel) => self.lower_select(sel),
 
             // ---- Return ----
             Expr::Return(val) => {
@@ -1067,9 +1148,7 @@ impl Lowerer {
 
             // ---- Break ----
             Expr::Break(val) => {
-                let _val = val
-                    .as_ref()
-                    .map(|v| self.lower_expr(&v.node));
+                let _val = val.as_ref().map(|v| self.lower_expr(&v.node));
                 if let Some(&(_, exit_block)) = self.loop_stack.last() {
                     self.set_terminator(Terminator::Goto(exit_block));
                 }
@@ -1131,13 +1210,19 @@ impl Lowerer {
             self.emit(Instruction::Assign(result_var, RValue::Use(arm_result)));
             self.pop_scope();
 
-            if matches!(self.blocks[self.current_block as usize].terminator, Terminator::Unreachable) {
+            if matches!(
+                self.blocks[self.current_block as usize].terminator,
+                Terminator::Unreachable
+            ) {
                 self.set_terminator(Terminator::Goto(merge_block));
             }
         }
 
         // Set select terminator on the predecessor block.
-        let select_block = branches.first().map(|b| b.target - 1).unwrap_or(self.current_block);
+        let select_block = branches
+            .first()
+            .map(|b| b.target - 1)
+            .unwrap_or(self.current_block);
         self.switch_to(select_block);
         self.set_terminator(Terminator::Select(branches));
 
@@ -1233,23 +1318,32 @@ impl Lowerer {
             Expr::Binary(bin) => {
                 // Arithmetic/comparison — infer from left operand.
                 match bin.op {
-                    BinaryOp::Eq | BinaryOp::NotEq | BinaryOp::Lt | BinaryOp::LtEq
-                    | BinaryOp::Gt | BinaryOp::GtEq | BinaryOp::And | BinaryOp::Or => IrType::Bool,
+                    BinaryOp::Eq
+                    | BinaryOp::NotEq
+                    | BinaryOp::Lt
+                    | BinaryOp::LtEq
+                    | BinaryOp::Gt
+                    | BinaryOp::GtEq
+                    | BinaryOp::And
+                    | BinaryOp::Or => IrType::Bool,
                     _ => self.infer_expr_type(&bin.left.node),
                 }
             }
-            Expr::Unary(unary) => {
-                match unary.op {
-                    UnaryOp::Not => IrType::Bool,
-                    _ => self.infer_expr_type(&unary.operand.node),
-                }
-            }
+            Expr::Unary(unary) => match unary.op {
+                UnaryOp::Not => IrType::Bool,
+                _ => self.infer_expr_type(&unary.operand.node),
+            },
             Expr::ArrayLiteral(_) => IrType::Array(Box::new(IrType::I64), None),
-            Expr::TupleLiteral(elems) => {
-                IrType::Tuple(elems.iter().map(|e| self.infer_expr_type(&e.node)).collect())
-            }
+            Expr::TupleLiteral(elems) => IrType::Tuple(
+                elems
+                    .iter()
+                    .map(|e| self.infer_expr_type(&e.node))
+                    .collect(),
+            ),
             Expr::Range(_) => IrType::Array(Box::new(IrType::I64), None),
-            Expr::ChanCreate(cc) => IrType::Channel(Box::new(self.lower_type(&cc.element_type.node))),
+            Expr::ChanCreate(cc) => {
+                IrType::Channel(Box::new(self.lower_type(&cc.element_type.node)))
+            }
             Expr::StructLiteral(sl) => IrType::Struct(sl.name.name.clone()),
             _ => IrType::I64, // conservative default
         }
@@ -1314,13 +1408,12 @@ impl Lowerer {
                 IrType::Tuple(vec![ok, err])
             }
             Type::Function(ft) => {
-                let params: Vec<IrType> = ft.params.iter().map(|p| self.lower_type(&p.node)).collect();
+                let params: Vec<IrType> =
+                    ft.params.iter().map(|p| self.lower_type(&p.node)).collect();
                 let ret = self.lower_type(&ft.return_type.node);
                 IrType::Function(params, Box::new(ret))
             }
-            Type::Channel(inner) => {
-                IrType::Channel(Box::new(self.lower_type(&inner.node)))
-            }
+            Type::Channel(inner) => IrType::Channel(Box::new(self.lower_type(&inner.node))),
             Type::Inferred => IrType::I64, // default to i64 when type is inferred
         }
     }

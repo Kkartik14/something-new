@@ -1,7 +1,7 @@
 //! Integration tests for the LSP crate.
 
-use crate::*;
 use crate::analysis::analyze;
+use crate::*;
 
 #[test]
 fn test_full_analysis_pipeline() {
@@ -50,7 +50,11 @@ fn test_document_store_lifecycle() {
     assert!(doc.analysis.is_some());
 
     // Update.
-    store.update("file:///main.adam", 2, "fn main() {\n    print(\"hello\")\n}\n".into());
+    store.update(
+        "file:///main.adam",
+        2,
+        "fn main() {\n    print(\"hello\")\n}\n".into(),
+    );
     let doc = store.get("file:///main.adam").unwrap();
     assert_eq!(doc.version, 2);
 

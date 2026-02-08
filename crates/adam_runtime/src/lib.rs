@@ -1,20 +1,20 @@
 //! Adam Runtime — green thread scheduler, channels, memory allocator.
 
 pub mod alloc;
-pub mod string;
-pub mod print;
-pub mod thread;
-pub mod context_switch;
-pub mod scheduler;
 pub mod channel;
-pub mod select;
-pub mod spawn_group;
-pub mod math;
+pub mod context_switch;
 pub mod format;
 pub mod io;
-pub mod vec;
 pub mod map;
+pub mod math;
+pub mod print;
+pub mod scheduler;
+pub mod select;
 pub mod set;
+pub mod spawn_group;
+pub mod string;
+pub mod thread;
+pub mod vec;
 
 // ================================================================
 // Cross-module concurrency integration tests
@@ -199,8 +199,12 @@ mod concurrency_tests {
 
             // Select should pick one of them.
             let mut cases = vec![
-                SelectCase::Recv { channel: ch1.raw().clone() },
-                SelectCase::Recv { channel: ch2.raw().clone() },
+                SelectCase::Recv {
+                    channel: ch1.raw().clone(),
+                },
+                SelectCase::Recv {
+                    channel: ch2.raw().clone(),
+                },
             ];
 
             let sel_result = select(&mut cases, None);
@@ -363,6 +367,19 @@ mod concurrency_tests {
 
 #[cfg(test)]
 mod stdlib_integration_tests {
+    use crate::format::{
+        __adam_format_bool, __adam_format_float, __adam_format_int, __adam_parse_bool,
+        __adam_parse_float, __adam_parse_int,
+    };
+    use crate::io::{__adam_fs_read, __adam_fs_write};
+    use crate::map::{
+        AdamMap, __adam_map_contains_key, __adam_map_drop, __adam_map_get, __adam_map_insert,
+        __adam_map_len, __adam_map_new, __adam_map_remove,
+    };
+    use crate::math::{
+        __adam_math_cos, __adam_math_e, __adam_math_infinity, __adam_math_nan, __adam_math_pi,
+        __adam_math_sin, __adam_math_sqrt,
+    };
     use crate::string::AdamString;
     use crate::string::{
         __adam_string_clone, __adam_string_contains, __adam_string_drop, __adam_string_eq,
@@ -371,22 +388,9 @@ mod stdlib_integration_tests {
         __adam_string_trim, __str_concat,
     };
     use crate::vec::{
-        __adam_vec_clone, __adam_vec_drop, __adam_vec_get, __adam_vec_len, __adam_vec_new,
-        __adam_vec_pop, __adam_vec_push, __adam_vec_reverse, __adam_vec_sort, AdamVec,
+        AdamVec, __adam_vec_clone, __adam_vec_drop, __adam_vec_get, __adam_vec_len, __adam_vec_new,
+        __adam_vec_pop, __adam_vec_push, __adam_vec_reverse, __adam_vec_sort,
     };
-    use crate::map::{
-        __adam_map_contains_key, __adam_map_drop, __adam_map_get, __adam_map_insert, __adam_map_len,
-        __adam_map_new, __adam_map_remove, AdamMap,
-    };
-    use crate::math::{
-        __adam_math_cos, __adam_math_e, __adam_math_infinity, __adam_math_nan, __adam_math_pi,
-        __adam_math_sin, __adam_math_sqrt,
-    };
-    use crate::format::{
-        __adam_format_bool, __adam_format_float, __adam_format_int, __adam_parse_bool,
-        __adam_parse_float, __adam_parse_int,
-    };
-    use crate::io::{__adam_fs_read, __adam_fs_write};
 
     use std::alloc::{dealloc, Layout};
     use std::ptr;
@@ -474,7 +478,11 @@ mod stdlib_integration_tests {
             hash_i32(key),
             &mut out as *mut i32 as *mut u8,
         );
-        if found { Some(out) } else { None }
+        if found {
+            Some(out)
+        } else {
+            None
+        }
     }
 
     fn map_remove_i32(m: &mut AdamMap, key: i32) -> Option<i32> {
@@ -485,7 +493,11 @@ mod stdlib_integration_tests {
             hash_i32(key),
             &mut out as *mut i32 as *mut u8,
         );
-        if found { Some(out) } else { None }
+        if found {
+            Some(out)
+        } else {
+            None
+        }
     }
 
     /// Helper to get a temp file path for integration tests.
@@ -526,8 +538,15 @@ mod stdlib_integration_tests {
         assert_eq!(__adam_vec_len(&v), 4);
 
         // Pop the last element.
-        let mut popped = AdamString { ptr: ptr::null_mut(), len: 0, cap: 0 };
-        assert!(__adam_vec_pop(&mut v, &mut popped as *mut AdamString as *mut u8));
+        let mut popped = AdamString {
+            ptr: ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        assert!(__adam_vec_pop(
+            &mut v,
+            &mut popped as *mut AdamString as *mut u8
+        ));
         unsafe {
             assert_eq!(read_string(&popped), "lang");
         }
@@ -535,8 +554,16 @@ mod stdlib_integration_tests {
 
         // Verify remaining elements.
         for (i, expected) in ["hello", "world", "adam"].iter().enumerate() {
-            let mut elem = AdamString { ptr: ptr::null_mut(), len: 0, cap: 0 };
-            assert!(__adam_vec_get(&v, i as u64, &mut elem as *mut AdamString as *mut u8));
+            let mut elem = AdamString {
+                ptr: ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
+            assert!(__adam_vec_get(
+                &v,
+                i as u64,
+                &mut elem as *mut AdamString as *mut u8
+            ));
             unsafe {
                 assert_eq!(read_string(&elem), *expected);
             }
@@ -545,7 +572,11 @@ mod stdlib_integration_tests {
 
         // Clean up: pop remaining and drop strings.
         while __adam_vec_len(&v) > 0 {
-            let mut elem = AdamString { ptr: ptr::null_mut(), len: 0, cap: 0 };
+            let mut elem = AdamString {
+                ptr: ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
             __adam_vec_pop(&mut v, &mut elem as *mut AdamString as *mut u8);
             drop_string(elem);
         }
@@ -754,8 +785,12 @@ mod stdlib_integration_tests {
         assert!(r.success);
 
         assert!(__adam_string_eq(
-            original.ptr, original.len, original.cap,
-            read_back.ptr, read_back.len, read_back.cap,
+            original.ptr,
+            original.len,
+            original.cap,
+            read_back.ptr,
+            read_back.len,
+            read_back.cap,
         ));
 
         drop_string(original);
@@ -783,7 +818,9 @@ mod stdlib_integration_tests {
         // Build the CSV string.
         let mut csv = String::new();
         for i in 0..(__adam_vec_len(&v) as usize) {
-            if i > 0 { csv.push(','); }
+            if i > 0 {
+                csv.push(',');
+            }
             let val = get_i32_vec(&v, i as u64).unwrap();
             csv.push_str(&val.to_string());
         }
@@ -808,9 +845,14 @@ mod stdlib_integration_tests {
         let mut arr: *mut AdamString = ptr::null_mut();
         let mut count: u64 = 0;
         __adam_string_split(
-            read_back.ptr, read_back.len, read_back.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            read_back.ptr,
+            read_back.len,
+            read_back.cap,
+            delim.ptr,
+            delim.len,
+            delim.cap,
+            &mut arr,
+            &mut count,
         );
         assert_eq!(count, 5);
 
@@ -874,26 +916,33 @@ mod stdlib_integration_tests {
 
         // to_upper
         let upper = __adam_string_to_upper(s.ptr, s.len, s.cap);
-        unsafe { assert_eq!(read_string(&upper), "HELLO WORLD FOO"); }
+        unsafe {
+            assert_eq!(read_string(&upper), "HELLO WORLD FOO");
+        }
 
         // replace "WORLD" with "ADAM"
         let from = make_string("WORLD");
         let to = make_string("ADAM");
         let replaced = __adam_string_replace(
-            upper.ptr, upper.len, upper.cap,
-            from.ptr, from.len, from.cap,
-            to.ptr, to.len, to.cap,
+            upper.ptr, upper.len, upper.cap, from.ptr, from.len, from.cap, to.ptr, to.len, to.cap,
         );
-        unsafe { assert_eq!(read_string(&replaced), "HELLO ADAM FOO"); }
+        unsafe {
+            assert_eq!(read_string(&replaced), "HELLO ADAM FOO");
+        }
 
         // split by space
         let space = make_string(" ");
         let mut arr: *mut AdamString = ptr::null_mut();
         let mut count: u64 = 0;
         __adam_string_split(
-            replaced.ptr, replaced.len, replaced.cap,
-            space.ptr, space.len, space.cap,
-            &mut arr, &mut count,
+            replaced.ptr,
+            replaced.len,
+            replaced.cap,
+            space.ptr,
+            space.len,
+            space.cap,
+            &mut arr,
+            &mut count,
         );
         assert_eq!(count, 3);
 
@@ -904,20 +953,17 @@ mod stdlib_integration_tests {
 
             // Reconstruct by concatenating parts with "-".
             let sep = make_string("-");
-            let mut result = __adam_string_clone((*arr.add(0)).ptr, (*arr.add(0)).len, (*arr.add(0)).cap);
+            let mut result =
+                __adam_string_clone((*arr.add(0)).ptr, (*arr.add(0)).len, (*arr.add(0)).cap);
             for i in 1..count as usize {
                 // concat result + sep
                 let tmp = __str_concat(
-                    result.ptr, result.len, result.cap,
-                    sep.ptr, sep.len, sep.cap,
+                    result.ptr, result.len, result.cap, sep.ptr, sep.len, sep.cap,
                 );
                 drop_string(result);
                 // concat tmp + parts[i]
                 let part = &*arr.add(i);
-                result = __str_concat(
-                    tmp.ptr, tmp.len, tmp.cap,
-                    part.ptr, part.len, part.cap,
-                );
+                result = __str_concat(tmp.ptr, tmp.len, tmp.cap, part.ptr, part.len, part.cap);
                 drop_string(tmp);
             }
             assert_eq!(read_string(&result), "HELLO-ADAM-FOO");
@@ -955,18 +1001,26 @@ mod stdlib_integration_tests {
 
         // Concat.
         let concat = __str_concat(a.ptr, a.len, a.cap, b.ptr, b.len, b.cap);
-        unsafe { assert_eq!(read_string(&concat), "  hello  world  "); }
+        unsafe {
+            assert_eq!(read_string(&concat), "  hello  world  ");
+        }
 
         // Trim.
         let trimmed = __adam_string_trim(concat.ptr, concat.len, concat.cap);
-        unsafe { assert_eq!(read_string(&trimmed), "hello  world"); }
+        unsafe {
+            assert_eq!(read_string(&trimmed), "hello  world");
+        }
 
         // Find "world".
         let needle = make_string("world");
         let mut idx: u64 = 0;
         let found = __adam_string_find(
-            trimmed.ptr, trimmed.len, trimmed.cap,
-            needle.ptr, needle.len, needle.cap,
+            trimmed.ptr,
+            trimmed.len,
+            trimmed.cap,
+            needle.ptr,
+            needle.len,
+            needle.cap,
             &mut idx,
         );
         assert!(found);
@@ -974,7 +1028,9 @@ mod stdlib_integration_tests {
 
         // Slice from idx to end.
         let sliced = __adam_string_slice(trimmed.ptr, trimmed.len, trimmed.cap, idx, trimmed.len);
-        unsafe { assert_eq!(read_string(&sliced), "world"); }
+        unsafe {
+            assert_eq!(read_string(&sliced), "world");
+        }
 
         drop_string(a);
         drop_string(b);
@@ -1155,8 +1211,12 @@ mod stdlib_integration_tests {
         // Push to original.
         let suffix = make_string(" world");
         __adam_string_push(
-            &mut original.ptr, &mut original.len, &mut original.cap,
-            suffix.ptr, suffix.len, suffix.cap,
+            &mut original.ptr,
+            &mut original.len,
+            &mut original.cap,
+            suffix.ptr,
+            suffix.len,
+            suffix.cap,
         );
 
         unsafe {
@@ -1227,12 +1287,16 @@ mod stdlib_integration_tests {
         // Format first and last to string.
         let first = get_i32_vec(&v, 0).unwrap();
         let s = __adam_format_int(first as i64);
-        unsafe { assert_eq!(read_string(&s), "0"); }
+        unsafe {
+            assert_eq!(read_string(&s), "0");
+        }
         drop_string(s);
 
         let last = get_i32_vec(&v, 999).unwrap();
         let s = __adam_format_int(last as i64);
-        unsafe { assert_eq!(read_string(&s), "999"); }
+        unsafe {
+            assert_eq!(read_string(&s), "999");
+        }
         drop_string(s);
 
         __adam_vec_drop(&mut v);
@@ -1268,9 +1332,7 @@ mod stdlib_integration_tests {
         let mut count: u64 = 0;
 
         __adam_string_split(
-            csv.ptr, csv.len, csv.cap,
-            delim.ptr, delim.len, delim.cap,
-            &mut arr, &mut count,
+            csv.ptr, csv.len, csv.cap, delim.ptr, delim.len, delim.cap, &mut arr, &mut count,
         );
         assert_eq!(count, 4);
 
@@ -1284,8 +1346,12 @@ mod stdlib_integration_tests {
             let name_part = &*arr.add(0);
             let name_needle = make_string("nam");
             assert!(__adam_string_contains(
-                name_part.ptr, name_part.len, name_part.cap,
-                name_needle.ptr, name_needle.len, name_needle.cap,
+                name_part.ptr,
+                name_part.len,
+                name_part.cap,
+                name_needle.ptr,
+                name_needle.len,
+                name_needle.cap,
             ));
             drop_string(name_needle);
 
@@ -1346,11 +1412,21 @@ mod stdlib_integration_tests {
     #[test]
     fn test_math_sin_cos_identity() {
         let x_values: &[f64] = &[
-            0.0, 0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0,
+            0.0,
+            0.1,
+            0.5,
+            1.0,
+            1.5,
+            2.0,
+            2.5,
+            3.0,
             std::f64::consts::PI,
             std::f64::consts::FRAC_PI_2,
             std::f64::consts::FRAC_PI_4,
-            -1.0, -2.5, 10.0, 100.0,
+            -1.0,
+            -2.5,
+            10.0,
+            100.0,
         ];
         for &x in x_values {
             let s = __adam_math_sin(x);
@@ -1359,7 +1435,9 @@ mod stdlib_integration_tests {
             assert!(
                 (sum - 1.0).abs() < 1e-10,
                 "sin^2({}) + cos^2({}) = {} != 1.0",
-                x, x, sum
+                x,
+                x,
+                sum
             );
         }
     }
@@ -1383,8 +1461,7 @@ mod stdlib_integration_tests {
 
         // Same content => eq returns true.
         assert!(__adam_string_eq(
-            s1.ptr, s1.len, s1.cap,
-            s2.ptr, s2.len, s2.cap,
+            s1.ptr, s1.len, s1.cap, s2.ptr, s2.len, s2.cap,
         ));
 
         // Same length.

@@ -247,14 +247,15 @@ impl<'src> Lexer<'src> {
                     let resume_pos = self.pos;
                     let resume_line = self.line;
                     let resume_col = self.column;
-                    let resume_token = self.lex_string_continuation(resume_pos, resume_line, resume_col);
+                    let resume_token =
+                        self.lex_string_continuation(resume_pos, resume_line, resume_col);
                     // Insert at front so it comes before any StringInterpolStart
                     // that lex_string_continuation may have queued.
                     self.pending.insert(0, resume_token);
                 } else if !self.is_at_end() && self.peek() == b'"' {
                     // Closing quote — emit an empty string literal to close out.
                     self.advance(); // consume "
-                    // No need to emit empty string — just consume the quote.
+                                    // No need to emit empty string — just consume the quote.
                 }
 
                 return end_token;
@@ -383,7 +384,9 @@ impl<'src> Lexer<'src> {
                     start_line,
                     start_col,
                 ),
-                Err(_) => self.error_token("invalid float literal", start_pos, start_line, start_col),
+                Err(_) => {
+                    self.error_token("invalid float literal", start_pos, start_line, start_col)
+                }
             }
         } else if self.peek() == b'e' || self.peek() == b'E' {
             // Scientific notation without decimal point: 1e10
@@ -401,7 +404,9 @@ impl<'src> Lexer<'src> {
                     start_line,
                     start_col,
                 ),
-                Err(_) => self.error_token("invalid float literal", start_pos, start_line, start_col),
+                Err(_) => {
+                    self.error_token("invalid float literal", start_pos, start_line, start_col)
+                }
             }
         } else {
             let text = self.number_text(start_pos);
@@ -412,7 +417,9 @@ impl<'src> Lexer<'src> {
                     start_line,
                     start_col,
                 ),
-                Err(_) => self.error_token("integer literal overflow", start_pos, start_line, start_col),
+                Err(_) => {
+                    self.error_token("integer literal overflow", start_pos, start_line, start_col)
+                }
             }
         }
     }
@@ -422,7 +429,12 @@ impl<'src> Lexer<'src> {
         self.advance(); // x
 
         if !self.peek().is_ascii_hexdigit() {
-            return self.error_token("expected hex digits after `0x`", start_pos, start_line, start_col);
+            return self.error_token(
+                "expected hex digits after `0x`",
+                start_pos,
+                start_line,
+                start_col,
+            );
         }
 
         while !self.is_at_end() && (self.peek().is_ascii_hexdigit() || self.peek() == b'_') {
@@ -446,10 +458,17 @@ impl<'src> Lexer<'src> {
         self.advance(); // o
 
         if self.is_at_end() || !(self.peek() >= b'0' && self.peek() <= b'7') {
-            return self.error_token("expected octal digits after `0o`", start_pos, start_line, start_col);
+            return self.error_token(
+                "expected octal digits after `0o`",
+                start_pos,
+                start_line,
+                start_col,
+            );
         }
 
-        while !self.is_at_end() && ((self.peek() >= b'0' && self.peek() <= b'7') || self.peek() == b'_') {
+        while !self.is_at_end()
+            && ((self.peek() >= b'0' && self.peek() <= b'7') || self.peek() == b'_')
+        {
             self.advance();
         }
 
@@ -470,10 +489,17 @@ impl<'src> Lexer<'src> {
         self.advance(); // b
 
         if self.is_at_end() || (self.peek() != b'0' && self.peek() != b'1') {
-            return self.error_token("expected binary digits after `0b`", start_pos, start_line, start_col);
+            return self.error_token(
+                "expected binary digits after `0b`",
+                start_pos,
+                start_line,
+                start_col,
+            );
         }
 
-        while !self.is_at_end() && (self.peek() == b'0' || self.peek() == b'1' || self.peek() == b'_') {
+        while !self.is_at_end()
+            && (self.peek() == b'0' || self.peek() == b'1' || self.peek() == b'_')
+        {
             self.advance();
         }
 
@@ -623,7 +649,12 @@ impl<'src> Lexer<'src> {
 
     /// Continue lexing a string after an interpolation ends.
     /// Like `lex_string` but without consuming the opening `"`.
-    fn lex_string_continuation(&mut self, start_pos: usize, start_line: u32, start_col: u32) -> Token {
+    fn lex_string_continuation(
+        &mut self,
+        start_pos: usize,
+        start_line: u32,
+        start_col: u32,
+    ) -> Token {
         let mut value = String::new();
 
         loop {
@@ -834,13 +865,23 @@ impl<'src> Lexer<'src> {
         self.advance(); // opening '
 
         if self.is_at_end() || self.peek() == b'\n' {
-            return self.error_token("unterminated character literal", start_pos, start_line, start_col);
+            return self.error_token(
+                "unterminated character literal",
+                start_pos,
+                start_line,
+                start_col,
+            );
         }
 
         let ch = if self.peek() == b'\\' {
             self.advance(); // backslash
             if self.is_at_end() {
-                return self.error_token("unterminated escape in character literal", start_pos, start_line, start_col);
+                return self.error_token(
+                    "unterminated escape in character literal",
+                    start_pos,
+                    start_line,
+                    start_col,
+                );
             }
             match self.advance() {
                 b'n' => '\n',
@@ -854,13 +895,19 @@ impl<'src> Lexer<'src> {
                         Some(c) => c,
                         None => {
                             // Skip to closing '
-                            while !self.is_at_end() && self.peek() != b'\'' && self.peek() != b'\n' {
+                            while !self.is_at_end() && self.peek() != b'\'' && self.peek() != b'\n'
+                            {
                                 self.advance();
                             }
                             if !self.is_at_end() && self.peek() == b'\'' {
                                 self.advance();
                             }
-                            return self.error_token("invalid unicode escape in char literal", start_pos, start_line, start_col);
+                            return self.error_token(
+                                "invalid unicode escape in char literal",
+                                start_pos,
+                                start_line,
+                                start_col,
+                            );
                         }
                     }
                 }
@@ -879,12 +926,24 @@ impl<'src> Lexer<'src> {
         } else {
             match self.advance_utf8() {
                 Some(c) => c,
-                None => return self.error_token("invalid character in char literal", start_pos, start_line, start_col),
+                None => {
+                    return self.error_token(
+                        "invalid character in char literal",
+                        start_pos,
+                        start_line,
+                        start_col,
+                    )
+                }
             }
         };
 
         if !self.eat(b'\'') {
-            return self.error_token("unterminated character literal, expected `'`", start_pos, start_line, start_col);
+            return self.error_token(
+                "unterminated character literal, expected `'`",
+                start_pos,
+                start_line,
+                start_col,
+            );
         }
 
         Token::new(
@@ -901,58 +960,99 @@ impl<'src> Lexer<'src> {
         let ch = self.advance();
         let kind = match ch {
             b'+' => {
-                if self.eat(b'=') { TokenKind::PlusAssign }
-                else { TokenKind::Plus }
+                if self.eat(b'=') {
+                    TokenKind::PlusAssign
+                } else {
+                    TokenKind::Plus
+                }
             }
             b'-' => {
-                if self.eat(b'>') { TokenKind::Arrow }
-                else if self.eat(b'=') { TokenKind::MinusAssign }
-                else { TokenKind::Minus }
+                if self.eat(b'>') {
+                    TokenKind::Arrow
+                } else if self.eat(b'=') {
+                    TokenKind::MinusAssign
+                } else {
+                    TokenKind::Minus
+                }
             }
             b'*' => {
-                if self.eat(b'=') { TokenKind::StarAssign }
-                else { TokenKind::Star }
+                if self.eat(b'=') {
+                    TokenKind::StarAssign
+                } else {
+                    TokenKind::Star
+                }
             }
             b'/' => {
-                if self.eat(b'=') { TokenKind::SlashAssign }
-                else { TokenKind::Slash }
+                if self.eat(b'=') {
+                    TokenKind::SlashAssign
+                } else {
+                    TokenKind::Slash
+                }
             }
             b'%' => {
-                if self.eat(b'=') { TokenKind::PercentAssign }
-                else { TokenKind::Percent }
+                if self.eat(b'=') {
+                    TokenKind::PercentAssign
+                } else {
+                    TokenKind::Percent
+                }
             }
             b'=' => {
-                if self.eat(b'=') { TokenKind::Eq }
-                else if self.eat(b'>') { TokenKind::FatArrow }
-                else { TokenKind::Assign }
+                if self.eat(b'=') {
+                    TokenKind::Eq
+                } else if self.eat(b'>') {
+                    TokenKind::FatArrow
+                } else {
+                    TokenKind::Assign
+                }
             }
             b'!' => {
-                if self.eat(b'=') { TokenKind::NotEq }
-                else { TokenKind::Not }
+                if self.eat(b'=') {
+                    TokenKind::NotEq
+                } else {
+                    TokenKind::Not
+                }
             }
             b'<' => {
-                if self.eat(b'=') { TokenKind::LtEq }
-                else { TokenKind::Lt }
+                if self.eat(b'=') {
+                    TokenKind::LtEq
+                } else {
+                    TokenKind::Lt
+                }
             }
             b'>' => {
-                if self.eat(b'=') { TokenKind::GtEq }
-                else { TokenKind::Gt }
+                if self.eat(b'=') {
+                    TokenKind::GtEq
+                } else {
+                    TokenKind::Gt
+                }
             }
             b'&' => {
-                if self.eat(b'&') { TokenKind::And }
-                else { TokenKind::Ampersand }
+                if self.eat(b'&') {
+                    TokenKind::And
+                } else {
+                    TokenKind::Ampersand
+                }
             }
             b'|' => {
-                if self.eat(b'|') { TokenKind::Or }
-                else { TokenKind::Pipe }
+                if self.eat(b'|') {
+                    TokenKind::Or
+                } else {
+                    TokenKind::Pipe
+                }
             }
             b'.' => {
-                if self.eat(b'.') { TokenKind::DotDot }
-                else { TokenKind::Dot }
+                if self.eat(b'.') {
+                    TokenKind::DotDot
+                } else {
+                    TokenKind::Dot
+                }
             }
             b':' => {
-                if self.eat(b'=') { TokenKind::ColonAssign }
-                else { TokenKind::Colon }
+                if self.eat(b'=') {
+                    TokenKind::ColonAssign
+                } else {
+                    TokenKind::Colon
+                }
             }
             b'?' => TokenKind::Question,
             b'@' => TokenKind::At,
@@ -985,7 +1085,13 @@ impl<'src> Lexer<'src> {
 
     // === Helpers ===
 
-    fn error_token(&mut self, message: &str, start_pos: usize, start_line: u32, start_col: u32) -> Token {
+    fn error_token(
+        &mut self,
+        message: &str,
+        start_pos: usize,
+        start_line: u32,
+        start_col: u32,
+    ) -> Token {
         self.errors.push(LexError {
             message: message.to_string(),
             line: start_line,

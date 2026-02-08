@@ -354,10 +354,7 @@ impl Parser {
             let trait_ident = if let Type::Named(path) = &first_type.node {
                 path.name.clone()
             } else {
-                return Err(ParseError::new(
-                    "expected trait name",
-                    first_type.span,
-                ));
+                return Err(ParseError::new("expected trait name", first_type.span));
             };
             (Some(trait_ident), target)
         } else {

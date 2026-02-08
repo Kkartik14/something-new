@@ -4,10 +4,10 @@
 //! the pipeline: lex -> parse -> resolve -> typecheck.
 //! Errors are fine; panics are bugs.
 
+use crate::checker::TypeChecker;
 use adam_lexer::Lexer;
 use adam_parser::Parser;
 use adam_resolve::resolve;
-use crate::checker::TypeChecker;
 
 // ============================================================
 // Deterministic PRNG (LCG)
@@ -24,17 +24,24 @@ impl Rng {
 
     fn next(&mut self) -> u64 {
         // LCG parameters from Numerical Recipes
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         self.state
     }
 
     fn next_usize(&mut self, max: usize) -> usize {
-        if max == 0 { return 0; }
+        if max == 0 {
+            return 0;
+        }
         (self.next() % max as u64) as usize
     }
 
     fn next_range(&mut self, min: usize, max: usize) -> usize {
-        if min >= max { return min; }
+        if min >= max {
+            return min;
+        }
         min + self.next_usize(max - min)
     }
 
@@ -117,16 +124,20 @@ fn fuzz_random_ascii() {
 #[test]
 fn fuzz_random_unicode() {
     let unicode_samples: &[&str] = &[
-        "\u{1F600}", "\u{1F4A9}", "\u{2764}", "\u{1F680}",   // emoji
-        "\u{4E16}\u{754C}", "\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}", // CJK/Japanese
-        "\u{0627}\u{0644}\u{0639}\u{0631}\u{0628}\u{064A}\u{0629}",     // Arabic RTL
-        "\u{0301}\u{0302}\u{0303}\u{0304}\u{0305}",           // combining chars
-        "\u{200F}\u{200E}\u{200B}\u{FEFF}",                   // bidi / zero-width
-        "\u{0041}\u{030A}", // A + combining ring above
-        "\u{D7FF}",         // edge of BMP
-        "\u{FFFF}",         // max BMP
-        "\u{10FFFF}",       // max Unicode
-        "\u{FDD0}\u{FFFE}", // noncharacters
+        "\u{1F600}",
+        "\u{1F4A9}",
+        "\u{2764}",
+        "\u{1F680}", // emoji
+        "\u{4E16}\u{754C}",
+        "\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}", // CJK/Japanese
+        "\u{0627}\u{0644}\u{0639}\u{0631}\u{0628}\u{064A}\u{0629}", // Arabic RTL
+        "\u{0301}\u{0302}\u{0303}\u{0304}\u{0305}", // combining chars
+        "\u{200F}\u{200E}\u{200B}\u{FEFF}",         // bidi / zero-width
+        "\u{0041}\u{030A}",                         // A + combining ring above
+        "\u{D7FF}",                                 // edge of BMP
+        "\u{FFFF}",                                 // max BMP
+        "\u{10FFFF}",                               // max Unicode
+        "\u{FDD0}\u{FFFE}",                         // noncharacters
     ];
     let mut rng = Rng::new(67890);
     for i in 0..100 {
@@ -137,7 +148,9 @@ fn fuzz_random_unicode() {
                 source.push_str(unicode_samples[rng.next_usize(unicode_samples.len())]);
             } else {
                 // Mix in some Adam keywords
-                let kw = ["fn", "let", "struct", "enum", "if", "match", " ", "\n", "=", "(", ")"];
+                let kw = [
+                    "fn", "let", "struct", "enum", "if", "match", " ", "\n", "=", "(", ")",
+                ];
                 source.push_str(kw[rng.next_usize(kw.len())]);
             }
         }
@@ -152,10 +165,9 @@ fn fuzz_random_unicode() {
 #[test]
 fn fuzz_keyword_soup() {
     let keywords: &[&str] = &[
-        "fn", "struct", "enum", "trait", "impl", "view", "let", "mut", "own",
-        "pub", "use", "mod", "if", "else", "match", "for", "while", "loop",
-        "break", "continue", "return", "spawn", "select", "after", "chan",
-        "true", "false", "nil", "self", "Self",
+        "fn", "struct", "enum", "trait", "impl", "view", "let", "mut", "own", "pub", "use", "mod",
+        "if", "else", "match", "for", "while", "loop", "break", "continue", "return", "spawn",
+        "select", "after", "chan", "true", "false", "nil", "self", "Self",
     ];
     let mut rng = Rng::new(11111);
     for i in 0..100 {
@@ -194,16 +206,49 @@ fn fuzz_bracket_torture() {
 #[test]
 fn fuzz_number_edge_cases() {
     let numbers: &[&str] = &[
-        "0", "1", "999999999999999", "9999999999999999999",
-        "0.0", "0.0000001", "1.0", "99999999.99999999",
-        "1e10", "1e999", "1e-999", "0e0",
-        "0x", "0xff", "0xFFFFFFFFFFFFFFFF", "0x0",
-        "0b", "0b0", "0b1", "0b1111111111111111",
-        "0o", "0o0", "0o7", "0o77777777777",
-        "1_000", "1_000_000", "0x_FF", "0b_1010",
-        "0.", ".0", "1.", ".1", "1.2.3", "1e", "1e+", "1e-",
-        "-0", "-1", "--1", "++1",
-        "0xGG", "0b22", "0o89",
+        "0",
+        "1",
+        "999999999999999",
+        "9999999999999999999",
+        "0.0",
+        "0.0000001",
+        "1.0",
+        "99999999.99999999",
+        "1e10",
+        "1e999",
+        "1e-999",
+        "0e0",
+        "0x",
+        "0xff",
+        "0xFFFFFFFFFFFFFFFF",
+        "0x0",
+        "0b",
+        "0b0",
+        "0b1",
+        "0b1111111111111111",
+        "0o",
+        "0o0",
+        "0o7",
+        "0o77777777777",
+        "1_000",
+        "1_000_000",
+        "0x_FF",
+        "0b_1010",
+        "0.",
+        ".0",
+        "1.",
+        ".1",
+        "1.2.3",
+        "1e",
+        "1e+",
+        "1e-",
+        "-0",
+        "-1",
+        "--1",
+        "++1",
+        "0xGG",
+        "0b22",
+        "0o89",
     ];
     for (i, num) in numbers.iter().enumerate() {
         fuzz_source_catch_panic(num, "number_edge_case", i);
@@ -220,24 +265,24 @@ fn fuzz_number_edge_cases() {
 #[test]
 fn fuzz_string_edge_cases() {
     let strings: &[&str] = &[
-        r#"""#,                           // unterminated
-        r#""hello"#,                      // unterminated with content
-        r#""hello world""#,               // normal
-        r#""hello\nworld""#,              // escape
-        r#""hello\""#,                    // escaped quote then unterminated
-        r#""hello\"world""#,             // escaped quote
-        r#""\n\t\r\\\0""#,               // all escapes
-        r#""\x41""#,                      // hex escape
-        r#""\u{1F600}""#,                // unicode escape
-        r#""hello {x} world""#,          // interpolation
-        r#""hello {} world""#,           // empty interpolation
-        r#""hello {1 + 2} world""#,      // expr interpolation
-        r#""{{{}}}"#,                     // nested braces in interpolation
-        r#""""""#,                        // three quotes (two empty strings + unterminated?)
-        "\"hello\nworld\"",               // literal newline in string
-        "\"hello\0world\"",               // null byte in string
-        r#""\""#,                         // just escaped quote, unterminated
-        "\"\\",                           // backslash then EOF
+        r#"""#,                     // unterminated
+        r#""hello"#,                // unterminated with content
+        r#""hello world""#,         // normal
+        r#""hello\nworld""#,        // escape
+        r#""hello\""#,              // escaped quote then unterminated
+        r#""hello\"world""#,        // escaped quote
+        r#""\n\t\r\\\0""#,          // all escapes
+        r#""\x41""#,                // hex escape
+        r#""\u{1F600}""#,           // unicode escape
+        r#""hello {x} world""#,     // interpolation
+        r#""hello {} world""#,      // empty interpolation
+        r#""hello {1 + 2} world""#, // expr interpolation
+        r#""{{{}}}"#,               // nested braces in interpolation
+        r#""""""#,                  // three quotes (two empty strings + unterminated?)
+        "\"hello\nworld\"",         // literal newline in string
+        "\"hello\0world\"",         // null byte in string
+        r#""\""#,                   // just escaped quote, unterminated
+        "\"\\",                     // backslash then EOF
     ];
     for (i, s) in strings.iter().enumerate() {
         fuzz_source_catch_panic(s, "string_edge_case", i);
@@ -251,9 +296,8 @@ fn fuzz_string_edge_cases() {
 #[test]
 fn fuzz_operator_combinations() {
     let ops: &[&str] = &[
-        "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=",
-        "&&", "||", "!", "&", "->", "=>", ".", "..", "?", "+=", "-=",
-        "*=", "/=", "%=", ":=", ":", ",", ";", "|", "@",
+        "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=", "&&", "||", "!", "&", "->",
+        "=>", ".", "..", "?", "+=", "-=", "*=", "/=", "%=", ":=", ":", ",", ";", "|", "@",
     ];
     let mut rng = Rng::new(33333);
     // Every pair
@@ -300,15 +344,11 @@ fn fuzz_huge_identifiers() {
 #[test]
 fn fuzz_repetitive_patterns() {
     // 1000 let bindings
-    let lets: String = (0..1000)
-        .map(|i| format!("let x{} = {}\n", i, i))
-        .collect();
+    let lets: String = (0..1000).map(|i| format!("let x{} = {}\n", i, i)).collect();
     fuzz_source_catch_panic(&lets, "1000_lets", 0);
 
     // 1000 function definitions
-    let fns: String = (0..1000)
-        .map(|i| format!("fn f{}() {{}}\n", i))
-        .collect();
+    let fns: String = (0..1000).map(|i| format!("fn f{}() {{}}\n", i)).collect();
     fuzz_source_catch_panic(&fns, "1000_fns", 0);
 
     // 500 struct definitions
@@ -390,9 +430,9 @@ fn fuzz_comment_edge_cases() {
         "/* // mixed */",
         "let x = 1 // trailing",
         "let x = 1 /* inline */ + 2",
-        "/**/",  // empty block comment
+        "/**/",   // empty block comment
         "/****/", // block with stars
-        "/*/*/", // confusing nesting
+        "/*/*/",  // confusing nesting
         "/* \"string inside comment\" */",
         "\"/* string that looks like comment */\"",
         "// \x00 null in comment",
@@ -410,8 +450,8 @@ fn fuzz_comment_edge_cases() {
 #[test]
 fn fuzz_type_annotation_soup() {
     let _types: &[&str] = &[
-        "i32", "i64", "f32", "f64", "bool", "String", "char",
-        "Vec", "Map", "Option", "Result", "Chan",
+        "i32", "i64", "f32", "f64", "bool", "String", "char", "Vec", "Map", "Option", "Result",
+        "Chan",
     ];
     let mut rng = Rng::new(55555);
     for i in 0..100 {
@@ -680,8 +720,7 @@ fn fuzz_binary_garbage() {
                     byte as char
                 } else {
                     // Use a safe Unicode char instead
-                    char::from_u32((rng.next() % 0x7FF) as u32 + 0x80)
-                        .unwrap_or('?')
+                    char::from_u32((rng.next() % 0x7FF) as u32 + 0x80).unwrap_or('?')
                 }
             })
             .collect();
@@ -704,9 +743,7 @@ fn fuzz_long_lines() {
     fuzz_source_catch_panic(&ident, "long_ident", 0);
 
     // Long expression on one line
-    let long_expr: String = (0..10_000)
-        .map(|i| format!("{} + ", i))
-        .collect::<String>() + "0";
+    let long_expr: String = (0..10_000).map(|i| format!("{} + ", i)).collect::<String>() + "0";
     let source = format!("let x = {}", long_expr);
     fuzz_source_catch_panic(&source, "long_expr", 0);
 
@@ -778,7 +815,10 @@ fn fuzz_single_tokens() {
 
 #[test]
 fn fuzz_repeated_single_tokens() {
-    let tokens = ["(", ")", "{", "}", "[", "]", "+", "-", "*", "/", "=", "!", "<", ">", "&", "|", ".", ",", ":", ";", "?", "@", "\\", "#", "~", "`", "^", "$"];
+    let tokens = [
+        "(", ")", "{", "}", "[", "]", "+", "-", "*", "/", "=", "!", "<", ">", "&", "|", ".", ",",
+        ":", ";", "?", "@", "\\", "#", "~", "`", "^", "$",
+    ];
     for (i, tok) in tokens.iter().enumerate() {
         let repeated = tok.repeat(100);
         fuzz_source_catch_panic(&repeated, "repeated_token", i);
@@ -788,8 +828,8 @@ fn fuzz_repeated_single_tokens() {
 #[test]
 fn fuzz_all_keyword_pairs() {
     let keywords: &[&str] = &[
-        "fn", "struct", "enum", "trait", "impl", "let", "mut", "if", "else",
-        "match", "for", "while", "return", "break", "continue",
+        "fn", "struct", "enum", "trait", "impl", "let", "mut", "if", "else", "match", "for",
+        "while", "return", "break", "continue",
     ];
     for (i, a) in keywords.iter().enumerate() {
         for (j, b) in keywords.iter().enumerate() {
@@ -830,11 +870,11 @@ fn fuzz_string_interpolation_stress() {
         r#""{1 + 2}""#,
         r#""{"nested"}""#,
         r#""{if true { 1 } else { 2 }}""#,
-        r#""{{""#,            // open brace pair
-        r#""}}""#,            // close brace pair
-        r#""{""#,             // unterminated interpolation
-        r#""}""#,             // stray close brace in string
-        r#""{ { { } } }""#,  // nested braces
+        r#""{{""#,          // open brace pair
+        r#""}}""#,          // close brace pair
+        r#""{""#,           // unterminated interpolation
+        r#""}""#,           // stray close brace in string
+        r#""{ { { } } }""#, // nested braces
     ];
     for (i, case) in cases.iter().enumerate() {
         fuzz_source_catch_panic(case, "interpolation_stress", i);
@@ -866,7 +906,7 @@ fn fuzz_closure_variations() {
         "let f = |x: i32| { x }",
         "let f = |x: i32, y: i32| { x + y }",
         "let f = |x: i32| -> i32 { x + 1 }",
-        "let f = || { || { || { 1 } } }",   // nested closures
+        "let f = || { || { || { 1 } } }", // nested closures
         "let f = |x: i32| { let g = |y: i32| { x + y } }",
     ];
     for (i, case) in cases.iter().enumerate() {
